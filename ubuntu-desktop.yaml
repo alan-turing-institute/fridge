@@ -54,11 +54,28 @@ spec:
             password: ubuntu
             chpasswd: { expire: False }
             ssh_pwauth: True
+            write_files:
+              - path: /etc/skel/.xsession
+                content: |
+                  xfce4-session
             packages:
               - xfce4
               - xfce4-goodies
               - xrdp
             runcmd:
-              - echo xfce4.session >~/.xsession
               - systemctl enable xrdp
               - systemctl start xrdp
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ubuntu-desktop-rdp
+spec:
+  selector:
+    kubevirt.io/domain: ubuntu-desktop
+  ports:
+  - name: rdp
+    port: 3389
+    targetPort: 3389
+    protocol : TCP
+  type: ClusterIP
