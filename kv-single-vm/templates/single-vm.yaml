@@ -1,0 +1,78 @@
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: {{ include "kv-single-vm.fullname" . }}
+  namespace: {{ .Values.vm.namespace }}
+  labels:
+    helm.sh/chart: {{ include "kv-single-vm.chart" . }}
+spec:
+  runStrategy: {{ .Values.vm.runStrategy }}
+  dataVolumeTemplates:
+  - apiVersion: cdi.kubevirt.io/v1beta1
+    kind: DataVolume
+    metadata:
+      name: {{ include "kv-single-vm.osdiskname" . }}
+    spec:
+      pvc:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ .Values.image.disksize }}
+      source:
+        http:
+          url: {{ .Values.image.repository }}
+  template:
+    metadata:
+      labels:
+        kubevirt.io/domain: {{ include "kv-single-vm.fullname" . }}
+    spec:
+      domain:
+        devices:
+          disks:
+          - disk:
+              bus: virtio
+            name: datavoldisk
+          - disk:
+              bus: virtio
+            name: cloudinitdisk
+          - disk:
+              bus: virtio
+            name: longhorn-drive
+            shareable: true
+          interfaces:
+          - name: default
+            masquerade: {}
+        resources:
+          requests:
+            memory: {{ .Values.vm.resources.memory }}
+            cpu: {{ .Values.vm.resources.cpu }}
+      networks:
+      - name: default
+        pod: {}
+      volumes:
+      - dataVolume:
+          name: {{ include "kv-single-vm.osdiskname" . }}
+        name: datavoldisk
+      - name: longhorn-drive
+        persistentVolumeClaim:
+          claimName: longhorn-volv-pvc
+      - name: cloudinitdisk
+        cloudInitNoCloud:
+          userData: |
+            #cloud-config
+            password: ubuntu
+            chpasswd: { expire: False }
+            ssh_pwauth: True
+            write_files:
+              - path: /etc/skel/.xsession
+                content: |
+                  xfce4-session
+            packages:
+              - nfs-common
+              - xfce4
+              - xfce4-goodies
+              - xrdp
+            runcmd:
+              - systemctl enable xrdp
+              - systemctl start xrdp
