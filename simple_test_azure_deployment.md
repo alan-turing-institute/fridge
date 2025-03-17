@@ -198,6 +198,7 @@ A service exposing port 3389 is also created, which can be used to access the VM
 
 A `helm` chart is available in this repo for deploying VMs.
 By default, this creates a single VM running Ubuntu 22.04, with a 30GB disk, 2GB of RAM, and 2 CPUs.
+The specific configuration can be modified either using the included `values.yaml` file or by passing in values at deployment time.
 As above, it will also have `xfce4` and `xrdp` installed.
 The VM is deployed in a stopped state and needs to be manually started.
 A service exposing the RDP port is also created.
