@@ -1,8 +1,8 @@
-# A minimal cluster on Azure
+# Creating a test deployment on Azure
 
-These steps allow you to deploy a minimal AKS cluster on Azure with a single VM that allows RDP access.
+This document outlines the steps to create a test deployment on Azure, using Azure Kubernetes Service (AKS) and Kubevirt.
 
-## Step 1 - Create an AKS cluster
+## Step 1 - Create an Azure Kubernetes cluster
 
 Create a resource group using Azure CLI.
 
@@ -33,7 +33,7 @@ Some of the potential options that may be useful - some of which are setup by de
 
 By default, this will deploy a k8s cluster with a single `System` node pool, which runs the default k8s resources like its internal `CoreDNS` pod. You can still use this same pool to deploy additional resources if you like, but you may want to add a second `User` pool for other non-system pods (or VMs).
 
-To add a second pool - optional for testing, but probably best practice, use the Az CLI.
+To add a second pool - optional for testing, but probably best practice - use the Az CLI.
 
 ```bash
 az aks nodepool add --resource-group YOUR_RESOURCE_GROUP --cluster-name YOUR_CLUSTER_NAME --name YOUR_NODE_NAME --node-count 2 --os-sku Ubuntu --max-pods 110 --node-vm-size Standard_D4ds_v5 --enable-cluster-autoscaler --min-count 2 --max-count 5
@@ -103,16 +103,66 @@ Note that by default Kubevirt will make it possible for VMs to be scheduled on a
 This can be changed by modifying the `kubevirt-customise-cr.yaml` file.
 The field `workloads` can be added to the `spec` section of the `Kubevirt` resource, with the subfield `nodePlacement` to specify which nodes VMs can be scheduled on.
 
-See https://kubevirt.io/user-guide/cluster_admin/installation/#restricting-kubevirt-components-node-placement for more information.
+See <https://kubevirt.io/user-guide/cluster_admin/installation/#restricting-kubevirt-components-node-placement> for more information.
 
-## Step 3 - Deploy a VM
+## Step 3 - Deploy Longhorn
 
-### Deploy Containzerized Data Importer
+We want shared storage that will be accessible to multiple VMs.
+The VMs deployed in subsequent steps assume a Longhorn volume is available.
 
-The simplest way to build a VM is to start from a pre-built `containerdisk` image, such as those managed by [kubevirt](https://github.com/kubevirt/containerdisks)
+[Longhorn](https://longhorn.io/) is a distributed block storage system for Kubernetes. It is a Cloud Native Computing Foundation (CNCF) Sandbox project.
+
+Longhorn allows you to create volumes on the disks attached to the nodes in your cluster. These volumes can be used to store data that needs to persist between pod restarts or to share data between pods.
+
+To install Longhorn, run the following command:
+
+```bash
+kubectl apply -f "https://raw.githubusercontent.com/longhorn/longhorn/v1.8.1/deploy/longhorn.yaml"
+```
+
+To access the Longhorn UI, you can either use `kubectl port-forward` or expose the service using a LoadBalancer. For example, to expose the Longhorn UI on port 8000, run the following command:
+
+```bash
+kubectl port-forward svc/longhorn-frontend 8000:80 -n longhorn-system
+```
+
+Then `http://localhost:8000` in your browser will take you to the Longhorn UI.
+
+From there, you can create volumes that can be attached to VMs.
+
+The following is an example of a PersistentVolumeClaim (PVC) that can be used to create a volume in Longhorn:
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: longhorn-volv-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 20Gi
+```
+
+For this test deployment, we will use Longhorn as the storage backend for the VMs and deploy a drive using a YAML file.
+
+```bash
+kubectl apply -f longhorn-pvc.yaml
+```
+
+Note that this drive is initially unformatted.
+
+## Step 4 - Deploy a VM
+
+We'll now deploy an Ubuntu VM using Kubevirt.
+
+### Deploy Containerized Data Importer
+
+The simplest way to build a VM is to start from a pre-built `containerdisk` image, such as those managed by [Kubevirt](https://github.com/kubevirt/containerdisks)
 The images they use include only a very small OS disk, so we need to find a way to expand it.
 One such way is to use `DataVolumes`. Container disks can be mounted in a `DataVolume`.
-
 The method is described in a [Github issue](https://github.com/kubevirt/kubevirt/issues/3130) on the Kubevirt repo.
 
 First, we need to install `Containerized Data Importer` - see https://kubevirt.io/user-guide/storage/containerized_data_importer/
@@ -138,12 +188,25 @@ Define the VM using a `yaml` file. An example is supplied in `ubuntu-desktop.yam
 kubectl apply -f ubuntu-desktop.yaml
 ```
 
-This example creates an Ubuntu 22.04 server with xfce4 and xrdp installed. It is deployed in a stopped state and needs to be manually started, but that can be modified by the `runStrategy` field in the `yaml` file.
+This example creates an Ubuntu 22.04 server with `xfce4` and `xrdp` installed. It is deployed in a stopped state and needs to be manually started, but that can be modified by the `runStrategy` field in the `yaml` file.
 
 Note that this deploys to the `default` namespace. We may want to add a separate namespace for VMs.
 
+A service exposing port 3389 is also created, which can be used to access the VM via RDP.
+
 ### Deploy a VM using `helm`
 
+A `helm` chart is available in this repo for deploying VMs.
+By default, this creates a single VM running Ubuntu 22.04, with a 30GB disk, 2GB of RAM, and 2 CPUs.
+As above, it will also have `xfce4` and `xrdp` installed.
+The VM is deployed in a stopped state and needs to be manually started.
+A service exposing the RDP port is also created.
+
+```bash
+helm install ubuntu-desktop ./kv-single-vm
+```
+
+### Managing VMs using `virtctl`
 
 `virtctl` can be used to manage VMs once they are on the cluster. `virtctl` can be downloaded from the Kubevirt Github repo (see the [Kubevirt](https://kubevirt.io/user-guide/user_workloads/virtctl_client_tool/) site):
 
@@ -166,7 +229,10 @@ virtctl console ubuntu-desktop
 
 From there, you may want to add additional users to test out RDP access.
 
-## Step 4 - Deploy guacamole
+In addition, if you want to use the shared Longhorn volume, you will need to format and mount it manually from the console.
+Note: it only needs to be formatted once!
+
+## Step 5 - Deploy guacamole
 
 First, set up a separate namespace for guacamole. Note this is not *necessary* but does help with organization and may allow us to apply more specific policies to Guacamole at a later date.
 
@@ -211,17 +277,12 @@ helm install guacamole beryju/guacamole --namespace guac
 Guacamole can be accessed locally using port forwarding.
 
 ```bash
-kubectl port-forward deployment/guacamole-guacamole :8080 -n guac
+kubectl port-forward deployment/guacamole-guacamole 8080:8080 -n guac
 ```
 
-This allows you to access the guacamole server from a random local port, which will be shown in the command's output, as below:
+This allows you to access the guacamole server on port 8080, which will be shown in the command's output, as below:
 
-```none
-Forwarding from 127.0.0.1:59292 -> 8080
-Forwarding from [::1]:59292 -> 8080
-```
-
-Guacamole can then be accessed through a browser at `localhost:<your_port_here>`.
+Guacamole can then be accessed through a browser at `localhost:8080`.
 
 To make it accessible to the wider world, deploying a load balancer is the easiest starting point.
 
@@ -231,7 +292,7 @@ This can be done either with the provided `.yaml` file or using `kubectl`. E.g. 
 kubectl expose deployment guacamole-guacamole -n guac --port=80 --target-port=8080 --name=guac-lb --type=LoadBalancer
 ```
 
-Alternatively, we can set up ingress on AKS (not yet tested!) - see https://learn.microsoft.com/en-us/azure/aks/app-routing.
+Alternatively, we can set up managed Nginx ingress on AKS (not yet tested!) - see https://learn.microsoft.com/en-us/azure/aks/app-routing.
 
 Once you have access to `guacamole`, you can add connections manually.
 
@@ -241,5 +302,5 @@ You will need to enter the IP address of the VM as the hostname for the server, 
 kubectl get vmi
 ```
 
-Pods and services receive local DNS names automatically - e.g. a pod called `guac` in the default namespace would be `guac.default.cluster.local` - but VMs do not.
-We should either find a way to add them, as the IP address might change if the VM is stopped/started again, or add a service for the VM that will have one automatically.
+Pods and services receive local DNS names automatically - e.g. a pod called `guac` in the default namespace would be `guac.default.pod.cluster.local` - but VMs do not.
+We add a service for each VM to provide easy connectivity.
