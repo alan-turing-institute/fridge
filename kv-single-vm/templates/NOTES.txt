@@ -7,4 +7,4 @@ Use the following hostname when adding the VM connection to Guacamole:
 {{ include "kv-single-vm.fullname" . }}.{{ .Values.vm.namespace}}.svc.cluster.local
 
 By default, the VM is stopped.
-Running `virtcl start {{ include "kv-single-vm.fullname" . }}` will start the VM.
+Running `virtctl start {{ include "kv-single-vm.fullname" . }}` will start the VM.
