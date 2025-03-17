@@ -13,34 +13,36 @@ az group create --name YOUR_RESOURCE_GROUP --location YOUR_LOCATION
 Create an AKS cluster using Azure CLI. This example includes some additional flags that correspond to some most parts of the Azure provided defaults for dev/test AKS clusters.
 
 ```bash
-az aks create --resource-group YOUR_RESOURCE_GROUP --name YOUR_CLUSTER_NAME --node-count 2 --auto-upgrade-channel node-image --enable-cluster-autoscaler --min-count 2 --max-count 5 --enable-image-cleaner --node-vm-size Standard_D4ds_v5 --enable-oidc-issuer
+az aks create --resource-group YOUR_RESOURCE_GROUP --name YOUR_CLUSTER_NAME --node-count 2 --nodepool-name YOUR_SYSTEM_POOL_NAME --auto-upgrade-channel node-image --enable-cluster-autoscaler --min-count 2 --max-count 5 --node-vm-size Standard_D4ds_v5 --enable-oidc-issuer --api-server-authorized-ip-ranges xxx.xxx.xxx.xxx
 ```
 
-Some of the potential options that may be useful, and are setup by default if creating a cluster through the portal, are:
+Some of the potential options that may be useful - some of which are setup by default if creating a cluster through the portal - are:
 
 ```bash
 --auto-upgrade-channel (rapid|stable|patch|node-image|none (node-image is az dev default))
+--api-server-authorized-ip-ranges (restricts access to the API server to a specific IP range)
 --enable-workload-identity (not clear what this does)
 --enable-cluster-autoscaler (allows the cluster to scale number of nodes automatically (not clear how this works as yet, may need additional rules/alerts to be set up))
 --enable-image-cleaner (not clear how useful this is for our workflow - cleans up old container images automatically)
 --enable-oidc-issuer (may be useful for setting up OAuth)
 --node-osdisk-type ephemeral
 --node-vm-size -s (Standard_D4ds_v5 is the one that Azure suggests as a default for dev/testing)
---enable-app-routing (can be used to create an nginx ingress proxy)
+--nodepool-name )
+--enable-app-routing (can be used to create an Azure managed nginx ingress proxy)
 ```
 
-By default, this will deploy a k8s cluster with single `System` node pool, which runs the default k8s resources like its internal `CoreDNS` pod. You can still use this same pool to deploy additional resources if you like, but you may want to add a second `User` pool for other non-system pods (or VMs).
+By default, this will deploy a k8s cluster with a single `System` node pool, which runs the default k8s resources like its internal `CoreDNS` pod. You can still use this same pool to deploy additional resources if you like, but you may want to add a second `User` pool for other non-system pods (or VMs).
 
 To add a second pool - optional for testing, but probably best practice, use the Az CLI.
 
 ```bash
-az aks nodepool add --resource-group YOUR_RESOURCE_GROUP --cluster-name YOUR_CLUSTER_NAME --name YOUR_NODE_NAME --node-count 2 --os-sku AzureLinux --max-pods 110 --node-vm-size Standard_D4ds_v5 --enable-cluster-autoscaler --min-count 2 --max-count 5
+az aks nodepool add --resource-group YOUR_RESOURCE_GROUP --cluster-name YOUR_CLUSTER_NAME --name YOUR_NODE_NAME --node-count 2 --os-sku Ubuntu --max-pods 110 --node-vm-size Standard_D4ds_v5 --enable-cluster-autoscaler --min-count 2 --max-count 5
 ```
 
-To able to administer the cluster locally (using `kubectl`, for example) use the Azure CLI to obtain the relevant credentials.
+To be able to administer the cluster via the API locally, using `kubectl` for example, use the Azure CLI to obtain the relevant credentials:
 
 ```bash
-az aks get-credentials --resource-group YOUR_RESOURCE_GROUP --cluster-name YOUR_CLUSTER_NAME
+az aks get-credentials --resource-group YOUR_RESOURCE_GROUP --name YOUR_CLUSTER_NAME
 ```
 
 If you have multiple clusters, you can switch between them using `kubectl`:
@@ -51,29 +53,45 @@ kubectl config use-context YOUR_CLUSTER_NAME
 
 ## Step 2 - Set up Kubevirt
 
-The first step is to install the `kubevirt-operator`, which manages all the Kubevirt resources that are deployed in the second step:
+The first step is to install the `kubevirt-operator`, which manages all the Kubevirt resources that are deployed in the second step.
+
+At the time of writing, the latest version is `v1.4.0`.
 
 ```bash
-export VERSION=$(curl -s https://storage.googleapis.com/kubevirt-prow/release/kubevirt/kubevirt/stable.txt)
-echo $VERSION
-kubectl create -f "https://github.com/kubevirt/kubevirt/releases/download/${VERSION}/kubevirt-operator.yaml"
+kubectl create -f "https://github.com/kubevirt/kubevirt/releases/download/v1.4.0/kubevirt-operator.yaml"
 ```
 
-The second step adds custom resources, and will hang.
+The second step adds custom resources.
+This is the step that actually deploys the Kubevirt resources.
+An issue for deploying on AKS is that the installation script is looking for nodes with the `control-plane` role, but AKS does not expose the control plane to the user/customer.
+The solution is either to label the nodes with the role or to modify the installation script.
+
+A modified installation script is provided in the `kubevirt-customise-cr.yaml` file in this repository.
+This script removes the requirement for Kubevirt infrastructure to be deployed on nodes with the `control-plane` role.
+In a future iteration, we may want to add a separate node pool for Kubevirt resources and direct Kubevirt to deploy on that pool.
 
 ```bash
-kubectl create -f "https://github.com/kubevirt/kubevirt/releases/download/${VERSION}/kubevirt-cr.yaml"
+kubectl apply -f kubevirt-customise-cr.yaml
 ```
 
-The installation script is looking for nodes with the `control-plane` role, but AKS does not expose the control plane to the user/customer. Labelling the nodes with the role allows the process to continue, deploying the kubevirt resources on one (or more?) of the labelled nodes.
+Note that this file is also useful for enabling additional Kubevirt features such as snapshotting or live migration of VMs.
+For now, we will leave the additional features disabled.
 
-To apply this role to all nodes, use
+### Optional/advanced configuration steps
+
+#### Using the default installation script for non-AKS clusters
+
+As an alternative to the modified installation script, the default installation script can be used.
+
+```bash
+kubectl create -f "https://github.com/kubevirt/kubevirt/releases/download/v1.4.0/kubevirt-cr.yaml"
+```
+
+You can then apply the `control-plane` role to all nodes using `kubectl label nodes`:
 
 ```bash
 kubectl label nodes --all 'node-role.kubernetes.io/control-plane=control-plane'
 ```
-
-### Optional configuration steps
 
 To be more specific, applying the control plane role only to the `system` node, use
 
@@ -82,18 +100,17 @@ kubectl label nodes -l 'kubernetes.azure.com/mode=system' 'node-role.kubernetes.
 ```
 
 Note that by default Kubevirt will make it possible for VMs to be scheduled on all nodes (including system nodes).
-To stop it from deploying VMs on system nodes, you can change the `kubevirt.io/schedulable` label to `false`
+This can be changed by modifying the `kubevirt-customise-cr.yaml` file.
+The field `workloads` can be added to the `spec` section of the `Kubevirt` resource, with the subfield `nodePlacement` to specify which nodes VMs can be scheduled on.
 
-```bash
-kubectl label nodes -l 'kubernetes.azure.com/mode=system' 'kubevirt.io/schedulable=false' --overwrite
-```
+See https://kubevirt.io/user-guide/cluster_admin/installation/#restricting-kubevirt-components-node-placement for more information.
 
 ## Step 3 - Deploy a VM
 
+### Deploy Containzerized Data Importer
+
 The simplest way to build a VM is to start from a pre-built `containerdisk` image, such as those managed by [kubevirt](https://github.com/kubevirt/containerdisks)
-
 The images they use include only a very small OS disk, so we need to find a way to expand it.
-
 One such way is to use `DataVolumes`. Container disks can be mounted in a `DataVolume`.
 
 The method is described in a [Github issue](https://github.com/kubevirt/kubevirt/issues/3130) on the Kubevirt repo.
@@ -104,12 +121,16 @@ This is an extension that allows you to use `DataVolumes`, which can hold VM ima
 
 These can then be used to launch VMs.
 
+The latest release of CDI is found at https://github.com/kubevirt/containerized-data-importer/releases/latest
+
+To install it, run the following:
+
 ```bash
-export TAG=$(curl -s -w %{redirect_url} https://github.com/kubevirt/containerized-data-importer/releases/latest)
-export VERSION=$(echo ${TAG##*/})
-kubectl create -f https://github.com/kubevirt/containerized-data-importer/releases/download/$VERSION/cdi-operator.yaml
-kubectl create -f https://github.com/kubevirt/containerized-data-importer/releases/download/$VERSION/cdi-cr.yaml
+kubectl create -f https://github.com/kubevirt/containerized-data-importer/releases/download/v1.61.2/cdi-operator.yaml
+kubectl create -f https://github.com/kubevirt/containerized-data-importer/releases/download/v1.61.2/cdi-cr.yaml
 ```
+
+### Deploy a VM from a yaml file
 
 Define the VM using a `yaml` file. An example is supplied in `ubuntu-desktop.yaml`
 
@@ -120,6 +141,9 @@ kubectl apply -f ubuntu-desktop.yaml
 This example creates an Ubuntu 22.04 server with xfce4 and xrdp installed. It is deployed in a stopped state and needs to be manually started, but that can be modified by the `runStrategy` field in the `yaml` file.
 
 Note that this deploys to the `default` namespace. We may want to add a separate namespace for VMs.
+
+### Deploy a VM using `helm`
+
 
 `virtctl` can be used to manage VMs once they are on the cluster. `virtctl` can be downloaded from the Kubevirt Github repo (see the [Kubevirt](https://kubevirt.io/user-guide/user_workloads/virtctl_client_tool/) site):
 
