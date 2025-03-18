@@ -1,10 +1,21 @@
 """An Azure RM Python Pulumi program"""
 
+import base64
+
 import pulumi
 from pulumi_azure_native import (
     containerservice, managedidentity, resources
 )
 import pulumi_tls as tls
+
+
+def get_kubeconfig(
+    credentials: list[containerservice.outputs.CredentialResultResponse]
+) -> str:
+    for credential in credentials:
+        if credential.name == "clusterAdmin":
+            return base64.b64decode(credential.value).decode()
+
 
 config = pulumi.Config()
 
@@ -56,4 +67,13 @@ managed_cluster = containerservice.ManagedCluster(
             ],
         ),
     ),
+)
+
+admin_credentials = containerservice.list_managed_cluster_admin_credentials_output(
+    resource_group_name=resource_group.name, resource_name=managed_cluster.name
+)
+
+pulumi.export(
+    "kubeconfig",
+    admin_credentials.kubeconfigs.apply(get_kubeconfig),
 )
