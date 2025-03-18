@@ -1,0 +1,89 @@
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: ubuntu-desktop
+spec:
+  runStrategy: Manual
+  dataVolumeTemplates:
+  - apiVersion: cdi.kubevirt.io/v1beta1
+    kind: DataVolume
+    metadata:
+      name: ubuntu-dv
+    spec:
+      pvc:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 30Gi
+      source:
+        http:
+          url: https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img
+  template:
+    metadata:
+      labels:
+        kubevirt.io/domain: ubuntu-desktop
+    spec:
+      domain:
+        devices:
+          disks:
+          - disk:
+              bus: virtio
+            name: datavoldisk
+          - disk:
+              bus: virtio
+            name: cloudinitdisk
+          - disk:
+              bus: virtio
+            name: longhorn-drive
+            shareable: true
+          interfaces:
+          - name: default
+            masquerade: {}
+        resources:
+          requests:
+            memory: 2048M
+            cpu: "2"
+      networks:
+      - name: default
+        pod: {}
+      volumes:
+      - dataVolume:
+          name: ubuntu-dv
+        name: datavoldisk
+      - name: longhorn-drive
+        persistentVolumeClaim:
+          claimName: longhorn-volv-pvc
+      - name: cloudinitdisk
+        cloudInitNoCloud:
+          userData: |
+            #cloud-config
+            password: ubuntu
+            chpasswd: { expire: False }
+            ssh_pwauth: True
+            write_files:
+              - path: /etc/skel/.xsession
+                content: |
+                  xfce4-session
+            packages:
+              - nfs-common
+              - xfce4
+              - xfce4-goodies
+              - xrdp
+            runcmd:
+              - systemctl enable xrdp
+              - systemctl start xrdp
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ubuntu-desktop-rdp
+spec:
+  selector:
+    kubevirt.io/domain: ubuntu-desktop
+  ports:
+  - name: rdp
+    port: 3389
+    targetPort: 3389
+    protocol : TCP
+  type: ClusterIP
