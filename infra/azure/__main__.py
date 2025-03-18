@@ -1,14 +1,23 @@
 """An Azure RM Python Pulumi program"""
 
 import pulumi
-from pulumi_azure_native import containerservice, resources
+from pulumi_azure_native import (
+    containerservice, managedidentity, resources
+)
 import pulumi_tls as tls
 
 config = pulumi.Config()
 
-resource_group = resources.ResourceGroup(config.require("resource_group_name"))
+resource_group = resources.ResourceGroup(
+    "resource_group",
+    resource_group_name=config.require("resource_group_name"),
+)
 
 ssh_key = tls.PrivateKey("ssh-key", algorithm="RSA", rsa_bits="3072")
+
+identity = managedidentity.UserAssignedIdentity(
+    "cluster_managed_identity", resource_group_name=resource_group.name,
+)
 
 managed_cluster = containerservice.ManagedCluster(
     "cluster",
@@ -33,7 +42,8 @@ managed_cluster = containerservice.ManagedCluster(
     ],
     dns_prefix="fridge",
     identity=containerservice.ManagedClusterIdentityArgs(
-        type=containerservice.ResourceIdentityType.SYSTEM_ASSIGNED,
+        type=containerservice.ResourceIdentityType.USER_ASSIGNED,
+        user_assigned_identities=[identity.id],
     ),
     kubernetes_version="1.32",
     linux_profile=containerservice.ContainerServiceLinuxProfileArgs(
