@@ -53,7 +53,7 @@ spec:
         name: datavoldisk
       - name: longhorn-drive
         persistentVolumeClaim:
-          claimName: longhorn-volv-pvc
+          claimName: longhorn-vol-pvc
       - name: cloudinitdisk
         cloudInitNoCloud:
           userData: |
