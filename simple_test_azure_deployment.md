@@ -56,7 +56,7 @@ This script removes the requirement for Kubevirt infrastructure to be deployed o
 In a future iteration, we may want to add a separate node pool for Kubevirt resources and direct Kubevirt to deploy on that pool.
 
 ```console
-kubectl apply -f kubevirt-customise-cr.yaml
+kubectl apply -f kv-customise-cr.yaml
 ```
 
 Note that this file is also useful for enabling additional Kubevirt features such as snapshotting or live migration of VMs.
@@ -85,7 +85,7 @@ kubectl label nodes -l 'kubernetes.azure.com/mode=system' 'node-role.kubernetes.
 ```
 
 Note that by default Kubevirt will make it possible for VMs to be scheduled on all nodes (including system nodes).
-This can be changed by modifying the `kubevirt-customise-cr.yaml` file.
+This can be changed by modifying the `kv-customise-cr.yaml` file.
 The field `workloads` can be added to the `spec` section of the `Kubevirt` resource, with the subfield `nodePlacement` to specify which nodes VMs can be scheduled on.
 
 See <https://kubevirt.io/user-guide/cluster_admin/installation/#restricting-kubevirt-components-node-placement> for more information.
@@ -134,7 +134,7 @@ spec:
 For this test deployment, we will use Longhorn as the storage backend for the VMs and deploy a drive using a YAML file.
 
 ```console
-kubectl apply -f longhorn-pvc.yaml
+kubectl apply -f longhorn-drive.yaml
 ```
 
 Note that this drive is initially unformatted.
