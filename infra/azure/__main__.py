@@ -35,7 +35,7 @@ managed_cluster = containerservice.ManagedCluster(
     resource_group_name=resource_group.name,
     agent_pool_profiles=[
         containerservice.ManagedClusterAgentPoolProfileArgs(
-            count=2,
+            count=3,
             max_pods=100,
             mode="System",
             name="gppool",
