@@ -12,5 +12,11 @@ spec:
   customizeComponents: {}
   imagePullPolicy: IfNotPresent
   infra:
-    nodePlacement: {}
+    nodePlacement:
+      nodeSelector:
+        agentpool: systempool
+  workloads:
+    nodePlacement:
+      nodeSelector:
+        agentpool: gppool
   workloadUpdateStrategy: {}

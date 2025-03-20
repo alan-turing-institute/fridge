@@ -4,51 +4,48 @@ This document outlines the steps to create a test deployment on Azure, using Azu
 
 ## Step 1 - Create an Azure Kubernetes cluster
 
-Create a resource group using Azure CLI.
+Create a virtual environment and install the dependencies.
 
-```bash
-az group create --name YOUR_RESOURCE_GROUP --location YOUR_LOCATION
+```console
+cd infra/azure
+python3 -m venv ./venv
+source ./venv/bin/activate
+pip install -r requirements.txt
 ```
 
-Create an AKS cluster using Azure CLI. This example includes some additional flags that correspond to some most parts of the Azure provided defaults for dev/test AKS clusters.
+Create a stack.
 
-```bash
-az aks create --resource-group YOUR_RESOURCE_GROUP --name YOUR_CLUSTER_NAME --node-count 2 --nodepool-name YOUR_SYSTEM_POOL_NAME --auto-upgrade-channel node-image --enable-cluster-autoscaler --min-count 2 --max-count 5 --node-vm-size Standard_D4ds_v5 --enable-oidc-issuer --api-server-authorized-ip-ranges xxx.xxx.xxx.xxx
+```console
+pulumi stack init dev
+cp Pulumi.dev.yaml.template Pulumi.dev.yaml
 ```
 
-Some of the potential options that may be useful - some of which are setup by default if creating a cluster through the portal - are:
+Authenticate with az CLI, then deploy the resources with Pulumi.
 
-```bash
---auto-upgrade-channel (rapid|stable|patch|node-image|none (node-image is az dev default))
---api-server-authorized-ip-ranges (restricts access to the API server to a specific IP range)
---enable-workload-identity (not clear what this does)
---enable-cluster-autoscaler (allows the cluster to scale number of nodes automatically (not clear how this works as yet, may need additional rules/alerts to be set up))
---enable-image-cleaner (not clear how useful this is for our workflow - cleans up old container images automatically)
---enable-oidc-issuer (may be useful for setting up OAuth)
---node-osdisk-type ephemeral
---node-vm-size -s (Standard_D4ds_v5 is the one that Azure suggests as a default for dev/testing)
---nodepool-name )
---enable-app-routing (can be used to create an Azure managed nginx ingress proxy)
+```console
+az login
+pulumi preview
+pulumi up
 ```
 
-By default, this will deploy a k8s cluster with a single `System` node pool, which runs the default k8s resources like its internal `CoreDNS` pod. You can still use this same pool to deploy additional resources if you like, but you may want to add a second `User` pool for other non-system pods (or VMs).
+Export the kubeconfig from Pulumi outputs and use it for kubectl.
 
-To add a second pool - optional for testing, but probably best practice - use the Az CLI.
-
-```bash
-az aks nodepool add --resource-group YOUR_RESOURCE_GROUP --cluster-name YOUR_CLUSTER_NAME --name YOUR_NODE_NAME --node-count 2 --os-sku Ubuntu --max-pods 110 --node-vm-size Standard_D4ds_v5 --enable-cluster-autoscaler --min-count 2 --max-count 5
+```console
+pulumi stack output kubeconfig > kubeconfig.yaml
+export KUBECONFIG=$PWD/kubeconfig.yaml
 ```
 
-To be able to administer the cluster via the API locally, using `kubectl` for example, use the Azure CLI to obtain the relevant credentials:
+Or,
 
-```bash
-az aks get-credentials --resource-group YOUR_RESOURCE_GROUP --name YOUR_CLUSTER_NAME
+```console
+pulumi stack output kubeconfig > ~/.kube/config
 ```
 
-If you have multiple clusters, you can switch between them using `kubectl`:
+You can now use `kubectl` to interact with the cluster
 
-```bash
-kubectl config use-context YOUR_CLUSTER_NAME
+```console
+kubectl get nodes
+kubectl get nodes -l agentpool=gppool
 ```
 
 ## Step 2 - Set up Kubevirt
@@ -57,7 +54,7 @@ The first step is to install the `kubevirt-operator`, which manages all the Kube
 
 At the time of writing, the latest version is `v1.4.0`.
 
-```bash
+```console
 kubectl create -f "https://github.com/kubevirt/kubevirt/releases/download/v1.4.0/kubevirt-operator.yaml"
 ```
 
@@ -68,10 +65,10 @@ The solution is either to label the nodes with the role or to modify the install
 
 A modified installation script is provided in the `kubevirt-customise-cr.yaml` file in this repository.
 This script removes the requirement for Kubevirt infrastructure to be deployed on nodes with the `control-plane` role.
-In a future iteration, we may want to add a separate node pool for Kubevirt resources and direct Kubevirt to deploy on that pool.
+Instead, it requires Kubevirt infrastructure is deployed on nodes in the systempool and VMs to nodes in the gppool.
 
-```bash
-kubectl apply -f kubevirt-customise-cr.yaml
+```console
+kubectl apply -f kubevirt-cr.yaml
 ```
 
 Note that this file is also useful for enabling additional Kubevirt features such as snapshotting or live migration of VMs.
@@ -83,24 +80,24 @@ For now, we will leave the additional features disabled.
 
 As an alternative to the modified installation script, the default installation script can be used.
 
-```bash
+```console
 kubectl create -f "https://github.com/kubevirt/kubevirt/releases/download/v1.4.0/kubevirt-cr.yaml"
 ```
 
 You can then apply the `control-plane` role to all nodes using `kubectl label nodes`:
 
-```bash
+```console
 kubectl label nodes --all 'node-role.kubernetes.io/control-plane=control-plane'
 ```
 
 To be more specific, applying the control plane role only to the `system` node, use
 
-```bash
+```console
 kubectl label nodes -l 'kubernetes.azure.com/mode=system' 'node-role.kubernetes.io/control-plane=control-plane'
 ```
 
 Note that by default Kubevirt will make it possible for VMs to be scheduled on all nodes (including system nodes).
-This can be changed by modifying the `kubevirt-customise-cr.yaml` file.
+This can be changed by modifying the `kubevirt-cr.yaml` file.
 The field `workloads` can be added to the `spec` section of the `Kubevirt` resource, with the subfield `nodePlacement` to specify which nodes VMs can be scheduled on.
 
 See <https://kubevirt.io/user-guide/cluster_admin/installation/#restricting-kubevirt-components-node-placement> for more information.
@@ -116,13 +113,13 @@ Longhorn allows you to create volumes on the disks attached to the nodes in your
 
 To install Longhorn, run the following command:
 
-```bash
+```console
 kubectl apply -f "https://raw.githubusercontent.com/longhorn/longhorn/v1.8.1/deploy/longhorn.yaml"
 ```
 
 To access the Longhorn UI, you can either use `kubectl port-forward` or expose the service using a LoadBalancer. For example, to expose the Longhorn UI on port 8000, run the following command:
 
-```bash
+```console
 kubectl port-forward svc/longhorn-frontend 8000:80 -n longhorn-system
 ```
 
@@ -148,8 +145,8 @@ spec:
 
 For this test deployment, we will use Longhorn as the storage backend for the VMs and deploy a drive using a YAML file.
 
-```bash
-kubectl apply -f longhorn-pvc.yaml
+```console
+kubectl apply -f longhorn-drive.yaml
 ```
 
 Note that this drive is initially unformatted.
@@ -175,7 +172,7 @@ The latest release of CDI is found at https://github.com/kubevirt/containerized-
 
 To install it, run the following:
 
-```bash
+```console
 kubectl create -f https://github.com/kubevirt/containerized-data-importer/releases/download/v1.61.2/cdi-operator.yaml
 kubectl create -f https://github.com/kubevirt/containerized-data-importer/releases/download/v1.61.2/cdi-cr.yaml
 ```
@@ -184,7 +181,7 @@ kubectl create -f https://github.com/kubevirt/containerized-data-importer/releas
 
 Define the VM using a `yaml` file. An example is supplied in `ubuntu-desktop.yaml`
 
-```bash
+```console
 kubectl apply -f ubuntu-desktop.yaml
 ```
 
@@ -203,7 +200,7 @@ As above, it will also have `xfce4` and `xrdp` installed.
 The VM is deployed in a stopped state and needs to be manually started.
 A service exposing the RDP port is also created.
 
-```bash
+```console
 helm install ubuntu-desktop ./kv-single-vm
 ```
 
@@ -211,20 +208,20 @@ helm install ubuntu-desktop ./kv-single-vm
 
 `virtctl` can be used to manage VMs once they are on the cluster. `virtctl` can be downloaded from the Kubevirt Github repo (see the [Kubevirt](https://kubevirt.io/user-guide/user_workloads/virtctl_client_tool/) site):
 
-```bash
+```console
 curl -L -o virtctl <https://github.com/kubevirt/kubevirt/releases/download/v1.4.0/virtctl-v1.4.0-darwin-arm64>
 chmod +x virtctl
 ```
 
 To start the VM, run
 
-```bash
+```console
 virtctl start ubuntu-desktop
 ```
 
 To get a shell on the VM, use:
 
-```bash
+```console
 virtctl console ubuntu-desktop
 ```
 
@@ -246,7 +243,7 @@ metadata:
   name: guac
 ```
 
-```bash
+```console
 kubectl create namespace guac
 ```
 
@@ -256,7 +253,7 @@ We can use existing Helm charts rather than define our own `yaml` files.
 
 A `postgresql` database needs to be set up first:
 
-```bash
+```console
 helm repo add bitnami https://charts.bitnami.com/bitnami
 helm install postgresql bitnami/postgresql \
  --set auth.username=guacamole \
@@ -268,7 +265,7 @@ helm install postgresql bitnami/postgresql \
 
 Afterwards, we can set up Guacamole.
 
-```bash
+```console
 helm repo add beryju https://charts.beryju.io
 helm install guacamole beryju/guacamole --namespace guac
 ```
@@ -277,7 +274,7 @@ helm install guacamole beryju/guacamole --namespace guac
 
 Guacamole can be accessed locally using port forwarding.
 
-```bash
+```console
 kubectl port-forward deployment/guacamole-guacamole 8080:8080 -n guac
 ```
 
@@ -289,7 +286,7 @@ To make it accessible to the wider world, deploying a load balancer is the easie
 
 This can be done either with the provided `.yaml` file or using `kubectl`. E.g. to expose the guacamole server on port 80, use the following:
 
-```bash
+```console
 kubectl expose deployment guacamole-guacamole -n guac --port=80 --target-port=8080 --name=guac-lb --type=LoadBalancer
 ```
 
@@ -299,7 +296,7 @@ Once you have access to `guacamole`, you can add connections manually.
 
 You will need to enter the IP address of the VM as the hostname for the server, which you can find using `kubectl`:
 
-```bash
+```console
 kubectl get vmi
 ```
 
