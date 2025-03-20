@@ -41,14 +41,30 @@ managed_cluster = containerservice.ManagedCluster(
             name="gppool",
             node_labels={
                 "context": "fridge",
-                "size": "D2s_v6",
+                "size": "B4als_v2",
                 "arch": "x86_64",
             },
             os_disk_size_gb=0,  # when == 0 sets default size
             os_type="Linux",
             os_sku="Ubuntu",
             type="VirtualMachineScaleSets",
-            vm_size="Standard_D2s_v6",
+            vm_size="Standard_B4als_v2",
+        ),
+        containerservice.ManagedClusterAgentPoolProfileArgs(
+            count=2,
+            max_pods=100,
+            mode="System",
+            name="systempool",
+            node_labels={
+                "context": "fridge",
+                "size": "B2als_v2",
+                "arch": "x86_64",
+            },
+            os_disk_size_gb=0,  # when == 0 sets default size
+            os_type="Linux",
+            os_sku="Ubuntu",
+            type="VirtualMachineScaleSets",
+            vm_size="Standard_B2als_v2",
         ),
     ],
     dns_prefix="fridge",
@@ -67,6 +83,7 @@ managed_cluster = containerservice.ManagedCluster(
             ],
         ),
     ),
+    opts=pulumi.ResourceOptions(replace_on_changes=["agent_pool_profiles"]),
 )
 
 admin_credentials = containerservice.list_managed_cluster_admin_credentials_output(

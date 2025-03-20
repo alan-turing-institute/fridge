@@ -33,7 +33,19 @@ Export the kubeconfig from Pulumi outputs and use it for kubectl.
 ```console
 pulumi stack output kubeconfig > kubeconfig.yaml
 export KUBECONFIG=$PWD/kubeconfig.yaml
+```
+
+Or,
+
+```console
+pulumi stack output kubeconfig > ~/.kube/config
+```
+
+You can now use `kubectl` to interact with the cluster
+
+```console
 kubectl get nodes
+kubectl get nodes -l agentpool=gppool
 ```
 
 ## Step 2 - Set up Kubevirt
