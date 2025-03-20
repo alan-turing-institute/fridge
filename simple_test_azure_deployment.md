@@ -65,10 +65,10 @@ The solution is either to label the nodes with the role or to modify the install
 
 A modified installation script is provided in the `kubevirt-customise-cr.yaml` file in this repository.
 This script removes the requirement for Kubevirt infrastructure to be deployed on nodes with the `control-plane` role.
-In a future iteration, we may want to add a separate node pool for Kubevirt resources and direct Kubevirt to deploy on that pool.
+Instead, it requires Kubevirt infrastructure is deployed on nodes in the systempool and VMs to nodes in the gppool.
 
 ```console
-kubectl apply -f kv-customise-cr.yaml
+kubectl apply -f kubevirt-cr.yaml
 ```
 
 Note that this file is also useful for enabling additional Kubevirt features such as snapshotting or live migration of VMs.
@@ -97,7 +97,7 @@ kubectl label nodes -l 'kubernetes.azure.com/mode=system' 'node-role.kubernetes.
 ```
 
 Note that by default Kubevirt will make it possible for VMs to be scheduled on all nodes (including system nodes).
-This can be changed by modifying the `kv-customise-cr.yaml` file.
+This can be changed by modifying the `kubevirt-cr.yaml` file.
 The field `workloads` can be added to the `spec` section of the `Kubevirt` resource, with the subfield `nodePlacement` to specify which nodes VMs can be scheduled on.
 
 See <https://kubevirt.io/user-guide/cluster_admin/installation/#restricting-kubevirt-components-node-placement> for more information.
