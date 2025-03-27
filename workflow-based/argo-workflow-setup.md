@@ -1,6 +1,14 @@
 # Workflow based design
 
-Once the cluster is set up, we can start to deploy the workflow based components. The first step is to deploy Argo Workflows.
+Once the cluster is set up, we can start to deploy the workflow based components. To set up the workflow based design, we will need to deploy the following components:
+
+- Longhorn
+- Ingress-Nginx controller
+- Cert-manager
+- MinIO
+- Argo Workflows
+
+Note that the following instructions are for a development environment, and will undergo further changes. Some elements are currently set up inconsistently, reflecting the learning process.
 
 ## Longhorn
 
