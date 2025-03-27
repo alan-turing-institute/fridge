@@ -8,7 +8,9 @@ Once the cluster is set up, we can start to deploy the workflow based components
 - MinIO
 - Argo Workflows
 
-Note that the following instructions are for a development environment, and will undergo further changes. Some elements are currently set up inconsistently, reflecting the learning process.
+Note that the following instructions are for a development environment, and will undergo further changes.
+
+Some elements are currently set up inconsistently, reflecting the learning process. Some parts are currently missing. For example, no network policies are in place, and MinIO is not set up to use TLS internally.
 
 ## Longhorn
 
@@ -132,9 +134,11 @@ cert-manager.io/issuer: "letsencrypt-staging"
 
 ## MinIO
 
-Argo Workflows requires S3 compatible storage to store its artifacts.
+Argo Workflows is mostly designed around using S3 compatible storage to store its artifacts.
 
-Minio provides an S3 compatible object storage system, with web-based access to the stored objects. This makes it a nice companion to Argo Workflows.
+Minio provides an S3 compatible object storage system, with web-based access to the stored objects. This makes it a nice companion to Argo Workflows, in that it gives a nice easy way to upload (like scripts) and download artifacts (like graphs or other outputs).
+
+Note that this is not the only way to provide storage for use with Argo Workflows. For example, you could use Azure Blob Storage, Google Cloud Storage, or any S3 compatible storage system. However, it is most cloud-agnostic to use an S3 compatible storage system within k8s.
 
 We deploy MinIO in two steps. First we'll use the Helm chart for Minio to deploy its `operator` to the cluster.
 
@@ -148,11 +152,32 @@ helm install \
   minio-operator minio-operator/operator
 ```
 
-Next we'll deploy a MinIO instance using its `tenant` Helm chart.
+Next we'll deploy a MinIO instance using its `tenant` Helm chart. We'll deploy it in a namespace called `argo-artifacts`.
 
 Some custom values need to be set for this to work for our purposes. A values file is included in the `workflow-based` directory with some suggested defaults, but some additional fields need to be set.
 
-The following values file can be used to configure Minio with some suggested defaults:
+The `features:` field needs to be configured with the domains being used. For example, I am hosting on `dshkubetest.uksouth.cloudapp.azure.com` with `minio` as a subpath. I need to set the `console` and `minio` domains to the following:
+
+```yaml
+features:
+    bucketDNS: false
+    domains:
+      console: dshkubetest.uksouth.cloudapp.azure.com/minio/
+      minio:
+        - dshkubetest.uksouth.cloudapp.azure.com/minio/api/
+        - minio.argo-artifacts.svc.cluster.local
+    enableSFTP: false
+```
+
+The `console` domain is the web-based interface for MinIO, and the `minio` domain is the endpoint for the S3 API. I have found that these need to be set for the MinIO instance to work correctly.
+
+The final section, `ExtraResources` creates a configuration file, and a secret containing the access key and secret key for the MinIO instance. This should be used to said the primary admin username and password for the MinIO instance. The `MINIO_BROWSER_REDIRECT_URL` should be set to the `console` domain as above. Note this is again only necessary if MinIO is hosted on a subpath.
+
+The values file could also be used to set up the ingress for MinIO, but for now I do this manually.
+
+Also of note, here I disable TLS for the MinIO instance. This is for simpler interfacing with Argo Workflows, which does not trust the self-signed certificates that MinIO can automatically generate. This can be addressed for production use.
+
+When the file is ready, deploy the MinIO tenant:
 
 ```console
 helm install \
@@ -162,11 +187,19 @@ helm install \
 argo-artifacts minio-operator/tenant
 ```
 
+Follow this up with an Ingress resource to route traffic to the MinIO instance:
+
+```console
+kubectl apply -f common/minio-tenant-ingress.yaml
+```
+
+Note that this we have not set up a TLS for this Ingress resourse, as the Ingress for Argo Workflows will handle the TLS certificate for the domain.
+
 ## Argo Workflow Setup
 
 We'll use the Argo Workflows Helm chart to deploy the Argo Workflows controller and the Argo Workflows UI.
 
-The suggested values file for the Argo Workflows Helm chart is included in the `workflow-based` directory. Some values need to be set in this file to make it work with the rest of the system.
+The suggested values file for the Argo Workflows Helm chart is `values-argo-workflows.yaml`. Some values need to be set in this file to make it work with the rest of the system.
 
 To use SSO, you will need to set up an OIDC provider. You will need an Entra Tenant, and will need to set up an application on the Tenant to provide the necessary client ID and client secret.
 
