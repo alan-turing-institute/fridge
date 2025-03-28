@@ -18,7 +18,7 @@ spec:
             storage: 30Gi
       source:
         http:
-          url: https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img
+          url: https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img
   template:
     metadata:
       labels:
@@ -53,7 +53,7 @@ spec:
         name: datavoldisk
       - name: longhorn-drive
         persistentVolumeClaim:
-          claimName: longhorn-volv-pvc
+          claimName: longhorn-vol-pvc
       - name: cloudinitdisk
         cloudInitNoCloud:
           userData: |

@@ -1,0 +1,6 @@
+config:
+  azure-native:location: uksouth
+  azure-native:subscriptionId:
+  fridge:resource_group_name: fridge_dev
+  pulumi:autonaming:
+    mode: verbatim
