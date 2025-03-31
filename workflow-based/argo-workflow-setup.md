@@ -193,7 +193,7 @@ Follow this up with an Ingress resource to route traffic to the MinIO instance:
 kubectl apply -f common/minio-tenant-ingress.yaml
 ```
 
-Note that this we have not set up a TLS for this Ingress resourse, as the Ingress for Argo Workflows will handle the TLS certificate for the domain.
+Note that we have not set up a TLS for this Ingress resourse, as the Ingress for Argo Workflows will handle the TLS certificate for the domain.
 
 ## Argo Workflow Setup
 
@@ -201,8 +201,47 @@ We'll use the Argo Workflows Helm chart to deploy the Argo Workflows controller 
 
 The suggested values file for the Argo Workflows Helm chart is `values-argo-workflows.yaml`. Some values need to be set in this file to make it work with the rest of the system.
 
-To use SSO, you will need to set up an OIDC provider. You will need an Entra Tenant, and will need to set up an application on the Tenant to provide the necessary client ID and client secret.
+This setup is configured to use SSO for authentication. To use SSO, you will need to set up an OIDC provider. You will need an Entra tenant, and will need to set up an application on the Tenant. You'll need to set up the app in the Azure portal, and then set up the redirect URL for the app. This should be in the format `https://<your-domain>/oauth2/callback`. The domain should be the same as the one used for the Ingress resource for Argo Workflows.
+
+You'll also need the client/application ID and to create a client secret. It'll also be useful to set up a group for the users that will be using Argo Workflows. Both steps can be done in the portal.
+
+Argo will require some secrets to be set up in the cluster, as below:
+
+```console
+kubectl create secret -n argo generic argo-server-sso \
+  --from-literal=client-id=<application-id> \
+  --from-literal=client-secret=<client-secret>
+```
+
+You'll also need a secret for the MinIO access key and secret key, which can be generated using the MinIO console, and applied to the cluster as below:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: argo-artifacts-minio
+  namespace: argo
+stringData:
+  accesskey: <your-access-key>
+  secretkey: <your-secret-key>
+type: Opaque
+```
+A template is supplied:
+
+```console
+kubectl apply -f workflow-minio-secret.yaml
+```
+
+Argo can be deployed using the Helm chart. Configure the file `values-argo-workflows.yaml` and then use the following command to deploy the Argo Workflows controller and the Argo Workflows UI to the cluster:
 
 ```console
 helm install argo-test argo/argo-workflows -f values-argo-workflows.yaml
 ```
+
+By default, this will deploy the Argo Workflows controller and the Argo Workflows UI to the `argo` namespace. It is not set up in a restrictive way, and will need further configuration for production use. For example, it places no restrictions on where workflows run.
+
+This also sets up the MinIO instance as the default artifact repository for Argo Workflows.
+
+It also sets up an Ingress resource for the Argo Workflows UI. This will route traffic to the Argo Workflows UI, and will also handle the TLS certificate for the domain.
+
+You also need to configure service accounts for users that will be using Argo Workflows. This is done using the `argo-service-accounts.yaml` file. You'll need to use the group ID for the group that you set up in the Azure portal. This will allow users in that group to access the Argo Workflows UI and to run workflows.
