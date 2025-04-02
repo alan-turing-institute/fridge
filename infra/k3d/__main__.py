@@ -1,2 +1,3 @@
-from ingress_nginx import nginx_ingress
-from cilium import cilium
+from ingress_nginx import *
+from cilium import *
+from guacamole import *

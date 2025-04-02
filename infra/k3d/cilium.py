@@ -1,4 +1,16 @@
+from pulumi import ResourceOptions, ResourceTransformationArgs, ResourceTransformationResult
 from pulumi_kubernetes.helm.v3 import Chart, ChartOpts, FetchOpts
+
+
+def ignore_changes(args: ResourceTransformationArgs):
+    if args.type_ == "kubernetes:core/v1:Secret":
+        return ResourceTransformationResult(
+            props=args.props,
+            opts=ResourceOptions.merge(args.opts, ResourceOptions(
+                ignore_changes=[
+                    "data",
+                ],
+            )))
 
 
 cilium = Chart(
@@ -16,4 +28,7 @@ cilium = Chart(
             }
         },
     ),
+    opts=ResourceOptions(
+        transformations=[ignore_changes],
+    )
 )

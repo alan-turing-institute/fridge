@@ -1,9 +1,16 @@
 .PHONY: *
+
 ROOT_DIR_PATH := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 K3D_CLUSTER_NAME := "frigde"
 DEV_KUBECONFIG_PATH := "$(ROOT_DIR_PATH)/kubeconfig.yaml"
 
+
 k3d: k3d-cluster
+	crd2pulumi --pythonPath=infra/k3d/crds --force  https://raw.githubusercontent.com/cilium/cilium/c90aed4c6479daf5df0aada14860af91f1b05b3f/pkg/k8s/apis/cilium.io/client/crds/v2/ciliumnetworkpolicies.yaml
+	cd infra/k3d/ && ./venv/bin/pip install ./crds
+	$(MAKE) k3d-up
+
+k3d-up:
 	cd infra/k3d && \
 	 KUBECONFIG=$(DEV_KUBECONFIG_PATH) pulumi up
 
