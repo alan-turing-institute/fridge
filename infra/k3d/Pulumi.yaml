@@ -1,0 +1,11 @@
+name: fridge
+description: FRIDGE dev k3d deployment
+runtime:
+  name: python
+  options:
+    toolchain: pip
+    virtualenv: venv
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: kubernetes-python
