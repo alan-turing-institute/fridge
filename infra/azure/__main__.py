@@ -8,6 +8,7 @@ from pulumi_azure_native import (
 )
 import pulumi_tls as tls
 
+import pulumi_kubernetes as k8s
 
 def get_kubeconfig(
     credentials: list[containerservice.outputs.CredentialResultResponse]
@@ -93,6 +94,11 @@ managed_cluster = containerservice.ManagedCluster(
 
 admin_credentials = containerservice.list_managed_cluster_admin_credentials_output(
     resource_group_name=resource_group.name, resource_name=managed_cluster.name
+)
+
+longhorn_storage = k8s.yaml.ConfigFile(
+    "longhorn-storage",
+    file="https://raw.githubusercontent.com/longhorn/longhorn/v1.8.1/deploy/longhorn.yaml",
 )
 
 pulumi.export(
