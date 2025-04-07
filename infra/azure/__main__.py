@@ -36,8 +36,10 @@ managed_cluster = containerservice.ManagedCluster(
     resource_group_name=resource_group.name,
     agent_pool_profiles=[
         containerservice.ManagedClusterAgentPoolProfileArgs(
-            count=3,
+            enable_auto_scaling=True,
+            max_count=5,
             max_pods=100,
+            min_count=3,
             mode="System",
             name="gppool",
             node_labels={
@@ -52,8 +54,10 @@ managed_cluster = containerservice.ManagedCluster(
             vm_size="Standard_B4als_v2",
         ),
         containerservice.ManagedClusterAgentPoolProfileArgs(
-            count=2,
+            enable_auto_scaling=True,
+            max_count=5,
             max_pods=100,
+            min_count=2,
             mode="System",
             name="systempool",
             node_labels={
