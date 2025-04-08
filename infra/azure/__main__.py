@@ -8,7 +8,9 @@ from pulumi_azure_native import (
 )
 import pulumi_tls as tls
 
-import pulumi_kubernetes as k8s
+from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
+from pulumi_kubernetes.core.v1 import Namespace
+from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
 
 def get_kubeconfig(
     credentials: list[containerservice.outputs.CredentialResultResponse]
@@ -100,9 +102,20 @@ admin_credentials = containerservice.list_managed_cluster_admin_credentials_outp
     resource_group_name=resource_group.name, resource_name=managed_cluster.name
 )
 
-longhorn_storage = k8s.yaml.ConfigFile(
-    "longhorn-storage",
-    file="https://raw.githubusercontent.com/longhorn/longhorn/v1.8.1/deploy/longhorn.yaml",
+longhorn_ns = Namespace(
+    "longhorn-system",
+    metadata=ObjectMetaArgs(
+        name="longhorn-system",
+    ),
+)
+longhorn = Chart(
+    "longhorn",
+    namespace=longhorn_ns.metadata.name,
+    chart="longhorn",
+    version="1.8.1",
+    repository_opts=RepositoryOptsArgs(
+        repo="https://charts.longhorn.io",
+    ),
 )
 
 pulumi.export(
