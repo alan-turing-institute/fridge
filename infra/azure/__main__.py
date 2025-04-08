@@ -11,6 +11,7 @@ import pulumi_tls as tls
 import pulumi_kubernetes as kubernetes
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.core.v1 import Namespace, PersistentVolumeClaim, PersistentVolumeClaimSpecArgs
+from pulumi_kubernetes.yaml import ConfigFile
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.storage.v1 import StorageClass
 
@@ -176,5 +177,25 @@ longhorn_shared_drive = PersistentVolumeClaim(
     opts=ResourceOptions(
         provider=k8s_provider,
         depends_on=[longhorn],
+    ),
+)
+
+ingress_nginx_ns = Namespace(
+    "ingress-nginx-ns",
+    metadata=ObjectMetaArgs(
+        name="ingress-nginx",
+    ),
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster],
+    ),
+)
+
+ingress_nginx = ConfigFile(
+    "ingress-nginx",
+    file="https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.1/deploy/static/provider/cloud/deploy.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[ingress_nginx_ns, managed_cluster],
     ),
 )
