@@ -3,14 +3,16 @@
 import base64
 
 import pulumi
+from pulumi import ResourceOptions
 from pulumi_azure_native import (
     containerservice, managedidentity, resources
 )
 import pulumi_tls as tls
-
+import pulumi_kubernetes as kubernetes
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.core.v1 import Namespace
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
+
 
 def get_kubeconfig(
     credentials: list[containerservice.outputs.CredentialResultResponse]
@@ -102,11 +104,24 @@ admin_credentials = containerservice.list_managed_cluster_admin_credentials_outp
     resource_group_name=resource_group.name, resource_name=managed_cluster.name
 )
 
+kubeconfig = admin_credentials.kubeconfigs.apply(get_kubeconfig),
+pulumi.export(
+    "kubeconfig",
+    kubeconfig,
+)
+
+k8s_provider = kubernetes.Provider(
+    "k8s_provider",
+    kubeconfig=kubeconfig,
+)
+
+
 longhorn_ns = Namespace(
     "longhorn-system",
     metadata=ObjectMetaArgs(
         name="longhorn-system",
     ),
+    opts=ResourceOptions(provider=k8s_provider),
 )
 longhorn = Chart(
     "longhorn",
@@ -116,9 +131,5 @@ longhorn = Chart(
     repository_opts=RepositoryOptsArgs(
         repo="https://charts.longhorn.io",
     ),
-)
-
-pulumi.export(
-    "kubeconfig",
-    admin_credentials.kubeconfigs.apply(get_kubeconfig),
+    opts=ResourceOptions(provider=k8s_provider),
 )
