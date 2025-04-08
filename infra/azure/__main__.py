@@ -115,13 +115,15 @@ k8s_provider = kubernetes.Provider(
     kubeconfig=kubeconfig,
 )
 
-
 longhorn_ns = Namespace(
     "longhorn-system",
     metadata=ObjectMetaArgs(
         name="longhorn-system",
     ),
-    opts=ResourceOptions(provider=k8s_provider),
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster],
+    ),
 )
 longhorn = Chart(
     "longhorn",
@@ -131,5 +133,8 @@ longhorn = Chart(
     repository_opts=RepositoryOptsArgs(
         repo="https://charts.longhorn.io",
     ),
-    opts=ResourceOptions(provider=k8s_provider),
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster],
+    ),
 )
