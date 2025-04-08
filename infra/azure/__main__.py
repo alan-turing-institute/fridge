@@ -10,8 +10,9 @@ from pulumi_azure_native import (
 import pulumi_tls as tls
 import pulumi_kubernetes as kubernetes
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
-from pulumi_kubernetes.core.v1 import Namespace
+from pulumi_kubernetes.core.v1 import Namespace, PersistentVolumeClaim, PersistentVolumeClaimSpecArgs
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
+from pulumi_kubernetes.storage.v1 import StorageClass
 
 
 def get_kubeconfig(
@@ -136,5 +137,44 @@ longhorn = Chart(
     opts=ResourceOptions(
         provider=k8s_provider,
         depends_on=[managed_cluster],
+    ),
+)
+
+longhorn_storage_class = StorageClass(
+    "longhorn-storage",
+    allow_volume_expansion=True,
+    metadata=ObjectMetaArgs(
+        name="longhorn-storage",
+    ),
+    parameters={
+        "dataLocality": "best-effort",
+        "fsType": "ext4",
+        "numberOfReplicas": "2",
+        "staleReplicaTimeout": "2880",
+    },
+    provisioner="driver.longhorn.io",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[longhorn],
+    ),
+)
+
+longhorn_shared_drive = PersistentVolumeClaim(
+    "longhorn-shared-drive",
+    metadata=ObjectMetaArgs(
+        name="longhorn-vol-pvc",
+    ),
+    spec=PersistentVolumeClaimSpecArgs(
+        access_modes=["ReadWriteMany"],
+        resources={
+            "requests": {
+                "storage": "20Gi",
+            },
+        },
+        storage_class_name="longhorn-storage",
+    ),
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[longhorn],
     ),
 )
