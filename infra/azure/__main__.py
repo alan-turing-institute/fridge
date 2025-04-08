@@ -104,7 +104,7 @@ admin_credentials = containerservice.list_managed_cluster_admin_credentials_outp
     resource_group_name=resource_group.name, resource_name=managed_cluster.name
 )
 
-kubeconfig = admin_credentials.kubeconfigs.apply(get_kubeconfig),
+kubeconfig = admin_credentials.kubeconfigs.apply(get_kubeconfig)
 pulumi.export(
     "kubeconfig",
     kubeconfig,
