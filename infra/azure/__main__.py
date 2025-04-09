@@ -167,25 +167,6 @@ longhorn_storage_class = StorageClass(
     ),
 )
 
-longhorn_shared_drive = PersistentVolumeClaim(
-    "longhorn-shared-drive",
-    metadata=ObjectMetaArgs(
-        name="longhorn-vol-pvc",
-    ),
-    spec=PersistentVolumeClaimSpecArgs(
-        access_modes=["ReadWriteMany"],
-        resources={
-            "requests": {
-                "storage": "20Gi",
-            },
-        },
-        storage_class_name="longhorn-storage",
-    ),
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[longhorn],
-    ),
-)
 
 # Ingress NGINX (ingress provider)
 ingress_nginx_ns = Namespace(
