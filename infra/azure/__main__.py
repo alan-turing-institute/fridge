@@ -37,6 +37,7 @@ identity = managedidentity.UserAssignedIdentity(
     "cluster_managed_identity", resource_group_name=resource_group.name,
 )
 
+# AKS cluster
 managed_cluster = containerservice.ManagedCluster(
     "cluster",
     resource_group_name=resource_group.name,
@@ -112,11 +113,13 @@ pulumi.export(
     kubeconfig,
 )
 
+# Kubernetes configuration
 k8s_provider = kubernetes.Provider(
     "k8s_provider",
     kubeconfig=kubeconfig,
 )
 
+# Longhorn
 longhorn_ns = Namespace(
     "longhorn-system",
     metadata=ObjectMetaArgs(
@@ -180,6 +183,7 @@ longhorn_shared_drive = PersistentVolumeClaim(
     ),
 )
 
+# Ingress NGINX (ingress provider)
 ingress_nginx_ns = Namespace(
     "ingress-nginx-ns",
     metadata=ObjectMetaArgs(
