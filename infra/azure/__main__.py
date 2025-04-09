@@ -1,5 +1,3 @@
-"""An Azure RM Python Pulumi program"""
-
 import base64
 
 import pulumi
@@ -230,9 +228,7 @@ cert_manager = Chart(
     repository_opts=RepositoryOptsArgs(
         repo="https://charts.jetstack.io",
     ),
-    values={
-        "crds" : { "enabled": True}
-    },
+    values={"crds": {"enabled": True}},
     opts=ResourceOptions(
         provider=k8s_provider,
         depends_on=[cert_manager_ns, managed_cluster],
@@ -248,8 +244,7 @@ cert_manager_issuers = ConfigFile(
     ),
 )
 
-## Minio
-
+# Minio
 minio_operator_ns = Namespace(
     "minio-operator-ns",
     metadata=ObjectMetaArgs(
