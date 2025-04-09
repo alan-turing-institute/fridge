@@ -4,14 +4,17 @@ import base64
 
 import pulumi
 from pulumi import ResourceOptions
-from pulumi_azure_native import (
-    containerservice, managedidentity, resources
-)
+from pulumi_azure_native import containerservice, managedidentity, resources
 from pulumi import Output
 import pulumi_tls as tls
 import pulumi_kubernetes as kubernetes
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
-from pulumi_kubernetes.core.v1 import Namespace, PersistentVolumeClaim, PersistentVolumeClaimSpecArgs, Secret
+from pulumi_kubernetes.core.v1 import (
+    Namespace,
+    PersistentVolumeClaim,
+    PersistentVolumeClaimSpecArgs,
+    Secret,
+)
 from pulumi_kubernetes.yaml import ConfigFile
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.networking.v1 import Ingress
@@ -19,7 +22,7 @@ from pulumi_kubernetes.storage.v1 import StorageClass
 
 
 def get_kubeconfig(
-    credentials: list[containerservice.outputs.CredentialResultResponse]
+    credentials: list[containerservice.outputs.CredentialResultResponse],
 ) -> str:
     for credential in credentials:
         if credential.name == "clusterAdmin":
@@ -36,7 +39,8 @@ resource_group = resources.ResourceGroup(
 ssh_key = tls.PrivateKey("ssh-key", algorithm="RSA", rsa_bits="3072")
 
 identity = managedidentity.UserAssignedIdentity(
-    "cluster_managed_identity", resource_group_name=resource_group.name,
+    "cluster_managed_identity",
+    resource_group_name=resource_group.name,
 )
 
 # AKS cluster
@@ -282,12 +286,13 @@ minio_tenant_ns = Namespace(
     ),
 )
 
-minio_config_env = Output.all(config.require("minio_root_user"), config.require_secret("minio_root_password")).apply(
-    lambda args:
-        f"export MINIO_BROWSER_REDIRECT_URL=https://{config.require("minio_browser_url")}\n "
-        f"export MINIO_SERVER_URL=https://minio.argo-artifacts.svc.cluster.local\n "
-        f"export MINIO_ROOT_USER={args[0]}\n "
-        f"export MINIO_ROOT_PASSWORD={args[1]}"
+minio_config_env = Output.all(
+    config.require("minio_root_user"), config.require_secret("minio_root_password")
+).apply(
+    lambda args: f"export MINIO_BROWSER_REDIRECT_URL=https://{config.require("minio_browser_url")}\n "
+    f"export MINIO_SERVER_URL=https://minio.argo-artifacts.svc.cluster.local\n "
+    f"export MINIO_ROOT_USER={args[0]}\n "
+    f"export MINIO_ROOT_PASSWORD={args[1]}"
 )
 
 minio_env_secret = Secret(
@@ -319,10 +324,10 @@ minio_tenant = Chart(
         "tenant": {
             "name": "argo-artifacts",
             "buckets": [
-                {"name" : "argo-artifacts"},
+                {"name": "argo-artifacts"},
             ],
             "certificate": {
-                "requestAutoCert" : "true",
+                "requestAutoCert": "true",
             },
             "configuration": {
                 "name": "argo-artifacts-env-configuration",
@@ -331,16 +336,16 @@ minio_tenant = Chart(
                 "name": "argo-artifacts-env-configuration",
                 "accessKey": None,
                 "secretKey": None,
-                "existingSecret" : "true",
+                "existingSecret": "true",
             },
             "features": {
                 "domains": {
                     "console": config.require("minio_browser_url"),
                     "minio": [
                         "minio.fridge.develop.turingsafehaven.ac.uk/api",
-                        "minio.argo-artifacts.svc.cluster.local"
-                        ],
-                    }
+                        "minio.argo-artifacts.svc.cluster.local",
+                    ],
+                }
             },
             "pools": [
                 {
