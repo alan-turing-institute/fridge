@@ -282,7 +282,7 @@ minio_tenant_ns = Namespace(
 minio_config_env = Output.all(config.require("minio_root_user"), config.require_secret("minio_root_password")).apply(
     lambda args:
         f"export MINIO_BROWSER_REDIRECT_URL=https://{config.require("minio_browser_url")}\n "
-        f"export MINIO_SERVER_URL=http://minio.argo-artifacts.svc.cluster.local\n "
+        f"export MINIO_SERVER_URL=https://minio.argo-artifacts.svc.cluster.local\n "
         f"export MINIO_ROOT_USER={args[0]}\n "
         f"export MINIO_ROOT_PASSWORD={args[1]}"
 )
@@ -379,7 +379,7 @@ minio_ingress = Ingress(
                             "path_type": "Prefix",
                             "backend": {
                                 "service": {
-                                    "name": "minio",
+                                    "name": "argo-artifacts-console",
                                     "port": {
                                         "number": 9443,
                                     },
