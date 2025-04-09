@@ -265,7 +265,7 @@ minio_tenant_ns = Namespace(
 minio_config_env = Output.format(
     (
         "export MINIO_BROWSER_REDIRECT_URL=https://{0}\n"
-        "export MINIO_SERVER_URL=https://minio.argo-artifacts.svc.cluster.local\n"
+        "export MINIO_SERVER_URL=http://minio.argo-artifacts.svc.cluster.local\n"
         "export MINIO_ROOT_USER={1}\n"
         "export MINIO_ROOT_PASSWORD={2}"
     ),
