@@ -226,6 +226,9 @@ cert_manager = Chart(
     repository_opts=RepositoryOptsArgs(
         repo="https://charts.jetstack.io",
     ),
+    values={
+        "crds" : { "enabled": True}
+    },
     opts=ResourceOptions(
         provider=k8s_provider,
         depends_on=[cert_manager_ns, managed_cluster],
@@ -379,9 +382,9 @@ minio_ingress = Ingress(
                             "path_type": "Prefix",
                             "backend": {
                                 "service": {
-                                    "name": "argo-artifacts-console",
+                                    "name": "minio",
                                     "port": {
-                                        "number": 9443,
+                                        "number": 9000,
                                     },
                                 }
                             },
