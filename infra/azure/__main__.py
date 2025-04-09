@@ -203,3 +203,29 @@ ingress_nginx = ConfigFile(
         depends_on=[ingress_nginx_ns, managed_cluster],
     ),
 )
+
+# CertManager (TLS automation)
+cert_manager_ns = Namespace(
+    "cert-manager-ns",
+    metadata=ObjectMetaArgs(
+        name="cert-manager",
+    ),
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster],
+    ),
+)
+
+longhorn = Chart(
+    "cert-manager",
+    namespace=cert_manager_ns.metadata.name,
+    chart="cert-manager",
+    version="1.17.1",
+    repository_opts=RepositoryOptsArgs(
+        repo="https://charts.jetstack.io",
+    ),
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster],
+    ),
+)
