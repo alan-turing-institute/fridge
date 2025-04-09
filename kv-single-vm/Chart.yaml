@@ -1,6 +1,0 @@
-apiVersion: v2
-name: kv-single-vm
-description: A Helm chart for deploying a single virtual machine
-type: application
-version: 0.1.0
-appVersion: "0.1.0"
