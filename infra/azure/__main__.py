@@ -262,14 +262,16 @@ minio_tenant_ns = Namespace(
     ),
 )
 
-minio_config_env = Output.all(
-    config.require("minio_root_user"), config.require_secret("minio_root_password")
-).apply(
-    lambda args:
-    f"export MINIO_BROWSER_REDIRECT_URL=https://{config.require('minio_browser_url')}/\n "
-    f"export MINIO_ROOT_USER={args[0]}\n "
-    f"export MINIO_ROOT_PASSWORD={args[1]}\n "
-    f"export MINIO_SERVER_URL=http://minio.argo-artifacts.svc.cluster.local"
+minio_config_env = Output.format(
+    (
+        "export MINIO_BROWSER_REDIRECT_URL=https://{0}\n"
+        "export MINIO_SERVER_URL=https://minio.argo-artifacts.svc.cluster.local\n"
+        "export MINIO_ROOT_USER={1}\n"
+        "export MINIO_ROOT_PASSWORD={2}"
+    ),
+    config.require("minio_browser_url"),
+    config.require_secret("minio_root_user"),
+    config.require_secret("minio_root_password"),
 )
 
 minio_env_secret = Secret(
@@ -348,6 +350,7 @@ minio_ingress = Ingress(
         namespace=minio_tenant_ns.metadata.name,
         annotations={
             "nginx.ingress.kubernetes.io/proxy-body-size": "0",
+            "nginx.ingress.kubernetes.io/force-ssl-redirect": "true",
             "cert-manager.io/cluster-issuer": "letsencrypt-staging",
         },
     ),
