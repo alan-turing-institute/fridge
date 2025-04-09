@@ -100,9 +100,9 @@ managed_cluster = containerservice.ManagedCluster(
         ),
     ),
     network_profile=containerservice.ContainerServiceNetworkProfileArgs(
-        network_dataplane="cilium",
-        network_plugin="azure",
-        network_policy="cilium",
+        network_dataplane=containerservice.NetworkDataplane.CILIUM,
+        network_plugin=containerservice.NetworkPlugin.AZURE,
+        network_policy=containerservice.NetworkPolicy.CILIUM,
     ),
     opts=pulumi.ResourceOptions(replace_on_changes=["agent_pool_profiles"]),
 )
