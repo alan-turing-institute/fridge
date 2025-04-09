@@ -216,7 +216,7 @@ cert_manager_ns = Namespace(
     ),
 )
 
-longhorn = Chart(
+cert_manager = Chart(
     "cert-manager",
     namespace=cert_manager_ns.metadata.name,
     chart="cert-manager",
@@ -226,6 +226,15 @@ longhorn = Chart(
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
-        depends_on=[managed_cluster],
+        depends_on=[cert_manager_ns, managed_cluster],
+    ),
+)
+
+cert_manager_issuers = ConfigFile(
+    "cert-manager-issuers",
+    file="./k8s/cert_manager/clusterissuer.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[cert_manager, cert_manager_ns, managed_cluster],
     ),
 )
