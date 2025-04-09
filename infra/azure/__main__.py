@@ -284,10 +284,11 @@ minio_tenant_ns = Namespace(
 minio_config_env = Output.all(
     config.require("minio_root_user"), config.require_secret("minio_root_password")
 ).apply(
-    lambda args: f"export MINIO_BROWSER_REDIRECT_URL=https://{config.require("minio_browser_url")}\n "
-    f"export MINIO_SERVER_URL=https://minio.argo-artifacts.svc.cluster.local\n "
+    lambda args:
+    f"export MINIO_BROWSER_REDIRECT_URL=https://{config.require('minio_browser_url')}/\n "
     f"export MINIO_ROOT_USER={args[0]}\n "
-    f"export MINIO_ROOT_PASSWORD={args[1]}"
+    f"export MINIO_ROOT_PASSWORD={args[1]}\n "
+    f"export MINIO_SERVER_URL=http://minio.argo-artifacts.svc.cluster.local"
 )
 
 minio_env_secret = Secret(
@@ -322,7 +323,7 @@ minio_tenant = Chart(
                 {"name": "argo-artifacts"},
             ],
             "certificate": {
-                "requestAutoCert": "true",
+                "requestAutoCert" : "false",
             },
             "configuration": {
                 "name": "argo-artifacts-env-configuration",
@@ -366,15 +367,22 @@ minio_ingress = Ingress(
         namespace=minio_tenant_ns.metadata.name,
         annotations={
             "nginx.ingress.kubernetes.io/proxy-body-size": "0",
-            "nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
-            "nginx.ingress.kubernetes.io/proxy-ssl-verify": "off",
+            "cert-manager.io/cluster-issuer": "letsencrypt-staging",
         },
     ),
     spec={
         "ingress_class_name": "nginx",
+        "tls": [
+            {
+                "hosts": [
+                    config.require("minio_browser_url"),
+                ],
+                "secret_name": "argo-artifacts-tls",
+            }
+        ],
         "rules": [
             {
-                "host": "minio.fridge.develop.turingsafehaven.ac.uk",
+                "host": config.require("minio_browser_url"),
                 "http": {
                     "paths": [
                         {
@@ -382,9 +390,9 @@ minio_ingress = Ingress(
                             "path_type": "Prefix",
                             "backend": {
                                 "service": {
-                                    "name": "minio",
+                                    "name": "argo-artifacts-console",
                                     "port": {
-                                        "number": 9000,
+                                        "number": 9090,
                                     },
                                 }
                             },
