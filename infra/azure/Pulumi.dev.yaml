@@ -9,4 +9,5 @@ config:
   fridge:minio_root_password:
     secure: v1:Cre1kldv85pjorE8:RBF5XK/QC+b4yRe9Kben7uOqz5OwV+d/MvBE
   fridge:minio_browser_url: minio.fridge.develop.turingsafehaven.ac.uk
+  fridge:minio_pool_size: 20Gi
 encryptionsalt: v1:UMTR46NTSCc=:v1:dRO4tTAutzORsIcQ:BEEfHoJF1QYioY1S3mfhAsEth2I7AA==

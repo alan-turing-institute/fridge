@@ -328,7 +328,7 @@ minio_tenant = Chart(
                 {
                     "servers": 1,
                     "name": "argo-artifacts-pool-0",
-                    "size": "20Gi",
+                    "size": config.require("minio_volume_size"),
                     "volumesPerServer": 1,
                     "storageClassName": longhorn_storage_class.metadata.name,
                 },
