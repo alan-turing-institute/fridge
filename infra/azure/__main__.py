@@ -1,9 +1,8 @@
 import base64
 
 import pulumi
-from pulumi import ResourceOptions
+from pulumi import FileAsset, Output, ResourceOptions
 from pulumi_azure_native import containerservice, managedidentity, resources
-from pulumi import Output
 import pulumi_tls as tls
 import pulumi_kubernetes as kubernetes
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
