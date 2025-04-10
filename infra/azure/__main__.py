@@ -417,6 +417,12 @@ argo_workflows_ns = Namespace(
     ),
 )
 
+argo_url = Output.format(
+    "{0}.{1}",
+    config.require("argo_url_prefix"),
+    config.require("base_fqdn"),
+)
+
 argo_workflows = Chart(
     "argo-workflows",
     namespace=argo_workflows_ns.metadata.name,
@@ -428,8 +434,17 @@ argo_workflows = Chart(
     value_yaml_files=[
         FileAsset("./k8s/argo_workflows/values.yaml"),
     ],
+    values={
+        "controller":
+            {
+                "workflowNamespaces": [argo_workflows_ns.metadata.name]
+            },
+        "server": {
+            "hosts": [argo_url],
+        },
+    },
     opts=ResourceOptions(
         provider=k8s_provider,
-        depends_on=[argo_workflows_ns, managed_cluster],
+        depends_on=[argo_server_ns, argo_workflows_ns, managed_cluster],
     ),
 )
