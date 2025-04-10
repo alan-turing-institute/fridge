@@ -9,8 +9,6 @@ import pulumi_kubernetes as kubernetes
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.core.v1 import (
     Namespace,
-    PersistentVolumeClaim,
-    PersistentVolumeClaimSpecArgs,
     Secret,
 )
 from pulumi_kubernetes.yaml import ConfigFile
@@ -100,9 +98,9 @@ managed_cluster = containerservice.ManagedCluster(
         ),
     ),
     network_profile=containerservice.ContainerServiceNetworkProfileArgs(
-        network_dataplane="cilium",
-        network_plugin="azure",
-        network_policy="cilium",
+        network_dataplane=containerservice.NetworkDataplane.CILIUM,
+        network_plugin=containerservice.NetworkPlugin.AZURE,
+        network_policy=containerservice.NetworkPolicy.CILIUM,
     ),
     opts=pulumi.ResourceOptions(replace_on_changes=["agent_pool_profiles"]),
 )
@@ -167,25 +165,6 @@ longhorn_storage_class = StorageClass(
     ),
 )
 
-longhorn_shared_drive = PersistentVolumeClaim(
-    "longhorn-shared-drive",
-    metadata=ObjectMetaArgs(
-        name="longhorn-vol-pvc",
-    ),
-    spec=PersistentVolumeClaimSpecArgs(
-        access_modes=["ReadWriteMany"],
-        resources={
-            "requests": {
-                "storage": "20Gi",
-            },
-        },
-        storage_class_name="longhorn-storage",
-    ),
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[longhorn],
-    ),
-)
 
 # Ingress NGINX (ingress provider)
 ingress_nginx_ns = Namespace(
@@ -281,15 +260,20 @@ minio_tenant_ns = Namespace(
     ),
 )
 
+minio_url = Output.format(
+    "{0}.{1}",
+    config.require("minio_url_prefix"),
+    config.require("base_fqdn"),
+)
 minio_config_env = Output.format(
     (
         "export MINIO_BROWSER_REDIRECT_URL=https://{0}\n"
-        "export MINIO_SERVER_URL=https://minio.argo-artifacts.svc.cluster.local\n"
+        "export MINIO_SERVER_URL=http://minio.argo-artifacts.svc.cluster.local\n"
         "export MINIO_ROOT_USER={1}\n"
         "export MINIO_ROOT_PASSWORD={2}"
     ),
-    config.require("minio_browser_url"),
-    config.require("minio_root_user"),
+    minio_url,
+    config.require_secret("minio_root_user"),
     config.require_secret("minio_root_password"),
 )
 
@@ -325,7 +309,7 @@ minio_tenant = Chart(
                 {"name": "argo-artifacts"},
             ],
             "certificate": {
-                "requestAutoCert": "true",
+                "requestAutoCert": "false",
             },
             "configuration": {
                 "name": "argo-artifacts-env-configuration",
@@ -338,19 +322,19 @@ minio_tenant = Chart(
             },
             "features": {
                 "domains": {
-                    "console": config.require("minio_browser_url"),
+                    "console": minio_url,
                     "minio": [
-                        "minio.fridge.develop.turingsafehaven.ac.uk/api",
+                        Output.concat(minio_url, "/api"),
                         "minio.argo-artifacts.svc.cluster.local",
                     ],
                 }
             },
             "pools": [
                 {
-                    "servers": 2,
+                    "servers": 1,
                     "name": "argo-artifacts-pool-0",
-                    "size": "20Gi",
-                    "volumesPerServer": 2,
+                    "size": config.require("minio_pool_size"),
+                    "volumesPerServer": 1,
                     "storageClassName": longhorn_storage_class.metadata.name,
                 },
             ],
@@ -369,15 +353,23 @@ minio_ingress = Ingress(
         namespace=minio_tenant_ns.metadata.name,
         annotations={
             "nginx.ingress.kubernetes.io/proxy-body-size": "0",
-            "nginx.ingress.kubernetes.io/backend-protocol": "HTTPS",
-            "nginx.ingress.kubernetes.io/proxy-ssl-verify": "off",
+            "nginx.ingress.kubernetes.io/force-ssl-redirect": "true",
+            "cert-manager.io/cluster-issuer": "letsencrypt-staging",
         },
     ),
     spec={
         "ingress_class_name": "nginx",
+        "tls": [
+            {
+                "hosts": [
+                    minio_url,
+                ],
+                "secret_name": "argo-artifacts-tls",
+            }
+        ],
         "rules": [
             {
-                "host": "minio.fridge.develop.turingsafehaven.ac.uk",
+                "host": minio_url,
                 "http": {
                     "paths": [
                         {
@@ -385,9 +377,9 @@ minio_ingress = Ingress(
                             "path_type": "Prefix",
                             "backend": {
                                 "service": {
-                                    "name": "minio",
+                                    "name": "argo-artifacts-console",
                                     "port": {
-                                        "number": 9000,
+                                        "number": 9090,
                                     },
                                 }
                             },
