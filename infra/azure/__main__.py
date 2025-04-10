@@ -9,8 +9,6 @@ import pulumi_kubernetes as kubernetes
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.core.v1 import (
     Namespace,
-    PersistentVolumeClaim,
-    PersistentVolumeClaimSpecArgs,
     Secret,
 )
 from pulumi_kubernetes.yaml import ConfigFile
@@ -306,7 +304,7 @@ minio_tenant = Chart(
                 {"name": "argo-artifacts"},
             ],
             "certificate": {
-                "requestAutoCert" : "false",
+                "requestAutoCert": "false",
             },
             "configuration": {
                 "name": "argo-artifacts-env-configuration",
