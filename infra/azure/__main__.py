@@ -41,7 +41,7 @@ identity = managedidentity.UserAssignedIdentity(
 
 # AKS cluster
 managed_cluster = containerservice.ManagedCluster(
-    "cluster",
+    config.require("cluster_name"),
     resource_group_name=resource_group.name,
     agent_pool_profiles=[
         containerservice.ManagedClusterAgentPoolProfileArgs(
