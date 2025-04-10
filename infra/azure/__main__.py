@@ -326,10 +326,10 @@ minio_tenant = Chart(
             },
             "pools": [
                 {
-                    "servers": 2,
+                    "servers": 1,
                     "name": "argo-artifacts-pool-0",
                     "size": "20Gi",
-                    "volumesPerServer": 2,
+                    "volumesPerServer": 1,
                     "storageClassName": longhorn_storage_class.metadata.name,
                 },
             ],
