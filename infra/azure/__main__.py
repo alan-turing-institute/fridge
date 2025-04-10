@@ -473,22 +473,22 @@ argo_workflows = Chart(
             "workflowNamespaces": [argo_workflows_ns.metadata.name]
         },
         "server": {
-            "hosts": [argo_url],
-            "tls":[
-                {
-                    "secretName": "argo-ingress-tls-letsencrypt",
-                    "hosts": [argo_url],
-                }
-            ],
-        },
-        "sso": {
-            "enabled": True,
-            "issuer": Output.concat("https://login.microsoftonline.com/", config.require_secret("entra_tenant_id"), "/v2.0"),
-            "clientId": argo_sso_secret.data["client-id"],
-            "clientSecret": argo_sso_secret.data["client-secret"],
-            "redirectUri": Output.concat(
-                "https://", argo_url, "/oauth2/callback"
-            ),
+            "ingress": {
+                "hosts": [argo_url],
+                "tls":[
+                    {
+                        "secretName": "argo-ingress-tls-letsencrypt",
+                        "hosts": [argo_url],
+                    }
+                ],
+            },
+            "sso": {
+                "enabled": True,
+                "issuer": Output.concat("https://login.microsoftonline.com/", config.require_secret("entra_tenant_id"), "/v2.0"),
+                "redirectUri": Output.concat(
+                    "https://", argo_url, "/oauth2/callback"
+                ),
+            },
         },
     },
     opts=ResourceOptions(
