@@ -260,6 +260,11 @@ minio_tenant_ns = Namespace(
     ),
 )
 
+minio_url = Output.format(
+    "{0}.{1}",
+    config.require("minio_url_prefix"),
+    config.require("base_fqdn"),
+)
 minio_config_env = Output.format(
     (
         "export MINIO_BROWSER_REDIRECT_URL=https://{0}\n"
@@ -267,7 +272,7 @@ minio_config_env = Output.format(
         "export MINIO_ROOT_USER={1}\n"
         "export MINIO_ROOT_PASSWORD={2}"
     ),
-    config.require("minio_browser_url"),
+    minio_url,
     config.require_secret("minio_root_user"),
     config.require_secret("minio_root_password"),
 )
@@ -317,9 +322,9 @@ minio_tenant = Chart(
             },
             "features": {
                 "domains": {
-                    "console": config.require("minio_browser_url"),
+                    "console": minio_url,
                     "minio": [
-                        "minio.fridge.develop.turingsafehaven.ac.uk/api",
+                        Output.concat(minio_url, "/api"),
                         "minio.argo-artifacts.svc.cluster.local",
                     ],
                 }
@@ -357,14 +362,14 @@ minio_ingress = Ingress(
         "tls": [
             {
                 "hosts": [
-                    config.require("minio_browser_url"),
+                    minio_url,
                 ],
                 "secret_name": "argo-artifacts-tls",
             }
         ],
         "rules": [
             {
-                "host": config.require("minio_browser_url"),
+                "host": minio_url,
                 "http": {
                     "paths": [
                         {
