@@ -394,3 +394,26 @@ minio_ingress = Ingress(
         depends_on=[minio_tenant],
     ),
 )
+
+## Argo Workflows
+argo_server_ns = Namespace(
+    "argo-server-ns",
+    metadata=ObjectMetaArgs(
+        name="argo-server",
+    ),
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster],
+    ),
+)
+
+argo_workflows_ns = Namespace(
+    "argo-workflows-ns",
+    metadata=ObjectMetaArgs(
+        name="argo-workflows",
+    ),
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster],
+    ),
+)
