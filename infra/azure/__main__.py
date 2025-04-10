@@ -423,6 +423,19 @@ argo_url = Output.format(
     config.require("base_fqdn"),
 )
 
+argo_sso_secret = Secret(
+    "argo-sso-secret",
+    metadata=ObjectMetaArgs(
+        name="argo-sso-secret",
+        namespace=argo_server_ns.metadata.name,
+    ),
+    type="Opaque",
+    data={
+        "client_id": config.require_secret("entra_app_client_id"),
+        "client_secret": config.require_secret("entra_app_client_secret")
+    }
+)
+
 argo_workflows = Chart(
     "argo-workflows",
     namespace=argo_workflows_ns.metadata.name,
@@ -435,12 +448,25 @@ argo_workflows = Chart(
         FileAsset("./k8s/argo_workflows/values.yaml"),
     ],
     values={
-        "controller":
-            {
-                "workflowNamespaces": [argo_workflows_ns.metadata.name]
-            },
+        "controller": {
+            "workflowNamespaces": [argo_workflows_ns.metadata.name]
+        },
         "server": {
             "hosts": [argo_url],
+            "tls":[
+                {
+                    "secretName": "argo-ingress-tls-letsencrypt",
+                    "hosts": [argo_url],
+                }
+            ],
+        },
+        "sso": {
+            "enabled": True,
+            "issuer": Output.concat("https://login.microsoftonline.com/", config.require_secret("entra_tenant_id"), "/v2.0"),
+            "clientId": config.require_secret("entra_client_id"),
+            "redirectUri": Output.concat(
+                "https://", argo_url, "/oauth2/callback"
+            ),
         },
     },
     opts=ResourceOptions(
