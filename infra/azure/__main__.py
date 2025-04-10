@@ -424,21 +424,42 @@ argo_url = Output.format(
 )
 
 argo_sso_secret = Secret(
-    "argo-sso-secret",
+    "argo-server-sso-secret",
     metadata=ObjectMetaArgs(
-        name="argo-sso-secret",
+        name="argo-server-sso",
         namespace=argo_server_ns.metadata.name,
     ),
     type="Opaque",
-    data={
-        "client_id": config.require_secret("entra_app_client_id"),
-        "client_secret": config.require_secret("entra_app_client_secret")
-    }
+    string_data={
+        "client-id": config.require_secret("entra_app_client_id"),
+        "client-secret": config.require_secret("entra_app_client_secret")
+    },
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[argo_server_ns],
+    ),
+)
+
+argo_minio_secret = Secret(
+    "argo-minio-secret",
+    metadata=ObjectMetaArgs(
+        name="argo-artifacts-minio",
+        namespace=argo_server_ns.metadata.name,
+    ),
+    type="Opaque",
+    string_data={
+        "accessKey": config.require_secret("minio_root_user"),
+        "secretKey": config.require_secret("minio_root_password"),
+    },
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[argo_server_ns],
+    ),
 )
 
 argo_workflows = Chart(
     "argo-workflows",
-    namespace=argo_workflows_ns.metadata.name,
+    namespace=argo_server_ns.metadata.name,
     chart="argo-workflows",
     version="0.45.12",
     repository_opts=RepositoryOptsArgs(
@@ -463,7 +484,8 @@ argo_workflows = Chart(
         "sso": {
             "enabled": True,
             "issuer": Output.concat("https://login.microsoftonline.com/", config.require_secret("entra_tenant_id"), "/v2.0"),
-            "clientId": config.require_secret("entra_client_id"),
+            "clientId": argo_sso_secret.data["client-id"],
+            "clientSecret": argo_sso_secret.data["client-secret"],
             "redirectUri": Output.concat(
                 "https://", argo_url, "/oauth2/callback"
             ),
@@ -471,6 +493,6 @@ argo_workflows = Chart(
     },
     opts=ResourceOptions(
         provider=k8s_provider,
-        depends_on=[argo_server_ns, argo_workflows_ns, managed_cluster],
+        depends_on=[argo_minio_secret, argo_sso_secret, argo_server_ns, argo_workflows_ns, managed_cluster],
     ),
 )
