@@ -417,3 +417,20 @@ argo_workflows_ns = Namespace(
         depends_on=[managed_cluster],
     ),
 )
+
+argo_workflows = Chart(
+    "argo-workflows",
+    namespace=argo_workflows_ns.metadata.name,
+    chart="argo-workflows",
+    version="0.45.12",
+    repository_opts=RepositoryOptsArgs(
+        repo="https://argoproj.github.io/argo-helm",
+    ),
+    value_yaml_files=[
+        FileAsset("./k8s/argo_workflows/values.yaml"),
+    ],
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[argo_workflows_ns, managed_cluster],
+    ),
+)
