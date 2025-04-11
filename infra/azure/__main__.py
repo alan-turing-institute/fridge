@@ -5,15 +5,17 @@ from pulumi import FileAsset, Output, ResourceOptions
 from pulumi_azure_native import containerservice, managedidentity, resources
 import pulumi_tls as tls
 import pulumi_kubernetes as kubernetes
-from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.core.v1 import (
     Namespace,
     Secret,
+    ServiceAccount,
 )
-from pulumi_kubernetes.yaml import ConfigFile
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
+from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.networking.v1 import Ingress
 from pulumi_kubernetes.storage.v1 import StorageClass
+from pulumi_kubernetes.yaml import ConfigFile
+from pulumi_kubernetes.rbac.v1 import Role, RoleBinding
 
 
 def get_kubeconfig(
@@ -496,3 +498,4 @@ argo_workflows = Chart(
         depends_on=[argo_minio_secret, argo_sso_secret, argo_server_ns, argo_workflows_ns, managed_cluster],
     ),
 )
+
