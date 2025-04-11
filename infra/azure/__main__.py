@@ -487,7 +487,7 @@ argo_workflows = Chart(
             "sso": {
                 "enabled": True,
                 "issuer": Output.concat("https://login.microsoftonline.com/", config.require_secret("entra_tenant_id"), "/v2.0"),
-                "redirectUri": Output.concat(
+                "redirectUrl": Output.concat(
                     "https://", argo_url, "/oauth2/callback"
                 ),
             },
