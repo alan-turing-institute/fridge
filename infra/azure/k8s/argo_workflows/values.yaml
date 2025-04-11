@@ -1,0 +1,55 @@
+singleNamespace: false
+controller:
+  extraArgs:
+    - --namespaced
+    - --managed-namespace
+    - argo-workflows
+workflow:
+  serviceAccount:
+    create: true
+    name: argo-workflow
+  rbac:
+    create: true
+server:
+  secure: true
+  authModes:
+    - sso
+  extraArgs:
+    - --namespaced
+    - --managed-namespace
+    - argo-workflows
+  ingress:
+    enabled: true
+    annotations:
+      ingress.kubernetes.io/proxy-body-size: 100M
+      ingress.kubernetes.io/app-root: "/"
+      cert-manager.io/cluster-issuer: "letsencrypt-staging"
+      nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    ingressClassName: "nginx"
+    paths:
+      - /
+    pathType: ImplementationSpecific
+  sso:
+    enabled: true
+    clientId:
+      name: argo-server-sso
+      key: client-id
+    clientSecret:
+      name: argo-server-sso
+      key: client-secret
+    scopes:
+      - https://graph.microsoft.com/User.Read
+      - https://graph.microsoft.com/Group.Read.All
+      - email
+artifactRepository:
+  s3:
+    bucket: argo-artifacts
+    endpoint: minio.argo-artifacts.svc.cluster.local:80
+    region: eu-west-2 # note this is not a real region! this is just a placeholder necessary for s3 compatibility
+    accessKeySecret:
+      name: argo-artifacts-minio
+      key: accesskey
+    secretKeySecret:
+      name: argo-artifacts-minio
+      key: secretkey
+    insecure: true

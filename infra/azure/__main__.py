@@ -1,20 +1,27 @@
 import base64
 
 import pulumi
-from pulumi import ResourceOptions
+from pulumi import FileAsset, Output, ResourceOptions
 from pulumi_azure_native import containerservice, managedidentity, resources
-from pulumi import Output
 import pulumi_tls as tls
 import pulumi_kubernetes as kubernetes
-from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.core.v1 import (
     Namespace,
     Secret,
+    ServiceAccount,
 )
-from pulumi_kubernetes.yaml import ConfigFile
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
+from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.networking.v1 import Ingress
 from pulumi_kubernetes.storage.v1 import StorageClass
+from pulumi_kubernetes.yaml import ConfigFile
+from pulumi_kubernetes.rbac.v1 import (
+    PolicyRuleArgs,
+    Role,
+    RoleBinding,
+    RoleRefArgs,
+    SubjectArgs,
+)
 
 
 def get_kubeconfig(
@@ -41,7 +48,7 @@ identity = managedidentity.UserAssignedIdentity(
 
 # AKS cluster
 managed_cluster = containerservice.ManagedCluster(
-    "cluster",
+    config.require("cluster_name"),
     resource_group_name=resource_group.name,
     agent_pool_profiles=[
         containerservice.ManagedClusterAgentPoolProfileArgs(
@@ -392,5 +399,213 @@ minio_ingress = Ingress(
     opts=ResourceOptions(
         provider=k8s_provider,
         depends_on=[minio_tenant],
+    ),
+)
+
+## Argo Workflows
+argo_server_ns = Namespace(
+    "argo-server-ns",
+    metadata=ObjectMetaArgs(
+        name="argo-server",
+    ),
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster],
+    ),
+)
+
+argo_workflows_ns = Namespace(
+    "argo-workflows-ns",
+    metadata=ObjectMetaArgs(
+        name="argo-workflows",
+    ),
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster],
+    ),
+)
+
+argo_url = Output.format(
+    "{0}.{1}",
+    config.require("argo_url_prefix"),
+    config.require("base_fqdn"),
+)
+
+argo_sso_secret = Secret(
+    "argo-server-sso-secret",
+    metadata=ObjectMetaArgs(
+        name="argo-server-sso",
+        namespace=argo_server_ns.metadata.name,
+    ),
+    type="Opaque",
+    string_data={
+        "client-id": config.require_secret("entra_app_client_id"),
+        "client-secret": config.require_secret("entra_app_client_secret"),
+    },
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[argo_server_ns],
+    ),
+)
+
+argo_minio_secret = Secret(
+    "argo-minio-secret",
+    metadata=ObjectMetaArgs(
+        name="argo-artifacts-minio",
+        namespace=argo_server_ns.metadata.name,
+    ),
+    type="Opaque",
+    string_data={
+        "accessKey": config.require_secret("minio_root_user"),
+        "secretKey": config.require_secret("minio_root_password"),
+    },
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[argo_server_ns],
+    ),
+)
+
+argo_workflows = Chart(
+    "argo-workflows",
+    namespace=argo_server_ns.metadata.name,
+    chart="argo-workflows",
+    version="0.45.12",
+    repository_opts=RepositoryOptsArgs(
+        repo="https://argoproj.github.io/argo-helm",
+    ),
+    value_yaml_files=[
+        FileAsset("./k8s/argo_workflows/values.yaml"),
+    ],
+    values={
+        "controller": {"workflowNamespaces": [argo_workflows_ns.metadata.name]},
+        "server": {
+            "ingress": {
+                "hosts": [argo_url],
+                "tls": [
+                    {
+                        "secretName": "argo-ingress-tls-letsencrypt",
+                        "hosts": [argo_url],
+                    }
+                ],
+            },
+            "sso": {
+                "enabled": True,
+                "issuer": Output.concat(
+                    "https://login.microsoftonline.com/",
+                    config.require_secret("entra_tenant_id"),
+                    "/v2.0",
+                ),
+                "redirectUrl": Output.concat("https://", argo_url, "/oauth2/callback"),
+            },
+        },
+    },
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[
+            argo_minio_secret,
+            argo_sso_secret,
+            argo_server_ns,
+            argo_workflows_ns,
+            managed_cluster,
+        ],
+    ),
+)
+
+argo_workflows_admin_sa = ServiceAccount(
+    "argo-workflows-admin-sa",
+    metadata=ObjectMetaArgs(
+        name="argo-workflows-admin-sa",
+        namespace=argo_server_ns.metadata.name,
+        annotations={
+            "workflows.argoproj.io/rbac-rule": Output.concat(
+                "'", config.require_secret("admin_entra_group_id"), "'", " in groups"
+            ),
+            "workflows.argoproj.io/rbac-rule-precedence": "2",
+        },
+    ),
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[argo_workflows],
+    ),
+)
+
+argo_workflows_admin_sa_token = Secret(
+    "argo-workflows-admin-sa-token",
+    metadata=ObjectMetaArgs(
+        name="argo-workflows-admin-sa.service-account-token",
+        namespace=argo_server_ns.metadata.name,
+        annotations={
+            "kubernetes.io/service-account.name": argo_workflows_admin_sa.metadata.name,
+        },
+    ),
+    type="kubernetes.io/service-account-token",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[argo_workflows_admin_sa],
+    ),
+)
+
+argo_workflows_admin_role = Role(
+    "argo-workflows-admin-role",
+    metadata=ObjectMetaArgs(
+        name="argo-workflows-admin-role",
+        namespace=argo_server_ns.metadata.name,
+    ),
+    rules=[
+        PolicyRuleArgs(
+            api_groups=[""],
+            resources=["events", "pods", "pods/log"],
+            verbs=["get", "list", "watch"],
+        ),
+        PolicyRuleArgs(
+            api_groups=["argoproj.io"],
+            resources=[
+                "cronworkflows",
+                "eventsources",
+                "workflows",
+                "workflows/finalizers",
+                "workflowtaskresults",
+                "workflowtemplates",
+                "clusterworkflowtemplates",
+            ],
+            verbs=[
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "watch",
+                "update",
+            ],
+        ),
+    ],
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[argo_workflows, argo_workflows_admin_sa],
+    ),
+)
+
+argo_workflows_admin_role_binding = RoleBinding(
+    "argo-workflows-admin-role-binding",
+    metadata=ObjectMetaArgs(
+        name="argo-workflows-admin-role-binding",
+        namespace=argo_server_ns.metadata.name,
+    ),
+    role_ref=RoleRefArgs(
+        api_group="rbac.authorization.k8s.io",
+        kind="Role",
+        name=argo_workflows_admin_role.metadata.name,
+    ),
+    subjects=[
+        {
+            "kind": "ServiceAccount",
+            "name": argo_workflows_admin_sa.metadata.name,
+            "namespace": argo_server_ns.metadata.name,
+        }
+    ],
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[argo_workflows_admin_role],
     ),
 )
