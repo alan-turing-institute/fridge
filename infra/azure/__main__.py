@@ -15,7 +15,13 @@ from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.networking.v1 import Ingress
 from pulumi_kubernetes.storage.v1 import StorageClass
 from pulumi_kubernetes.yaml import ConfigFile
-from pulumi_kubernetes.rbac.v1 import PolicyRuleArgs, Role, RoleBinding, RoleRefArgs
+from pulumi_kubernetes.rbac.v1 import (
+    PolicyRuleArgs,
+    Role,
+    RoleBinding,
+    RoleRefArgs,
+    SubjectArgs,
+)
 
 
 def get_kubeconfig(
@@ -434,7 +440,7 @@ argo_sso_secret = Secret(
     type="Opaque",
     string_data={
         "client-id": config.require_secret("entra_app_client_id"),
-        "client-secret": config.require_secret("entra_app_client_secret")
+        "client-secret": config.require_secret("entra_app_client_secret"),
     },
     opts=ResourceOptions(
         provider=k8s_provider,
@@ -471,13 +477,11 @@ argo_workflows = Chart(
         FileAsset("./k8s/argo_workflows/values.yaml"),
     ],
     values={
-        "controller": {
-            "workflowNamespaces": [argo_workflows_ns.metadata.name]
-        },
+        "controller": {"workflowNamespaces": [argo_workflows_ns.metadata.name]},
         "server": {
             "ingress": {
                 "hosts": [argo_url],
-                "tls":[
+                "tls": [
                     {
                         "secretName": "argo-ingress-tls-letsencrypt",
                         "hosts": [argo_url],
@@ -486,16 +490,24 @@ argo_workflows = Chart(
             },
             "sso": {
                 "enabled": True,
-                "issuer": Output.concat("https://login.microsoftonline.com/", config.require_secret("entra_tenant_id"), "/v2.0"),
-                "redirectUrl": Output.concat(
-                    "https://", argo_url, "/oauth2/callback"
+                "issuer": Output.concat(
+                    "https://login.microsoftonline.com/",
+                    config.require_secret("entra_tenant_id"),
+                    "/v2.0",
                 ),
+                "redirectUrl": Output.concat("https://", argo_url, "/oauth2/callback"),
             },
         },
     },
     opts=ResourceOptions(
         provider=k8s_provider,
-        depends_on=[argo_minio_secret, argo_sso_secret, argo_server_ns, argo_workflows_ns, managed_cluster],
+        depends_on=[
+            argo_minio_secret,
+            argo_sso_secret,
+            argo_server_ns,
+            argo_workflows_ns,
+            managed_cluster,
+        ],
     ),
 )
 
@@ -505,9 +517,11 @@ argo_workflows_admin_sa = ServiceAccount(
         name="argo-workflows-admin-sa",
         namespace=argo_server_ns.metadata.name,
         annotations={
-            "workflows.argoproj.io/rbac-rule": Output.concat("'", config.require_secret("admin_entra_group_id"),"'", " in groups"),
+            "workflows.argoproj.io/rbac-rule": Output.concat(
+                "'", config.require_secret("admin_entra_group_id"), "'", " in groups"
+            ),
             "workflows.argoproj.io/rbac-rule-precedence": "2",
-        }
+        },
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
@@ -522,7 +536,7 @@ argo_workflows_admin_sa_token = Secret(
         namespace=argo_server_ns.metadata.name,
         annotations={
             "kubernetes.io/service-account.name": argo_workflows_admin_sa.metadata.name,
-        }
+        },
     ),
     type="kubernetes.io/service-account-token",
     opts=ResourceOptions(
@@ -545,8 +559,25 @@ argo_workflows_admin_role = Role(
         ),
         PolicyRuleArgs(
             api_groups=["argoproj.io"],
-            resources=["cronworkflows", "eventsources", "workflows", "workflows/finalizers", "workflowtaskresults", "workflowtemplates", "clusterworkflowtemplates"],
-            verbs=["create", "delete", "deletecollection", "get", "list", "patch", "watch", "update"],
+            resources=[
+                "cronworkflows",
+                "eventsources",
+                "workflows",
+                "workflows/finalizers",
+                "workflowtaskresults",
+                "workflowtemplates",
+                "clusterworkflowtemplates",
+            ],
+            verbs=[
+                "create",
+                "delete",
+                "deletecollection",
+                "get",
+                "list",
+                "patch",
+                "watch",
+                "update",
+            ],
         ),
     ],
     opts=ResourceOptions(
@@ -578,4 +609,3 @@ argo_workflows_admin_role_binding = RoleBinding(
         depends_on=[argo_workflows_admin_role],
     ),
 )
-
