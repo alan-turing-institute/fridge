@@ -15,7 +15,7 @@ from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.networking.v1 import Ingress
 from pulumi_kubernetes.storage.v1 import StorageClass
 from pulumi_kubernetes.yaml import ConfigFile
-from pulumi_kubernetes.rbac.v1 import Role, RoleBinding
+from pulumi_kubernetes.rbac.v1 import PolicyRuleArgs, Role, RoleBinding, RoleRefArgs
 
 
 def get_kubeconfig(
@@ -496,6 +496,86 @@ argo_workflows = Chart(
     opts=ResourceOptions(
         provider=k8s_provider,
         depends_on=[argo_minio_secret, argo_sso_secret, argo_server_ns, argo_workflows_ns, managed_cluster],
+    ),
+)
+
+argo_workflows_admin_sa = ServiceAccount(
+    "argo-workflows-admin-sa",
+    metadata=ObjectMetaArgs(
+        name="argo-workflows-admin-sa",
+        namespace=argo_server_ns.metadata.name,
+        annotations={
+            "workflows.argoproj.io/rbac-rule": Output.concat("'", config.require_secret("admin_entra_group_id"),"'", " in groups"),
+            "workflows.argoproj.io/rbac-rule-precedence": "2",
+        }
+    ),
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[argo_workflows],
+    ),
+)
+
+argo_workflows_admin_sa_token = Secret(
+    "argo-workflows-admin-sa-token",
+    metadata=ObjectMetaArgs(
+        name="argo-workflows-admin-sa.service-account-token",
+        namespace=argo_server_ns.metadata.name,
+        annotations={
+            "kubernetes.io/service-account.name": argo_workflows_admin_sa.metadata.name,
+        }
+    ),
+    type="kubernetes.io/service-account-token",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[argo_workflows_admin_sa],
+    ),
+)
+
+argo_workflows_admin_role = Role(
+    "argo-workflows-admin-role",
+    metadata=ObjectMetaArgs(
+        name="argo-workflows-admin-role",
+        namespace=argo_server_ns.metadata.name,
+    ),
+    rules=[
+        PolicyRuleArgs(
+            api_groups=[""],
+            resources=["events", "pods", "pods/log"],
+            verbs=["get", "list", "watch"],
+        ),
+        PolicyRuleArgs(
+            api_groups=["argoproj.io"],
+            resources=["cronworkflows", "eventsources", "workflows", "workflows/finalizers", "workflowtaskresults", "workflowtemplates", "clusterworkflowtemplates"],
+            verbs=["create", "delete", "deletecollection", "get", "list", "patch", "watch", "update"],
+        ),
+    ],
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[argo_workflows, argo_workflows_admin_sa],
+    ),
+)
+
+argo_workflows_admin_role_binding = RoleBinding(
+    "argo-workflows-admin-role-binding",
+    metadata=ObjectMetaArgs(
+        name="argo-workflows-admin-role-binding",
+        namespace=argo_server_ns.metadata.name,
+    ),
+    role_ref=RoleRefArgs(
+        api_group="rbac.authorization.k8s.io",
+        kind="Role",
+        name=argo_workflows_admin_role.metadata.name,
+    ),
+    subjects=[
+        {
+            "kind": "ServiceAccount",
+            "name": argo_workflows_admin_sa.metadata.name,
+            "namespace": argo_server_ns.metadata.name,
+        }
+    ],
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[argo_workflows_admin_role],
     ),
 )
 
