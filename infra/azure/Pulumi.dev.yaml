@@ -3,6 +3,7 @@ config:
   azure-native:subscriptionId: "36cfe11d-bfcd-4dce-9b70-c3905a4f3d01"
   fridge:base_fqdn: fridge.develop.turingsafehaven.ac.uk
   fridge:resource_group_name: fridge-one
+  fridge:lets_encrypt_email: safehavendevs@turing.ac.uk
   fridge:minio_root_user:
     secure: v1:7RTVpai0RPBKdOcU:ZxD8eVRGaNec9SrCyfSWx1JP91zz55PL
   fridge:minio_root_password:
