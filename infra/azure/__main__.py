@@ -1,4 +1,5 @@
 import base64
+from string import Template
 
 import pulumi
 from pulumi import FileAsset, Output, ResourceOptions
@@ -10,11 +11,12 @@ from pulumi_kubernetes.core.v1 import (
     Secret,
     ServiceAccount,
 )
+
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.networking.v1 import Ingress
 from pulumi_kubernetes.storage.v1 import StorageClass
-from pulumi_kubernetes.yaml import ConfigFile
+from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
 from pulumi_kubernetes.rbac.v1 import (
     PolicyRuleArgs,
     Role,
@@ -221,9 +223,12 @@ cert_manager = Chart(
     ),
 )
 
-cert_manager_issuers = ConfigFile(
+cluster_issuer_config = Template(
+    open("k8s/cert_manager/clusterissuer.yaml", "r").read()
+).substitute(lets_encrypt_email=config.require("lets_encrypt_email"))
+cert_manager_issuers = ConfigGroup(
     "cert-manager-issuers",
-    file="./k8s/cert_manager/clusterissuer.yaml",
+    yaml=[cluster_issuer_config],
     opts=ResourceOptions(
         provider=k8s_provider,
         depends_on=[cert_manager, cert_manager_ns, managed_cluster],
