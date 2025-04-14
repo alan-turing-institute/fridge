@@ -1,0 +1,24 @@
+config:
+  azure-native:location: uksouth
+  azure-native:subscriptionId: "36cfe11d-bfcd-4dce-9b70-c3905a4f3d01"
+  fridge:argo_url_prefix: argo
+  fridge:base_fqdn: argo-dev.fridge.develop.turingsafehaven.ac.uk
+  fridge:cluster_name: argo-dev
+  fridge:resource_group_name: fridge-argo-dev
+  fridge:minio_root_user:
+    secure: v1:y6VaqKNeiwmjOoqI:UxCXIMqGV8mG2JF8VPUJ/VC+Qea3gxig
+  fridge:minio_root_password:
+    secure: v1:VOg9OAtisUtIcn+t:NEslilS5JLHXbVG+iZ2vJIp8VXaGmVaOe58Z
+  fridge:minio_url_prefix: minio
+  fridge:minio_pool_size: 20Gi
+  pulumi:autonaming:
+    mode: verbatim
+  fridge:entra_tenant_id:
+    secure: v1:ISvhzJpXBX/qEtDy:H/EGNwOYKOcXnntdCi1vwPShFc9J0V4he2Aeddd6a0ao8616obAELrPDXptwxCBO1eloiA==
+  fridge:entra_app_client_id:
+    secure: v1:WfbUqLfXQ5W5rUum:lEZHqSAiMVx798GT5rHR1g8XP+pH/+vTlCgWZk0+FSdNOPjAzrQxqfms1ij0xDLHdhM+LQ==
+  fridge:entra_app_client_secret:
+    secure: v1:Frb3ndTNQaYdec5u:WCBGsG6v8pWGKLaruYWwn8o1RDD3VKCf+KmYsFUpPajzDt97ITb6gSZ913AfJuvmwFXOaQ+yFaY=
+  fridge:entra_admin_group_id:
+    secure: v1:Vi/Shi/5uRmDjYqm:QSZ3HiTni2wa5N+V2cDou01XpaoZsPqncvQXQ4uY8g+aoGDNxaan4Yv2992fznPhrtQr9Q==
+encryptionsalt: v1:R7XDd7952d0=:v1:WLhmn43M/u9HtEYx:+UA+nQbxg3Nt6sFvwrHqSYAWAv/1+A==
