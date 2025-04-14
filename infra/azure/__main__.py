@@ -515,7 +515,7 @@ argo_workflows_admin_sa = ServiceAccount(
     "argo-workflows-admin-sa",
     metadata=ObjectMetaArgs(
         name="argo-workflows-admin-sa",
-        namespace=argo_server_ns.metadata.name,
+        namespace=argo_workflows_ns.metadata.name,
         annotations={
             "workflows.argoproj.io/rbac-rule": Output.concat(
                 "'", config.require_secret("admin_entra_group_id"), "'", " in groups"
@@ -533,7 +533,7 @@ argo_workflows_admin_sa_token = Secret(
     "argo-workflows-admin-sa-token",
     metadata=ObjectMetaArgs(
         name="argo-workflows-admin-sa.service-account-token",
-        namespace=argo_server_ns.metadata.name,
+        namespace=argo_workflows_ns.metadata.name,
         annotations={
             "kubernetes.io/service-account.name": argo_workflows_admin_sa.metadata.name,
         },
@@ -549,7 +549,6 @@ argo_workflows_admin_role = Role(
     "argo-workflows-admin-role",
     metadata=ObjectMetaArgs(
         name="argo-workflows-admin-role",
-        namespace=argo_server_ns.metadata.name,
     ),
     rules=[
         PolicyRuleArgs(
@@ -590,7 +589,7 @@ argo_workflows_admin_role_binding = RoleBinding(
     "argo-workflows-admin-role-binding",
     metadata=ObjectMetaArgs(
         name="argo-workflows-admin-role-binding",
-        namespace=argo_server_ns.metadata.name,
+        namespace=argo_workflows_ns.metadata.name,
     ),
     role_ref=RoleRefArgs(
         api_group="rbac.authorization.k8s.io",
@@ -601,7 +600,7 @@ argo_workflows_admin_role_binding = RoleBinding(
         SubjectArgs(
             kind="ServiceAccount",
             name=argo_workflows_admin_sa.metadata.name,
-            namespace=argo_server_ns.metadata.name,
+            namespace=argo_workflows_ns.metadata.name,
         )
     ],
     opts=ResourceOptions(
