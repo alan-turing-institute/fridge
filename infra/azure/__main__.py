@@ -549,6 +549,7 @@ argo_workflows_admin_role = Role(
     "argo-workflows-admin-role",
     metadata=ObjectMetaArgs(
         name="argo-workflows-admin-role",
+        namespace=argo_workflows_ns.metadata.name,
     ),
     rules=[
         PolicyRuleArgs(
@@ -606,5 +607,37 @@ argo_workflows_admin_role_binding = RoleBinding(
     opts=ResourceOptions(
         provider=k8s_provider,
         depends_on=[argo_workflows_admin_role],
+    ),
+)
+
+argo_workflows_default_sa = ServiceAccount(
+    "argo-workflows-default-sa",
+    metadata=ObjectMetaArgs(
+        name="user-default-login",
+        namespace=argo_server_ns.metadata.name,
+        annotations={
+            "workflows.argoproj.io/rbac-rule": "true",
+            "workflows.argoproj.io/rbac-rule-precedence": "0",
+        },
+    ),
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[argo_workflows],
+    ),
+)
+
+argo_workflows_default_sa_token = Secret(
+    "argo-workflows-default-sa-token",
+    metadata=ObjectMetaArgs(
+        name="user-default-login.service-account-token",
+        namespace=argo_server_ns.metadata.name,
+        annotations={
+            "kubernetes.io/service-account.name": argo_workflows_default_sa.metadata.name,
+        },
+    ),
+    type="kubernetes.io/service-account-token",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[argo_workflows_default_sa],
     ),
 )
