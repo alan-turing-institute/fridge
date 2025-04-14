@@ -430,9 +430,9 @@ argo_workflows_ns = Namespace(
     ),
 )
 
-argo_url = Output.format(
-    "{0}.{1}",
+argo_url = Output.concat(
     config.require("argo_url_prefix"),
+    ".",
     config.require("base_fqdn"),
 )
 
