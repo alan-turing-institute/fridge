@@ -598,11 +598,11 @@ argo_workflows_admin_role_binding = RoleBinding(
         name=argo_workflows_admin_role.metadata.name,
     ),
     subjects=[
-        {
-            "kind": "ServiceAccount",
-            "name": argo_workflows_admin_sa.metadata.name,
-            "namespace": argo_server_ns.metadata.name,
-        }
+        SubjectArgs(
+            kind="ServiceAccount",
+            name=argo_workflows_admin_sa.metadata.name,
+            namespace=argo_server_ns.metadata.name,
+        )
     ],
     opts=ResourceOptions(
         provider=k8s_provider,

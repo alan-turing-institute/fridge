@@ -1,9 +1,4 @@
 singleNamespace: false
-controller:
-  extraArgs:
-    - --namespaced
-    - --managed-namespace
-    - argo-workflows
 workflow:
   serviceAccount:
     create: true
@@ -14,10 +9,6 @@ server:
   secure: true
   authModes:
     - sso
-  extraArgs:
-    - --namespaced
-    - --managed-namespace
-    - argo-workflows
   ingress:
     enabled: true
     annotations:
