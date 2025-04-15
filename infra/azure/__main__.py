@@ -407,7 +407,7 @@ minio_ingress = Ingress(
     ),
 )
 
-## Argo Workflows
+# Argo Workflows
 argo_server_ns = Namespace(
     "argo-server-ns",
     metadata=ObjectMetaArgs(
