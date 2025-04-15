@@ -444,8 +444,8 @@ argo_sso_secret = Secret(
     ),
     type="Opaque",
     string_data={
-        "client-id": config.require_secret("entra_app_client_id"),
-        "client-secret": config.require_secret("entra_app_client_secret"),
+        "client-id": config.require_secret("oidc_client_id"),
+        "client-secret": config.require_secret("oidc_client_secret"),
     },
     opts=ResourceOptions(
         provider=k8s_provider,
@@ -495,11 +495,7 @@ argo_workflows = Chart(
             },
             "sso": {
                 "enabled": True,
-                "issuer": Output.concat(
-                    "https://login.microsoftonline.com/",
-                    config.require_secret("entra_tenant_id"),
-                    "/v2.0",
-                ),
+                "issuer": config.require_secret("sso_issuer_url"),
                 "redirectUrl": Output.concat("https://", argo_url, "/oauth2/callback"),
             },
         },
@@ -558,7 +554,7 @@ argo_workflows_admin_role = Role(
     ],
     opts=ResourceOptions(
         provider=k8s_provider,
-        depends_on=[argo_workflows, argo_workflows_admin_sa],
+        depends_on=[argo_workflows],
     ),
 )
 
@@ -569,7 +565,7 @@ argo_workflows_admin_sa = ServiceAccount(
         namespace=argo_workflows_ns.metadata.name,
         annotations={
             "workflows.argoproj.io/rbac-rule": Output.concat(
-                "'", config.require_secret("entra_admin_group_id"), "'", " in groups"
+                "'", config.require_secret("oidc_admin_group_id"), "'", " in groups"
             ),
             "workflows.argoproj.io/rbac-rule-precedence": "2",
         },
