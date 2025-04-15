@@ -6,14 +6,14 @@ config:
     - https://graph.microsoft.com/Group.Read.All
     - email
   fridge:argo_url_prefix: argo
-  fridge:base_fqdn: fridge.develop.turingsafehaven.ac.uk
-  fridge:cluster_name: cluster
-  fridge:resource_group_name: fridge-one
+  fridge:base_fqdn: argo-dev.fridge.develop.turingsafehaven.ac.uk
+  fridge:cluster_name: argo-dev
+  fridge:resource_group_name: fridge-argo-dev
   fridge:lets_encrypt_email: safehavendevs@turing.ac.uk
   fridge:minio_root_user:
-    secure: v1:7RTVpai0RPBKdOcU:ZxD8eVRGaNec9SrCyfSWx1JP91zz55PL
+    secure: v1:y6VaqKNeiwmjOoqI:UxCXIMqGV8mG2JF8VPUJ/VC+Qea3gxig
   fridge:minio_root_password:
-    secure: v1:Cre1kldv85pjorE8:RBF5XK/QC+b4yRe9Kben7uOqz5OwV+d/MvBE
+    secure: v1:VOg9OAtisUtIcn+t:NEslilS5JLHXbVG+iZ2vJIp8VXaGmVaOe58Z
   fridge:minio_url_prefix: minio
   fridge:minio_pool_size: 20Gi
   pulumi:autonaming:
@@ -27,4 +27,4 @@ config:
   fridge:sso_issuer_url:
     secure: v1:ZUaw6sy5+67uJz2o:i1/Z6lpY1ocCJhZtQ2loi7rE5QnarXrJNIEe7OfOCAleqJF2WupnyraGgUcwPhxdokfjkhmLjjFap9ihF7E5V7LFf2SSFZmJIJ5VIO7m6H+RhU75IUILfAxL8g==
   fridge:tls_environment: staging
-encryptionsalt: v1:UMTR46NTSCc=:v1:dRO4tTAutzORsIcQ:BEEfHoJF1QYioY1S3mfhAsEth2I7AA==
+encryptionsalt: v1:R7XDd7952d0=:v1:WLhmn43M/u9HtEYx:+UA+nQbxg3Nt6sFvwrHqSYAWAv/1+A==
