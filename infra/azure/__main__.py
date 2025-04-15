@@ -478,8 +478,8 @@ argo_minio_secret = Secret(
     ),
     type="Opaque",
     string_data={
-        "accessKey": config.require_secret("minio_root_user"),
-        "secretKey": config.require_secret("minio_root_password"),
+        "accesskey": config.require_secret("minio_root_user"),
+        "secretkey": config.require_secret("minio_root_password"),
     },
     opts=ResourceOptions(
         provider=k8s_provider,
