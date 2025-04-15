@@ -1,4 +1,5 @@
 import base64
+from enum import Enum, verify, UNIQUE
 from string import Template
 
 import pulumi
@@ -26,6 +27,12 @@ from pulumi_kubernetes.rbac.v1 import (
 )
 
 
+@verify(UNIQUE)
+class TlsEnvironment(Enum):
+    STAGING = "staging"
+    PRODUCTION = "production"
+
+
 def get_kubeconfig(
     credentials: list[containerservice.outputs.CredentialResultResponse],
 ) -> str:
@@ -35,6 +42,12 @@ def get_kubeconfig(
 
 
 config = pulumi.Config()
+
+tls_environment = TlsEnvironment(config.require("tls_environment"))
+tls_issuer_names = {
+    TlsEnvironment.STAGING: "letsencrypt-staging",
+    TlsEnvironment.PRODUCTION: "letsencrypt-prod",
+}
 
 resource_group = resources.ResourceGroup(
     "resource_group",
@@ -225,7 +238,11 @@ cert_manager = Chart(
 
 cluster_issuer_config = Template(
     open("k8s/cert_manager/clusterissuer.yaml", "r").read()
-).substitute(lets_encrypt_email=config.require("lets_encrypt_email"))
+).substitute(
+    lets_encrypt_email=config.require("lets_encrypt_email"),
+    issuer_name_staging=tls_issuer_names[TlsEnvironment.STAGING],
+    issuer_name_production=tls_issuer_names[TlsEnvironment.PRODUCTION],
+)
 cert_manager_issuers = ConfigGroup(
     "cert-manager-issuers",
     yaml=[cluster_issuer_config],
@@ -366,7 +383,7 @@ minio_ingress = Ingress(
         annotations={
             "nginx.ingress.kubernetes.io/proxy-body-size": "0",
             "nginx.ingress.kubernetes.io/force-ssl-redirect": "true",
-            "cert-manager.io/cluster-issuer": "letsencrypt-staging",
+            "cert-manager.io/cluster-issuer": tls_issuer_names[tls_environment],
         },
     ),
     spec={
@@ -485,6 +502,9 @@ argo_workflows = Chart(
         "controller": {"workflowNamespaces": [argo_workflows_ns.metadata.name]},
         "server": {
             "ingress": {
+                "annotations": {
+                    "cert-manager.io/cluster-issuer": tls_issuer_names[tls_environment],
+                },
                 "hosts": [argo_url],
                 "tls": [
                     {

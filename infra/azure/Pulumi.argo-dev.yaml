@@ -26,4 +26,5 @@ config:
     secure: v1:Vi/Shi/5uRmDjYqm:QSZ3HiTni2wa5N+V2cDou01XpaoZsPqncvQXQ4uY8g+aoGDNxaan4Yv2992fznPhrtQr9Q==
   fridge:sso_issuer_url:
     secure: v1:ZUaw6sy5+67uJz2o:i1/Z6lpY1ocCJhZtQ2loi7rE5QnarXrJNIEe7OfOCAleqJF2WupnyraGgUcwPhxdokfjkhmLjjFap9ihF7E5V7LFf2SSFZmJIJ5VIO7m6H+RhU75IUILfAxL8g==
+  fridge:tls_environment: staging
 encryptionsalt: v1:R7XDd7952d0=:v1:WLhmn43M/u9HtEYx:+UA+nQbxg3Nt6sFvwrHqSYAWAv/1+A==

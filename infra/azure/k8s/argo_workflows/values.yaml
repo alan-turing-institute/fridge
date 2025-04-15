@@ -14,7 +14,6 @@ server:
     annotations:
       ingress.kubernetes.io/proxy-body-size: 100M
       ingress.kubernetes.io/app-root: "/"
-      cert-manager.io/cluster-issuer: "letsencrypt-staging"
       nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
     ingressClassName: "nginx"
     paths:
