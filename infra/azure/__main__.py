@@ -497,6 +497,7 @@ argo_workflows = Chart(
                 "enabled": True,
                 "issuer": config.require_secret("sso_issuer_url"),
                 "redirectUrl": Output.concat("https://", argo_url, "/oauth2/callback"),
+                "scopes": config.require_object("argo_scopes"),
             },
         },
     },

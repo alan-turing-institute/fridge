@@ -28,10 +28,6 @@ server:
     clientSecret:
       name: argo-server-sso
       key: client-secret
-    scopes:
-      - https://graph.microsoft.com/User.Read
-      - https://graph.microsoft.com/Group.Read.All
-      - email
   extraEnv:
     - name: SSO_DELEGATE_RBAC_TO_NAMESPACE
       value: "true"
