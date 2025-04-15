@@ -457,7 +457,7 @@ argo_minio_secret = Secret(
     "argo-minio-secret",
     metadata=ObjectMetaArgs(
         name="argo-artifacts-minio",
-        namespace=argo_server_ns.metadata.name,
+        namespace=argo_workflows_ns.metadata.name,
     ),
     type="Opaque",
     string_data={
@@ -508,7 +508,6 @@ argo_workflows = Chart(
             argo_sso_secret,
             argo_server_ns,
             argo_workflows_ns,
-            managed_cluster,
         ],
     ),
 )
