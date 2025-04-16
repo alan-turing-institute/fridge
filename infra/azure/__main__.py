@@ -13,6 +13,7 @@ from pulumi_kubernetes.core.v1 import (
     ServiceAccount,
 )
 
+from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.networking.v1 import Ingress
@@ -669,5 +670,59 @@ argo_workflows_default_sa_token = Secret(
     opts=ResourceOptions(
         provider=k8s_provider,
         depends_on=[argo_workflows_default_sa],
+    ),
+)
+
+# Harbor
+harbor_ns = Namespace(
+    "harbor-ns",
+    metadata=ObjectMetaArgs(
+        name="harbor",
+    ),
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster],
+    ),
+)
+
+harbor = Release(
+    "harbor",
+    ReleaseArgs(
+        chart="harbor",
+        namespace="harbor",
+        version="1.16.2",
+        repository_opts=RepositoryOptsArgs(
+            repo="https://helm.goharbor.io",
+        ),
+        value_yaml_files=[FileAsset("./k8s/harbor/values.yaml")],
+        values={
+            "expose": {
+                "ingress": {
+                    "hosts": {
+                        "core": Output.concat(
+                            config.require("harbor_url_prefix"),
+                            ".",
+                            config.require("base_fqdn"),
+                        ),
+                    },
+                    "annotations": {
+                        "cert-manager.io/cluster-issuer": tls_issuer_names[
+                            tls_environment
+                        ],
+                    },
+                },
+            },
+            "externalUrl": Output.concat(
+                "https://",
+                config.require("harbor_url_prefix"),
+                ".",
+                config.require("base_fqdn"),
+            ),
+            "harborAdminPassword": config.require_secret("harbor_admin_password"),
+        },
+    ),
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster],
     ),
 )
