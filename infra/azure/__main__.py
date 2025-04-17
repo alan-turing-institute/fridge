@@ -712,7 +712,7 @@ harbor = Release(
                     },
                 },
             },
-            "externalUrl": Output.concat(
+            "externalURL": Output.concat(
                 "https://",
                 config.require("harbor_url_prefix"),
                 ".",
