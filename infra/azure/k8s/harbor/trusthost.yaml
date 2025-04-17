@@ -5,10 +5,17 @@ metadata:
   namespace: harbor
 data:
   setup.sh: |
-    mkdir -p /root/etc/containerd/certs.d/$harbor_fqdn &&
+    mkdir -p /root/etc/containerd/certs.d/$harbor_fqdn && {
     cat <<EOF > /root/etc/containerd/certs.d/$harbor_fqdn/hosts.toml
     server = "$harbor_url"
     [host."$harbor_url"]
+      skip_verify = true
+    EOF
+    } &&
+    mkdir -p /root/etc/containerd/certs.d/$harbor_ip &&
+    cat <<EOF > /root/etc/containerd/certs.d/$harbor_ip/hosts.toml
+    server = "$harbor_ip_url"
+    [host."$harbor_ip_url"]
       skip_verify = true
     EOF
 ---
