@@ -696,19 +696,12 @@ harbor = Release(
         repository_opts=RepositoryOptsArgs(
             repo="https://helm.goharbor.io",
         ),
-        value_yaml_files=[FileAsset("./k8s/harbor/values.yaml")],
+        value_yaml_files=[FileAsset("./k8s/harbor/valuestesting.yaml")],
         values={
             "expose": {
-                "ingress": {
-                    "hosts": {
-                        "core": harbor_fqdn,
-                    },
-                    "annotations": {
-                        "cert-manager.io/cluster-issuer": tls_issuer_names[
-                            tls_environment
-                        ],
-                    },
-                },
+                "clusterIP": {
+                    "staticClusterIP": config.require("harbor_ip"),
+                }
             },
             "externalURL": "https://" + harbor_fqdn,
             "harborAdminPassword": config.require_secret("harbor_admin_password"),
@@ -721,7 +714,10 @@ harbor = Release(
 )
 
 skip_harbor_tls = Template(open("k8s/harbor/trusthost.yaml", "r").read()).substitute(
-    harbor_fqdn=harbor_fqdn, harbor_url="https://" + harbor_fqdn
+    harbor_fqdn=harbor_fqdn,
+    harbor_url="https://" + harbor_fqdn,
+    harbor_ip=config.require("harbor_ip"),
+    harbor_ip_url="http://" + config.require("harbor_ip"),
 )
 
 configure_containerd = ConfigGroup(
@@ -730,5 +726,55 @@ configure_containerd = ConfigGroup(
     opts=ResourceOptions(
         provider=k8s_provider,
         depends_on=[managed_cluster],
+    ),
+)
+
+harbor_ingress = Ingress(
+    "harbor-ingress",
+    metadata=ObjectMetaArgs(
+        name="harbor-ingress",
+        namespace=harbor_ns.metadata.name,
+        annotations={
+            "nginx.ingress.kubernetes.io/force-ssl-redirect": "true",
+            "nginx.ingress.kubernetes.io/proxy-body-size": "0",
+            "cert-manager.io/cluster-issuer": tls_issuer_names[tls_environment],
+            "cert-manager.io/ip-sans": config.require("harbor_ip"),
+        },
+    ),
+    spec={
+        "ingress_class_name": "nginx",
+        "tls": [
+            {
+                "hosts": [
+                    harbor_fqdn,
+                ],
+                "secret_name": "harbor-ingress-tls",
+            }
+        ],
+        "rules": [
+            {
+                "host": harbor_fqdn,
+                "http": {
+                    "paths": [
+                        {
+                            "path": "/",
+                            "path_type": "Prefix",
+                            "backend": {
+                                "service": {
+                                    "name": "harbor",
+                                    "port": {
+                                        "number": 80,
+                                    },
+                                }
+                            },
+                        }
+                    ]
+                },
+            }
+        ],
+    },
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[harbor, harbor_ns],
     ),
 )
