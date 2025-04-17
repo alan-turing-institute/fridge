@@ -696,7 +696,7 @@ harbor = Release(
         repository_opts=RepositoryOptsArgs(
             repo="https://helm.goharbor.io",
         ),
-        value_yaml_files=[FileAsset("./k8s/harbor/valuestesting.yaml")],
+        value_yaml_files=[FileAsset("./k8s/harbor/values.yaml")],
         values={
             "expose": {
                 "clusterIP": {
