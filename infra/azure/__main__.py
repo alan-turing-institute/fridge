@@ -685,6 +685,8 @@ harbor_ns = Namespace(
     ),
 )
 
+harbor_fqdn = config.require("harbor_url_prefix") + "." + config.require("base_fqdn")
+
 harbor = Release(
     "harbor",
     ReleaseArgs(
@@ -699,11 +701,7 @@ harbor = Release(
             "expose": {
                 "ingress": {
                     "hosts": {
-                        "core": Output.concat(
-                            config.require("harbor_url_prefix"),
-                            ".",
-                            config.require("base_fqdn"),
-                        ),
+                        "core": harbor_fqdn,
                     },
                     "annotations": {
                         "cert-manager.io/cluster-issuer": tls_issuer_names[
@@ -712,15 +710,23 @@ harbor = Release(
                     },
                 },
             },
-            "externalURL": Output.concat(
-                "https://",
-                config.require("harbor_url_prefix"),
-                ".",
-                config.require("base_fqdn"),
-            ),
+            "externalURL": "https://" + harbor_fqdn,
             "harborAdminPassword": config.require_secret("harbor_admin_password"),
         },
     ),
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster],
+    ),
+)
+
+skip_harbor_tls = Template(open("k8s/harbor/trusthost.yaml", "r").read()).substitute(
+    harbor_fqdn=harbor_fqdn, harbor_url="https://" + harbor_fqdn
+)
+
+configure_containerd = ConfigGroup(
+    "configure-containerd-daemon",
+    yaml=[skip_harbor_tls],
     opts=ResourceOptions(
         provider=k8s_provider,
         depends_on=[managed_cluster],
