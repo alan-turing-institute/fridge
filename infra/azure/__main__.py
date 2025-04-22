@@ -120,6 +120,11 @@ managed_cluster = containerservice.ManagedCluster(
         ),
     ),
     network_profile=containerservice.ContainerServiceNetworkProfileArgs(
+        advanced_networking=containerservice.AdvancedNetworkingArgs(
+            observability=containerservice.AdvancedNetworkingObservabilityArgs(
+                enabled=True,
+            ),
+        ),
         network_dataplane=containerservice.NetworkDataplane.CILIUM,
         network_plugin=containerservice.NetworkPlugin.AZURE,
         network_policy=containerservice.NetworkPolicy.CILIUM,
