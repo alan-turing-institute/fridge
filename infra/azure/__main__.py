@@ -713,6 +713,10 @@ harbor = Release(
     ),
 )
 
+# Create a daemonset to skip TLS verification for the harbor registry
+# This is needed while using staging/self-signed certificates for Harbor
+# A daemonset is used to run the configuration on all nodes in the cluster
+
 skip_harbor_tls = Template(
     open("k8s/harbor/skip_harbor_tls_verification.yaml", "r").read()
 ).substitute(
