@@ -19,12 +19,12 @@ config:
   pulumi:autonaming:
     mode: verbatim
   fridge:oidc_client_id:
-    secure: v1:WfbUqLfXQ5W5rUum:lEZHqSAiMVx798GT5rHR1g8XP+pH/+vTlCgWZk0+FSdNOPjAzrQxqfms1ij0xDLHdhM+LQ==
+    secure: v1:GAUMCYCHoIpLIjSk:vmmzXnLfC0fuXDqrIXca4SYN9QHgBrIGC1EN/0ObKy4qn56IkpjrtzAB+qQvtiOVYyRmxQ==
   fridge:oidc_client_secret:
-    secure: v1:Frb3ndTNQaYdec5u:WCBGsG6v8pWGKLaruYWwn8o1RDD3VKCf+KmYsFUpPajzDt97ITb6gSZ913AfJuvmwFXOaQ+yFaY=
+    secure: v1:sMrD/I1mf+aUwlLO:kpssg4hL1MWTgHoJu6vcuwKb1XmKXVfHHU2F2XqzK/sUQWOiVjPvIkxsjEcExsf9c0Ix4F4+dAg=
   fridge:oidc_admin_group_id:
-    secure: v1:Vi/Shi/5uRmDjYqm:QSZ3HiTni2wa5N+V2cDou01XpaoZsPqncvQXQ4uY8g+aoGDNxaan4Yv2992fznPhrtQr9Q==
+    secure: v1:jZ3++peYabHWzHjN:GinxUPOYgb8BVl7I/e7NkaTtnMaQhv5T50QbVfR8MrNodMYfIrXBsISEYnlJjCeXMjyhtA==
   fridge:sso_issuer_url:
-    secure: v1:ZUaw6sy5+67uJz2o:i1/Z6lpY1ocCJhZtQ2loi7rE5QnarXrJNIEe7OfOCAleqJF2WupnyraGgUcwPhxdokfjkhmLjjFap9ihF7E5V7LFf2SSFZmJIJ5VIO7m6H+RhU75IUILfAxL8g==
+    secure: v1:lbFxDPjErRO5+22Q:aI7VhtPL19j3D69iPbiCk6O4FatPBVR1ICpL+w47o+S3ul8jaM6BC8bfWkKgXHUunvloz8wBuaZ/vQLUDB4nbu0cO+EZEFoG9xBbz9CWMjpuNXhQZDXRBYrMgQ==
   fridge:tls_environment: staging
 encryptionsalt: v1:UMTR46NTSCc=:v1:dRO4tTAutzORsIcQ:BEEfHoJF1QYioY1S3mfhAsEth2I7AA==
