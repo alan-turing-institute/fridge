@@ -121,6 +121,7 @@ managed_cluster = containerservice.ManagedCluster(
     ),
     network_profile=containerservice.ContainerServiceNetworkProfileArgs(
         advanced_networking=containerservice.AdvancedNetworkingArgs(
+            enabled=True,
             observability=containerservice.AdvancedNetworkingObservabilityArgs(
                 enabled=True,
             ),
