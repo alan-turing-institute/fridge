@@ -121,6 +121,11 @@ managed_cluster = containerservice.ManagedCluster(
         ),
     ),
     network_profile=containerservice.ContainerServiceNetworkProfileArgs(
+        advanced_networking=containerservice.AdvancedNetworkingArgs(
+            observability=containerservice.AdvancedNetworkingObservabilityArgs(
+                enabled=True,
+            ),
+        ),
         network_dataplane=containerservice.NetworkDataplane.CILIUM,
         network_plugin=containerservice.NetworkPlugin.AZURE,
         network_policy=containerservice.NetworkPolicy.CILIUM,
@@ -142,6 +147,17 @@ pulumi.export(
 k8s_provider = kubernetes.Provider(
     "k8s_provider",
     kubeconfig=kubeconfig,
+)
+
+# Hubble UI
+# Interface for Cilium
+hubble_ui = ConfigFile(
+    "hubble-ui",
+    file="./k8s/hubble/hubble_ui.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster],
+    ),
 )
 
 # Longhorn
@@ -537,7 +553,6 @@ argo_workflows = Chart(
 # See https://argo-workflows.readthedocs.io/en/latest/security/
 # The admin service account gives users in the admin entra group
 # permission to run workflows in the Argo Workflows namespace
-
 argo_workflows_admin_role = Role(
     "argo-workflows-admin-role",
     metadata=ObjectMetaArgs(
@@ -640,7 +655,6 @@ argo_workflows_admin_role_binding = RoleBinding(
 # The admin service account above does not give permission to access the server workspace,
 # so the default service account below allows them to get sufficient access to use the UI
 # without being able to run workflows in the server namespace
-
 argo_workflows_default_sa = ServiceAccount(
     "argo-workflows-default-sa",
     metadata=ObjectMetaArgs(
