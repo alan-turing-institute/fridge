@@ -713,7 +713,9 @@ harbor = Release(
     ),
 )
 
-skip_harbor_tls = Template(open("k8s/harbor/trusthost.yaml", "r").read()).substitute(
+skip_harbor_tls = Template(
+    open("k8s/harbor/skip_harbor_tls_verification.yaml", "r").read()
+).substitute(
     harbor_fqdn=harbor_fqdn,
     harbor_url="https://" + harbor_fqdn,
     harbor_ip=config.require("harbor_ip"),
