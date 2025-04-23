@@ -8,7 +8,10 @@ config:
   fridge:argo_url_prefix: argo
   fridge:base_fqdn: argo-dev.fridge.develop.turingsafehaven.ac.uk
   fridge:cluster_name: argo-dev
-  fridge:resource_group_name: fridge-argo-dev
+  fridge:harbor_admin_password:
+    secure: v1:c/8IKS6cADZjppRg:ElwmNOAGgaxAt8ITMX2LpoaijzjZyOQqjxBl9Us=
+  fridge:harbor_ip: 10.0.50.50
+  fridge:harbor_url_prefix: harbor
   fridge:lets_encrypt_email: safehavendevs@turing.ac.uk
   fridge:minio_root_user:
     secure: v1:y6VaqKNeiwmjOoqI:UxCXIMqGV8mG2JF8VPUJ/VC+Qea3gxig
@@ -16,15 +19,16 @@ config:
     secure: v1:VOg9OAtisUtIcn+t:NEslilS5JLHXbVG+iZ2vJIp8VXaGmVaOe58Z
   fridge:minio_url_prefix: minio
   fridge:minio_pool_size: 20Gi
-  pulumi:autonaming:
-    mode: verbatim
   fridge:oidc_client_id:
     secure: v1:WfbUqLfXQ5W5rUum:lEZHqSAiMVx798GT5rHR1g8XP+pH/+vTlCgWZk0+FSdNOPjAzrQxqfms1ij0xDLHdhM+LQ==
   fridge:oidc_client_secret:
     secure: v1:Frb3ndTNQaYdec5u:WCBGsG6v8pWGKLaruYWwn8o1RDD3VKCf+KmYsFUpPajzDt97ITb6gSZ913AfJuvmwFXOaQ+yFaY=
   fridge:oidc_admin_group_id:
     secure: v1:Vi/Shi/5uRmDjYqm:QSZ3HiTni2wa5N+V2cDou01XpaoZsPqncvQXQ4uY8g+aoGDNxaan4Yv2992fznPhrtQr9Q==
+  fridge:resource_group_name: fridge-argo-dev
   fridge:sso_issuer_url:
     secure: v1:ZUaw6sy5+67uJz2o:i1/Z6lpY1ocCJhZtQ2loi7rE5QnarXrJNIEe7OfOCAleqJF2WupnyraGgUcwPhxdokfjkhmLjjFap9ihF7E5V7LFf2SSFZmJIJ5VIO7m6H+RhU75IUILfAxL8g==
   fridge:tls_environment: staging
+  pulumi:autonaming:
+    mode: verbatim
 encryptionsalt: v1:R7XDd7952d0=:v1:WLhmn43M/u9HtEYx:+UA+nQbxg3Nt6sFvwrHqSYAWAv/1+A==
