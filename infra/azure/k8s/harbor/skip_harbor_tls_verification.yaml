@@ -33,8 +33,6 @@ spec:
       labels:
         app: configure-containerd
     spec:
-      hostPID: true
-      hostNetwork: true
       initContainers:
         - name: setup-containerd
           image: busybox
