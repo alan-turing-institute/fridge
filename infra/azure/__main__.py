@@ -700,7 +700,7 @@ harbor_ns = Namespace(
     ),
 )
 
-harbor_fqdn = config.require("harbor_url_prefix") + "." + config.require("base_fqdn")
+harbor_fqdn = f"{config.require("harbor_url_prefix")}.{config.require("base_fqdn")}"
 
 harbor = Release(
     "harbor",
