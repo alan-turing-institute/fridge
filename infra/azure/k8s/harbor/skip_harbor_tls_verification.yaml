@@ -14,8 +14,8 @@ data:
     } &&
     mkdir -p /root/etc/containerd/certs.d/$harbor_ip &&
     cat <<EOF > /root/etc/containerd/certs.d/$harbor_ip/hosts.toml
-    server = "$harbor_ip_url"
-    [host."$harbor_ip_url"]
+    server = "$harbor_internal_url"
+    [host."$harbor_internal_url"]
       skip_verify = true
     EOF
 ---
