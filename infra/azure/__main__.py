@@ -700,7 +700,7 @@ harbor_ns = Namespace(
     ),
 )
 
-harbor_fqdn = f"{config.require("harbor_url_prefix")}.{config.require("base_fqdn")}"
+harbor_fqdn = f"{config.require('harbor_url_prefix')}.{config.require('base_fqdn')}"
 
 harbor = Release(
     "harbor",
@@ -759,7 +759,6 @@ harbor_ingress = Ingress(
             "nginx.ingress.kubernetes.io/force-ssl-redirect": "true",
             "nginx.ingress.kubernetes.io/proxy-body-size": "0",
             "cert-manager.io/cluster-issuer": tls_issuer_names[tls_environment],
-            "cert-manager.io/ip-sans": config.require("harbor_ip"),
         },
     ),
     spec={
