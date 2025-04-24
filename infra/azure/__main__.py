@@ -741,7 +741,7 @@ skip_harbor_tls = Template(
     harbor_ip_url="http://" + config.require("harbor_ip"),
 )
 
-configure_containerd = ConfigGroup(
+configure_containerd_daemonset = ConfigGroup(
     "configure-containerd-daemon",
     yaml=[skip_harbor_tls],
     opts=ResourceOptions(
