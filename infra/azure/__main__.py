@@ -701,6 +701,7 @@ harbor_ns = Namespace(
 )
 
 harbor_fqdn = f"{config.require('harbor_url_prefix')}.{config.require('base_fqdn')}"
+harbor_external_url = f"https://{harbor_fqdn}"
 
 harbor = Release(
     "harbor",
@@ -718,7 +719,7 @@ harbor = Release(
                     "staticClusterIP": config.require("harbor_ip"),
                 }
             },
-            "externalURL": "https://" + harbor_fqdn,
+            "externalURL": harbor_external_url,
             "harborAdminPassword": config.require_secret("harbor_admin_password"),
         },
     ),
@@ -736,9 +737,9 @@ skip_harbor_tls = Template(
     open("k8s/harbor/skip_harbor_tls_verification.yaml", "r").read()
 ).substitute(
     harbor_fqdn=harbor_fqdn,
-    harbor_url="https://" + harbor_fqdn,
+    harbor_url=harbor_external_url,
     harbor_ip=config.require("harbor_ip"),
-    harbor_ip_url="http://" + config.require("harbor_ip"),
+    harbor_internal_url="http://" + config.require("harbor_ip"),
 )
 
 configure_containerd_daemonset = ConfigGroup(
