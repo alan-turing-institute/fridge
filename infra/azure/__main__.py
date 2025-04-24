@@ -746,7 +746,7 @@ configure_containerd = ConfigGroup(
     yaml=[skip_harbor_tls],
     opts=ResourceOptions(
         provider=k8s_provider,
-        depends_on=[managed_cluster],
+        depends_on=[harbor, managed_cluster],
     ),
 )
 
