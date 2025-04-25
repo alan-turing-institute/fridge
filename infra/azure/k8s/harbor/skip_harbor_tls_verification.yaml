@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: configure-containerd-script
+  namespace: harbor
+data:
+  setup.sh: |
+    mkdir -p /root/etc/containerd/certs.d/$harbor_fqdn && {
+    cat <<EOF > /root/etc/containerd/certs.d/$harbor_fqdn/hosts.toml
+    server = "$harbor_url"
+    [host."$harbor_url"]
+      skip_verify = true
+    EOF
+    } &&
+    mkdir -p /root/etc/containerd/certs.d/$harbor_ip &&
+    cat <<EOF > /root/etc/containerd/certs.d/$harbor_ip/hosts.toml
+    server = "$harbor_internal_url"
+    [host."$harbor_internal_url"]
+      skip_verify = true
+    EOF
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: configure-containerd-daemonset
+  namespace: harbor
+spec:
+  selector:
+    matchLabels:
+      app: configure-containerd
+  template:
+    metadata:
+      labels:
+        app: configure-containerd
+    spec:
+      initContainers:
+        - name: setup-containerd
+          image: busybox
+          command: ["/bin/sh", "-c", "/scripts/setup.sh"]
+          volumeMounts:
+            - name: root-mount
+              mountPath: /root
+            - name: setup-script
+              mountPath: /scripts
+          securityContext:
+            privileged: true
+      volumes:
+        - name: root-mount
+          hostPath:
+            path: /
+        - name: setup-script
+          configMap:
+            name: configure-containerd-script
+            defaultMode: 0744
+      containers:
+        - name: wait
+          image: registry.k8s.io/pause:3.8

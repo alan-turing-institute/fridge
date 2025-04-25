@@ -13,6 +13,7 @@ from pulumi_kubernetes.core.v1 import (
     ServiceAccount,
 )
 
+from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.networking.v1 import Ingress
@@ -684,5 +685,117 @@ argo_workflows_default_sa_token = Secret(
     opts=ResourceOptions(
         provider=k8s_provider,
         depends_on=[argo_workflows_default_sa],
+    ),
+)
+
+# Harbor
+harbor_ns = Namespace(
+    "harbor-ns",
+    metadata=ObjectMetaArgs(
+        name="harbor",
+    ),
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster],
+    ),
+)
+
+harbor_fqdn = f"{config.require('harbor_url_prefix')}.{config.require('base_fqdn')}"
+harbor_external_url = f"https://{harbor_fqdn}"
+
+harbor = Release(
+    "harbor",
+    ReleaseArgs(
+        chart="harbor",
+        namespace="harbor",
+        version="1.16.2",
+        repository_opts=RepositoryOptsArgs(
+            repo="https://helm.goharbor.io",
+        ),
+        value_yaml_files=[FileAsset("./k8s/harbor/values.yaml")],
+        values={
+            "expose": {
+                "clusterIP": {
+                    "staticClusterIP": config.require("harbor_ip"),
+                }
+            },
+            "externalURL": harbor_external_url,
+            "harborAdminPassword": config.require_secret("harbor_admin_password"),
+        },
+    ),
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster],
+    ),
+)
+
+# Create a daemonset to skip TLS verification for the harbor registry
+# This is needed while using staging/self-signed certificates for Harbor
+# A daemonset is used to run the configuration on all nodes in the cluster
+
+skip_harbor_tls = Template(
+    open("k8s/harbor/skip_harbor_tls_verification.yaml", "r").read()
+).substitute(
+    harbor_fqdn=harbor_fqdn,
+    harbor_url=harbor_external_url,
+    harbor_ip=config.require("harbor_ip"),
+    harbor_internal_url="http://" + config.require("harbor_ip"),
+)
+
+configure_containerd_daemonset = ConfigGroup(
+    "configure-containerd-daemon",
+    yaml=[skip_harbor_tls],
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[harbor, managed_cluster],
+    ),
+)
+
+harbor_ingress = Ingress(
+    "harbor-ingress",
+    metadata=ObjectMetaArgs(
+        name="harbor-ingress",
+        namespace=harbor_ns.metadata.name,
+        annotations={
+            "nginx.ingress.kubernetes.io/force-ssl-redirect": "true",
+            "nginx.ingress.kubernetes.io/proxy-body-size": "0",
+            "cert-manager.io/cluster-issuer": tls_issuer_names[tls_environment],
+        },
+    ),
+    spec={
+        "ingress_class_name": "nginx",
+        "tls": [
+            {
+                "hosts": [
+                    harbor_fqdn,
+                ],
+                "secret_name": "harbor-ingress-tls",
+            }
+        ],
+        "rules": [
+            {
+                "host": harbor_fqdn,
+                "http": {
+                    "paths": [
+                        {
+                            "path": "/",
+                            "path_type": "Prefix",
+                            "backend": {
+                                "service": {
+                                    "name": "harbor",
+                                    "port": {
+                                        "number": 80,
+                                    },
+                                }
+                            },
+                        }
+                    ]
+                },
+            }
+        ],
+    },
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[harbor, harbor_ns],
     ),
 )
