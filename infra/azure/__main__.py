@@ -293,7 +293,7 @@ minio_operator = Chart(
     repository_opts=RepositoryOptsArgs(
         repo="https://operator.min.io",
     ),
-    version="7.0.1",
+    version="7.1.1",
     opts=ResourceOptions(
         provider=k8s_provider,
         depends_on=[minio_operator_ns, managed_cluster],
@@ -349,7 +349,7 @@ minio_tenant = Chart(
     namespace=minio_tenant_ns.metadata.name,
     chart="tenant",
     name="argo-artifacts",
-    version="7.0.1",
+    version="7.1.1",
     repository_opts=RepositoryOptsArgs(
         repo="https://operator.min.io",
     ),
