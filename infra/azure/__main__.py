@@ -166,6 +166,7 @@ longhorn_ns = Namespace(
     "longhorn-system",
     metadata=ObjectMetaArgs(
         name="longhorn-system",
+        labels={"pod-security.kubernetes.io/enforce": "privileged"},
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
@@ -211,6 +212,7 @@ ingress_nginx_ns = Namespace(
     "ingress-nginx-ns",
     metadata=ObjectMetaArgs(
         name="ingress-nginx",
+        labels={"pod-security.kubernetes.io/enforce": "restricted"},
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
@@ -232,6 +234,7 @@ cert_manager_ns = Namespace(
     "cert-manager-ns",
     metadata=ObjectMetaArgs(
         name="cert-manager",
+        labels={"pod-security.kubernetes.io/enforce": "restricted"},
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
@@ -275,6 +278,7 @@ minio_operator_ns = Namespace(
     "minio-operator-ns",
     metadata=ObjectMetaArgs(
         name="minio-operator",
+        labels={"pod-security.kubernetes.io/enforce": "restricted"},
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
