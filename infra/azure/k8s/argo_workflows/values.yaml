@@ -1,4 +1,8 @@
 singleNamespace: false
+controller:
+  securityContext:
+    seccompProfile:
+      type: RuntimeDefault
 workflow:
   serviceAccount:
     create: true
@@ -19,6 +23,9 @@ server:
     paths:
       - /
     pathType: ImplementationSpecific
+  securityContext:
+    seccompProfile:
+      type: RuntimeDefault
   sso:
     enabled: true
     clientId:
