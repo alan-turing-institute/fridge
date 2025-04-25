@@ -451,6 +451,7 @@ argo_server_ns = Namespace(
     "argo-server-ns",
     metadata=ObjectMetaArgs(
         name="argo-server",
+        labels={"pod-security.kubernetes.io/enforce": "restricted"},
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
