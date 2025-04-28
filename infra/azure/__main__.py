@@ -161,6 +161,19 @@ hubble_ui = ConfigFile(
     ),
 )
 
+# Patch default namespace with pod security policies
+default_ns = Namespace(
+    "default-ns",
+    metadata=ObjectMetaArgs(
+        name="default",
+        labels={"pod-security.kubernetes.io/enforce": "restricted"},
+    ),
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster],
+    ),
+)
+
 # Longhorn
 longhorn_ns = Namespace(
     "longhorn-system",
@@ -173,6 +186,7 @@ longhorn_ns = Namespace(
         depends_on=[managed_cluster],
     ),
 )
+
 longhorn = Chart(
     "longhorn",
     namespace=longhorn_ns.metadata.name,
