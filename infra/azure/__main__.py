@@ -318,6 +318,7 @@ minio_tenant_ns = Namespace(
     "minio-tenant-ns",
     metadata=ObjectMetaArgs(
         name="argo-artifacts",
+        labels={"pod-security.kubernetes.io/enforce": "restricted"},
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
