@@ -749,28 +749,6 @@ harbor = Release(
     ),
 )
 
-# Create a daemonset to skip TLS verification for the harbor registry
-# This is needed while using staging/self-signed certificates for Harbor
-# A daemonset is used to run the configuration on all nodes in the cluster
-
-skip_harbor_tls = Template(
-    open("k8s/harbor/skip_harbor_tls_verification.yaml", "r").read()
-).substitute(
-    harbor_fqdn=harbor_fqdn,
-    harbor_url=harbor_external_url,
-    harbor_ip=config.require("harbor_ip"),
-    harbor_internal_url="http://" + config.require("harbor_ip"),
-)
-
-configure_containerd_daemonset = ConfigGroup(
-    "configure-containerd-daemon",
-    yaml=[skip_harbor_tls],
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[harbor, managed_cluster],
-    ),
-)
-
 harbor_ingress = Ingress(
     "harbor-ingress",
     metadata=ObjectMetaArgs(
@@ -817,5 +795,40 @@ harbor_ingress = Ingress(
     opts=ResourceOptions(
         provider=k8s_provider,
         depends_on=[harbor, harbor_ns],
+    ),
+)
+
+# Create a daemonset to skip TLS verification for the harbor registry
+# This is needed while using staging/self-signed certificates for Harbor
+# A daemonset is used to run the configuration on all nodes in the cluster
+
+containerd_config_ns = Namespace(
+    "containerd-config-ns",
+    metadata=ObjectMetaArgs(
+        name="containerd-config",
+        labels={"pod-security.kubernetes.io/enforce": "privileged"},
+    ),
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster],
+    ),
+)
+
+skip_harbor_tls = Template(
+    open("k8s/harbor/skip_harbor_tls_verification.yaml", "r").read()
+).substitute(
+    namespace=containerd_config_ns.metadata.name,
+    harbor_fqdn=harbor_fqdn,
+    harbor_url=harbor_external_url,
+    harbor_ip=config.require("harbor_ip"),
+    harbor_internal_url="http://" + config.require("harbor_ip"),
+)
+
+configure_containerd_daemonset = ConfigGroup(
+    "configure-containerd-daemon",
+    yaml=[skip_harbor_tls],
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[harbor, managed_cluster],
     ),
 )

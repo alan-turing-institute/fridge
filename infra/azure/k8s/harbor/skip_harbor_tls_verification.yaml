@@ -2,7 +2,9 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: configure-containerd-script
-  namespace: harbor
+  namespace: $namespace
+  labels:
+    app: configure-containerd
 data:
   setup.sh: |
     mkdir -p /root/etc/containerd/certs.d/$harbor_fqdn && {
