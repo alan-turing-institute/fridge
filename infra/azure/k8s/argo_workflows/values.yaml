@@ -1,6 +1,35 @@
 singleNamespace: false
 controller:
   securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    runAsGroup: 8737
+    runAsNonRoot: true
+    runAsUser: 8737
+    seccompProfile:
+      type: RuntimeDefault
+executor:
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    runAsGroup: 8737
+    runAsNonRoot: true
+    runAsUser: 8737
+    seccompProfile:
+      type: RuntimeDefault
+mainContainer:
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    runAsGroup: 8737
+    runAsNonRoot: true
+    runAsUser: 8737
     seccompProfile:
       type: RuntimeDefault
 workflow:
