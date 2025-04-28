@@ -402,6 +402,16 @@ minio_tenant = Chart(
                     "size": config.require("minio_pool_size"),
                     "volumesPerServer": 1,
                     "storageClassName": longhorn_storage_class.metadata.name,
+                    "containerSecurityContext": {
+                        "runAsUser": 1000,
+                        "runAsGroup": 1000,
+                        "runAsNonRoot": True,
+                        "allowPrivilegeEscalation": False,
+                        "capabilities": {"drop": ["ALL"]},
+                        "seccompProfile": {
+                            "type": "RuntimeDefault",
+                        },
+                    },
                 },
             ],
         },
