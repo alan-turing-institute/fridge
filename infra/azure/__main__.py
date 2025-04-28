@@ -227,6 +227,20 @@ ingress_nginx = ConfigFile(
     ),
 )
 
+# Get public IP address and ports of Nginx Ingress loadbalancer service
+pulumi.export(
+    "ingress_ip",
+    ingress_nginx.resources["v1/Service:ingress-nginx/ingress-nginx-controller"]
+    .status.load_balancer.ingress[0]
+    .ip,
+)
+pulumi.export(
+    "ingress_ports",
+    ingress_nginx.resources[
+        "v1/Service:ingress-nginx/ingress-nginx-controller"
+    ].spec.ports.apply(lambda ports: [item.port for item in ports]),
+)
+
 # CertManager (TLS automation)
 cert_manager_ns = Namespace(
     "cert-manager-ns",
