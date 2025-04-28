@@ -713,6 +713,7 @@ harbor_ns = Namespace(
     "harbor-ns",
     metadata=ObjectMetaArgs(
         name="harbor",
+        labels={"pod-security.kubernetes.io/enforce": "restricted"},
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
