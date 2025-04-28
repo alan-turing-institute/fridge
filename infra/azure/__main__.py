@@ -477,6 +477,7 @@ argo_workflows_ns = Namespace(
     "argo-workflows-ns",
     metadata=ObjectMetaArgs(
         name="argo-workflows",
+        labels={"pod-security.kubernetes.io/enforce": "restricted"},
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
