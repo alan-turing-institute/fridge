@@ -810,14 +810,14 @@ containerd_config_ns = Namespace(
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
-        depends_on=[managed_cluster],
+        depends_on=[harbor, managed_cluster],
     ),
 )
 
 skip_harbor_tls = Template(
     open("k8s/harbor/skip_harbor_tls_verification.yaml", "r").read()
 ).substitute(
-    namespace=containerd_config_ns.metadata.name,
+    namespace="containerd-config",
     harbor_fqdn=harbor_fqdn,
     harbor_url=harbor_external_url,
     harbor_ip=config.require("harbor_ip"),

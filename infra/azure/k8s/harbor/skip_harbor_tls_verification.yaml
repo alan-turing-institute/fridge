@@ -25,7 +25,9 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: configure-containerd-daemonset
-  namespace: harbor
+  namespace: $namespace
+  labels:
+    app: configure-containerd
 spec:
   selector:
     matchLabels:
