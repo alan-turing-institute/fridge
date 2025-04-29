@@ -1,0 +1,29 @@
+metadata:
+  name: example-curl-external
+  namespace: argo-workflows
+spec:
+  serviceAccountName: argo-workflow
+  entrypoint: curl
+  arguments:
+    parameters:
+      - name: url
+        value: https://ipinfo.io
+  templates:
+    - name: curl
+      inputs:
+        parameters:
+          - name: url
+            value: "{{workflow.parameters.url}}"
+      container:
+        name: main
+        image: alpine/curl
+        command:
+          - curl
+        args:
+          - "-s"
+          - "{{inputs.parameters.url}}"
+  ttlStrategy:
+    secondsAfterCompletion: 300
+  podGC:
+    strategy: OnPodCompletion
+    deleteDelayDuration: 300
