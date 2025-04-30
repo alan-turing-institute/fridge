@@ -4,6 +4,7 @@ metadata:
   name: "argo-workflows"
   namespace: "argo-workflows"
 spec:
+  # Apply to all pods in this namespace
   endpointSelector: {}
   egress:
     # Outbound to k8s DNS to look up minio service IP only
@@ -33,3 +34,5 @@ spec:
         - k8sService:
             namespace: argo-artifacts
             serviceName: argo-artifacts-hl
+  # Allow no ingress
+  ingress: []
