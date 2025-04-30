@@ -14,14 +14,14 @@ spec:
         parameters:
           - name: url
             value: "{{workflow.parameters.url}}"
-      container:
+      script:
         name: main
         image: alpine/curl
         command:
-          - curl
-        args:
-          - "-s"
-          - "{{inputs.parameters.url}}"
+          - sh
+        source: |
+          curl {{inputs.parameters.url}}
+          test $? -eq 6
   ttlStrategy:
     secondsAfterCompletion: 300
   podGC:
