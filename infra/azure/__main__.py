@@ -864,3 +864,13 @@ configure_containerd_daemonset = ConfigGroup(
         depends_on=[harbor, managed_cluster],
     ),
 )
+
+# Network policy (through Cilium)
+network_policy_argo_workflows = ConfigFile(
+    "network_policy_argo_workflows",
+    file="./k8s/cilium/argo_workflows.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster, minio_tenant, argo_workflows],
+    ),
+)
