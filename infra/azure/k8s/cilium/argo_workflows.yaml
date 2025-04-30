@@ -6,6 +6,7 @@ metadata:
 spec:
   endpointSelector: {}
   egress:
+    # Outbound to k8s DNS to look up minio service IP only
     - toEndpoints:
         - matchLabels:
             io.kubernetes.pod.namespace: kube-system
@@ -17,10 +18,14 @@ spec:
           rules:
             dns:
               - matchPattern: minio.argo-artifacts.svc.cluster.local
+    # Outbound to argo artifacts pod, via label we have defined
+    # For data I/O with minio
     - toEndpoints:
         - matchLabels:
             io.kubernetes.pod.namespace: argo-artifacts
             v1.min.io/pool: argo-artifacts-pool-0
+    # Outbound to minio services
+    # For data I/O with minio
     - toServices:
         - k8sService:
             namespace: argo-artifacts
