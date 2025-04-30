@@ -1,5 +1,5 @@
 import base64
-from enum import Enum, verify, UNIQUE
+from enum import Enum, unique
 from string import Template
 
 import pulumi
@@ -28,10 +28,16 @@ from pulumi_kubernetes.rbac.v1 import (
 )
 
 
-@verify(UNIQUE)
+@unique
 class TlsEnvironment(Enum):
     STAGING = "staging"
     PRODUCTION = "production"
+
+
+@unique
+class PodSecurityStandard(Enum):
+    RESTRICTED = {"pod-security.kubernetes.io/enforce": "restricted"}
+    PRIVILEGED = {"pod-security.kubernetes.io/enforce": "privileged"}
 
 
 def get_kubeconfig(
@@ -161,17 +167,32 @@ hubble_ui = ConfigFile(
     ),
 )
 
-# Longhorn
-longhorn_ns = Namespace(
-    "longhorn-system",
+# Patch default namespace with pod security policies
+default_ns = Namespace(
+    "default-ns",
     metadata=ObjectMetaArgs(
-        name="longhorn-system",
+        name="default",
+        labels={} | PodSecurityStandard.RESTRICTED.value,
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
         depends_on=[managed_cluster],
     ),
 )
+
+# Longhorn
+longhorn_ns = Namespace(
+    "longhorn-system",
+    metadata=ObjectMetaArgs(
+        name="longhorn-system",
+        labels={} | PodSecurityStandard.PRIVILEGED.value,
+    ),
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster],
+    ),
+)
+
 longhorn = Chart(
     "longhorn",
     namespace=longhorn_ns.metadata.name,
@@ -211,6 +232,7 @@ ingress_nginx_ns = Namespace(
     "ingress-nginx-ns",
     metadata=ObjectMetaArgs(
         name="ingress-nginx",
+        labels={} | PodSecurityStandard.RESTRICTED.value,
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
@@ -246,6 +268,7 @@ cert_manager_ns = Namespace(
     "cert-manager-ns",
     metadata=ObjectMetaArgs(
         name="cert-manager",
+        labels={} | PodSecurityStandard.RESTRICTED.value,
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
@@ -289,6 +312,7 @@ minio_operator_ns = Namespace(
     "minio-operator-ns",
     metadata=ObjectMetaArgs(
         name="minio-operator",
+        labels={} | PodSecurityStandard.RESTRICTED.value,
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
@@ -303,7 +327,7 @@ minio_operator = Chart(
     repository_opts=RepositoryOptsArgs(
         repo="https://operator.min.io",
     ),
-    version="7.0.1",
+    version="7.1.1",
     opts=ResourceOptions(
         provider=k8s_provider,
         depends_on=[minio_operator_ns, managed_cluster],
@@ -314,6 +338,7 @@ minio_tenant_ns = Namespace(
     "minio-tenant-ns",
     metadata=ObjectMetaArgs(
         name="argo-artifacts",
+        labels={} | PodSecurityStandard.RESTRICTED.value,
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
@@ -359,7 +384,7 @@ minio_tenant = Chart(
     namespace=minio_tenant_ns.metadata.name,
     chart="tenant",
     name="argo-artifacts",
-    version="7.0.1",
+    version="7.1.1",
     repository_opts=RepositoryOptsArgs(
         repo="https://operator.min.io",
     ),
@@ -397,6 +422,16 @@ minio_tenant = Chart(
                     "size": config.require("minio_pool_size"),
                     "volumesPerServer": 1,
                     "storageClassName": longhorn_storage_class.metadata.name,
+                    "containerSecurityContext": {
+                        "runAsUser": 1000,
+                        "runAsGroup": 1000,
+                        "runAsNonRoot": True,
+                        "allowPrivilegeEscalation": False,
+                        "capabilities": {"drop": ["ALL"]},
+                        "seccompProfile": {
+                            "type": "RuntimeDefault",
+                        },
+                    },
                 },
             ],
         },
@@ -461,6 +496,7 @@ argo_server_ns = Namespace(
     "argo-server-ns",
     metadata=ObjectMetaArgs(
         name="argo-server",
+        labels={} | PodSecurityStandard.RESTRICTED.value,
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
@@ -472,6 +508,7 @@ argo_workflows_ns = Namespace(
     "argo-workflows-ns",
     metadata=ObjectMetaArgs(
         name="argo-workflows",
+        labels={} | PodSecurityStandard.RESTRICTED.value,
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
@@ -707,6 +744,7 @@ harbor_ns = Namespace(
     "harbor-ns",
     metadata=ObjectMetaArgs(
         name="harbor",
+        labels={} | PodSecurityStandard.RESTRICTED.value,
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
@@ -740,28 +778,6 @@ harbor = Release(
     opts=ResourceOptions(
         provider=k8s_provider,
         depends_on=[managed_cluster],
-    ),
-)
-
-# Create a daemonset to skip TLS verification for the harbor registry
-# This is needed while using staging/self-signed certificates for Harbor
-# A daemonset is used to run the configuration on all nodes in the cluster
-
-skip_harbor_tls = Template(
-    open("k8s/harbor/skip_harbor_tls_verification.yaml", "r").read()
-).substitute(
-    harbor_fqdn=harbor_fqdn,
-    harbor_url=harbor_external_url,
-    harbor_ip=config.require("harbor_ip"),
-    harbor_internal_url="http://" + config.require("harbor_ip"),
-)
-
-configure_containerd_daemonset = ConfigGroup(
-    "configure-containerd-daemon",
-    yaml=[skip_harbor_tls],
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[harbor, managed_cluster],
     ),
 )
 
@@ -811,5 +827,40 @@ harbor_ingress = Ingress(
     opts=ResourceOptions(
         provider=k8s_provider,
         depends_on=[harbor, harbor_ns],
+    ),
+)
+
+# Create a daemonset to skip TLS verification for the harbor registry
+# This is needed while using staging/self-signed certificates for Harbor
+# A daemonset is used to run the configuration on all nodes in the cluster
+
+containerd_config_ns = Namespace(
+    "containerd-config-ns",
+    metadata=ObjectMetaArgs(
+        name="containerd-config",
+        labels={} | PodSecurityStandard.PRIVILEGED.value,
+    ),
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[harbor, managed_cluster],
+    ),
+)
+
+skip_harbor_tls = Template(
+    open("k8s/harbor/skip_harbor_tls_verification.yaml", "r").read()
+).substitute(
+    namespace="containerd-config",
+    harbor_fqdn=harbor_fqdn,
+    harbor_url=harbor_external_url,
+    harbor_ip=config.require("harbor_ip"),
+    harbor_internal_url="http://" + config.require("harbor_ip"),
+)
+
+configure_containerd_daemonset = ConfigGroup(
+    "configure-containerd-daemon",
+    yaml=[skip_harbor_tls],
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[harbor, managed_cluster],
     ),
 )
