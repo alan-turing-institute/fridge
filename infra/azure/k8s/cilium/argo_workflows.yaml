@@ -16,8 +16,15 @@ spec:
               protocol: ANY
           rules:
             dns:
-              - matchPattern: "minio.argo-artifacts.svc.cluster.local"
+              - matchPattern: minio.argo-artifacts.svc.cluster.local
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: argo-artifacts
+            v1.min.io/pool: argo-artifacts-pool-0
     - toServices:
         - k8sService:
-            serviceName: minio
             namespace: argo-artifacts
+            serviceName: minio
+        - k8sService:
+            namespace: argo-artifacts
+            serviceName: argo-artifacts-hl
