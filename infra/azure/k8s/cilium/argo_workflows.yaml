@@ -34,5 +34,9 @@ spec:
         - k8sService:
             namespace: argo-artifacts
             serviceName: argo-artifacts-hl
+    # Outbound to k8s API
+    # For informing that a job has completed
+    - toEntities:
+        - kube-apiserver
   # Allow no ingress
   ingress: []
