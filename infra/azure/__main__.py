@@ -1,5 +1,5 @@
 import base64
-from enum import Enum, verify, UNIQUE
+from enum import Enum, unique
 from string import Template
 
 import pulumi
@@ -28,10 +28,16 @@ from pulumi_kubernetes.rbac.v1 import (
 )
 
 
-@verify(UNIQUE)
+@unique
 class TlsEnvironment(Enum):
     STAGING = "staging"
     PRODUCTION = "production"
+
+
+@unique
+class PodSecurityStandard(Enum):
+    RESTRICTED = {"pod-security.kubernetes.io/enforce": "restricted"}
+    PRIVILEGED = {"pod-security.kubernetes.io/enforce": "privileged"}
 
 
 def get_kubeconfig(
@@ -166,7 +172,7 @@ default_ns = Namespace(
     "default-ns",
     metadata=ObjectMetaArgs(
         name="default",
-        labels={"pod-security.kubernetes.io/enforce": "restricted"},
+        labels={} | PodSecurityStandard.RESTRICTED.value,
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
@@ -179,7 +185,7 @@ longhorn_ns = Namespace(
     "longhorn-system",
     metadata=ObjectMetaArgs(
         name="longhorn-system",
-        labels={"pod-security.kubernetes.io/enforce": "privileged"},
+        labels={} | PodSecurityStandard.PRIVILEGED.value,
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
@@ -226,7 +232,7 @@ ingress_nginx_ns = Namespace(
     "ingress-nginx-ns",
     metadata=ObjectMetaArgs(
         name="ingress-nginx",
-        labels={"pod-security.kubernetes.io/enforce": "restricted"},
+        labels={} | PodSecurityStandard.RESTRICTED.value,
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
@@ -262,7 +268,7 @@ cert_manager_ns = Namespace(
     "cert-manager-ns",
     metadata=ObjectMetaArgs(
         name="cert-manager",
-        labels={"pod-security.kubernetes.io/enforce": "restricted"},
+        labels={} | PodSecurityStandard.RESTRICTED.value,
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
@@ -306,7 +312,7 @@ minio_operator_ns = Namespace(
     "minio-operator-ns",
     metadata=ObjectMetaArgs(
         name="minio-operator",
-        labels={"pod-security.kubernetes.io/enforce": "restricted"},
+        labels={} | PodSecurityStandard.RESTRICTED.value,
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
@@ -332,7 +338,7 @@ minio_tenant_ns = Namespace(
     "minio-tenant-ns",
     metadata=ObjectMetaArgs(
         name="argo-artifacts",
-        labels={"pod-security.kubernetes.io/enforce": "restricted"},
+        labels={} | PodSecurityStandard.RESTRICTED.value,
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
@@ -490,7 +496,7 @@ argo_server_ns = Namespace(
     "argo-server-ns",
     metadata=ObjectMetaArgs(
         name="argo-server",
-        labels={"pod-security.kubernetes.io/enforce": "restricted"},
+        labels={} | PodSecurityStandard.RESTRICTED.value,
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
@@ -502,7 +508,7 @@ argo_workflows_ns = Namespace(
     "argo-workflows-ns",
     metadata=ObjectMetaArgs(
         name="argo-workflows",
-        labels={"pod-security.kubernetes.io/enforce": "restricted"},
+        labels={} | PodSecurityStandard.RESTRICTED.value,
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
@@ -738,7 +744,7 @@ harbor_ns = Namespace(
     "harbor-ns",
     metadata=ObjectMetaArgs(
         name="harbor",
-        labels={"pod-security.kubernetes.io/enforce": "restricted"},
+        labels={} | PodSecurityStandard.RESTRICTED.value,
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
@@ -832,7 +838,7 @@ containerd_config_ns = Namespace(
     "containerd-config-ns",
     metadata=ObjectMetaArgs(
         name="containerd-config",
-        labels={"pod-security.kubernetes.io/enforce": "privileged"},
+        labels={} | PodSecurityStandard.PRIVILEGED.value,
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
