@@ -13,7 +13,7 @@ from pulumi_kubernetes.batch.v1 import (
 )
 from pulumi_kubernetes.core.v1 import (
     ContainerArgs,
-    EnvFromSourceArgs,
+    EnvVarArgs,
     Namespace,
     PodSpecArgs,
     PodTemplateSpecArgs,
@@ -501,6 +501,7 @@ minio_ingress = Ingress(
     ),
 )
 
+# Minio config job
 minio_config_job = Job(
     "minio-config-job",
     metadata=ObjectMetaArgs(
@@ -508,7 +509,7 @@ minio_config_job = Job(
         namespace=minio_tenant_ns.metadata.name,
     ),
     spec=JobSpecArgs(
-        backoff_limit=2,
+        backoff_limit=1,
         template=PodTemplateSpecArgs(
             spec=PodSpecArgs(
                 containers=[
@@ -519,19 +520,13 @@ minio_config_job = Job(
                             "/bin/sh",
                             "-c",
                             Output.format(
-                                "mc config host set minio {0} {1} {2}",
-                                minio_url,
+                                "mc alias --insecure set argoartifacts {0} {1} {2}",
+                                "http://minio.argo-artifacts.svc.cluster.local:80",
                                 config.require_secret("minio_root_user"),
                                 config.require_secret("minio_root_password"),
                             ),
                         ],
-                        env_from=[
-                            EnvFromSourceArgs(
-                                secret_ref=SecretEnvSourceArgs(
-                                    name=minio_env_secret.metadata.name,
-                                )
-                            )
-                        ],
+                        env=[EnvVarArgs(name="MC_CONFIG_DIR", value="/tmp/.mc")],
                         security_context=SecurityContextArgs(
                             allow_privilege_escalation=False,
                             capabilities={"drop": ["ALL"]},
