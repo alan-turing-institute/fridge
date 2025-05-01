@@ -7,9 +7,19 @@ from pulumi import FileAsset, Output, ResourceOptions
 from pulumi_azure_native import containerservice, managedidentity, resources
 import pulumi_tls as tls
 import pulumi_kubernetes as kubernetes
+from pulumi_kubernetes.batch.v1 import (
+    Job,
+    JobSpecArgs,
+)
 from pulumi_kubernetes.core.v1 import (
+    ContainerArgs,
+    EnvFromSourceArgs,
     Namespace,
+    PodSpecArgs,
+    PodTemplateSpecArgs,
     Secret,
+    SecretEnvSourceArgs,
+    SecurityContextArgs,
     ServiceAccount,
 )
 
@@ -488,6 +498,57 @@ minio_ingress = Ingress(
     opts=ResourceOptions(
         provider=k8s_provider,
         depends_on=[minio_tenant],
+    ),
+)
+
+minio_config_job = Job(
+    "minio-config-job",
+    metadata=ObjectMetaArgs(
+        name="minio-config-job",
+        namespace=minio_tenant_ns.metadata.name,
+    ),
+    spec=JobSpecArgs(
+        backoff_limit=2,
+        template=PodTemplateSpecArgs(
+            spec=PodSpecArgs(
+                containers=[
+                    ContainerArgs(
+                        name="minio-config-job",
+                        image="minio/mc:latest",
+                        command=[
+                            "/bin/sh",
+                            "-c",
+                            Output.format(
+                                "mc config host set minio {0} {1} {2}",
+                                minio_url,
+                                config.require_secret("minio_root_user"),
+                                config.require_secret("minio_root_password"),
+                            ),
+                        ],
+                        env_from=[
+                            EnvFromSourceArgs(
+                                secret_ref=SecretEnvSourceArgs(
+                                    name=minio_env_secret.metadata.name,
+                                )
+                            )
+                        ],
+                        security_context=SecurityContextArgs(
+                            allow_privilege_escalation=False,
+                            capabilities={"drop": ["ALL"]},
+                            run_as_group=1000,
+                            run_as_non_root=True,
+                            run_as_user=1000,
+                            seccomp_profile={"type": "RuntimeDefault"},
+                        ),
+                    )
+                ],
+                restart_policy="Never",
+            ),
+        ),
+    ),
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[minio_tenant, minio_env_secret],
     ),
 )
 
