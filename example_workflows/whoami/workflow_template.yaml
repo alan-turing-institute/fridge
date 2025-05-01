@@ -27,4 +27,4 @@ spec:
     secondsAfterCompletion: 300
   podGC:
     strategy: OnPodCompletion
-    deleteDelayDuration: 300
+    deleteDelayDuration: 300s
