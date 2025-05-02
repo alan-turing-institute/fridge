@@ -1,0 +1,55 @@
+# https://cert-manager.io/docs/installation/best-practice/#network-requirements
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: "cert-manager-kube-dns"
+  namespace: "cert-manager"
+spec:
+  # Apply to all pods in this namespace
+  endpointSelector: {}
+  egress:
+    # Outbound to k8s DNS to look up IPs
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: "cert-manager-webhook"
+  namespace: "cert-manager"
+  # Apply to webhook pods only
+  endpointSelector:
+    matchLabels:
+      app: webhook
+  egress: []
+  ingress:
+    # Allow inbound from kube API
+    - fromEntities:
+        - kube-apiserver
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: "cert-manager-kube-api"
+  namespace: "cert-manager"
+spec:
+  endpointSelector:
+    matchExpressions:
+      - key: app
+        operator: in
+        values:
+          - webhook
+          - cainjector
+          - cert-manager
+          - startupapicheck #  may not be this name
+  egress:
+    # Allow outbound to kube API
+    - fromEntities:
+        - kube-apiserver
+  ingress: []
