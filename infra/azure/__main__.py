@@ -12,15 +12,17 @@ from pulumi_kubernetes.batch.v1 import (
     JobSpecArgs,
 )
 from pulumi_kubernetes.core.v1 import (
+    ConfigMapVolumeSourceArgs,
     ContainerArgs,
     EnvVarArgs,
     Namespace,
     PodSpecArgs,
     PodTemplateSpecArgs,
     Secret,
-    SecretEnvSourceArgs,
     SecurityContextArgs,
     ServiceAccount,
+    VolumeArgs,
+    VolumeMountArgs,
 )
 
 from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs
@@ -501,7 +503,24 @@ minio_ingress = Ingress(
     ),
 )
 
-# Minio config job
+# Minio configuration
+minio_config_map = Template(
+    open("k8s/minio/minio-configuration-cm.yaml", "r").read()
+).substitute(
+    namespace="argo-artifacts",
+    minio_alias="argoartifacts",
+    minio_url="http://minio.argo-artifacts.svc.cluster.local:80",
+)
+
+minio_config_cm = ConfigGroup(
+    "minio-configuration-cm",
+    yaml=[minio_config_map],
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[minio_tenant],
+    ),
+)
+
 minio_config_job = Job(
     "minio-config-job",
     metadata=ObjectMetaArgs(
@@ -519,14 +538,39 @@ minio_config_job = Job(
                         command=[
                             "/bin/sh",
                             "-c",
-                            Output.format(
-                                "mc alias --insecure set argoartifacts {0} {1} {2}",
-                                "http://minio.argo-artifacts.svc.cluster.local:80",
-                                config.require_secret("minio_root_user"),
-                                config.require_secret("minio_root_password"),
+                        ],
+                        args=[
+                            "mc --insecure alias set argoartifacts http://minio.argo-artifacts.svc.cluster.local:80 $(MINIO_ROOT_USER) $(MINIO_ROOT_PASSWORD) &&"
+                            "mc --insecure mb argoartifacts/ingress;"
+                            "mc --insecure mb argoartifacts/sensitive-ingress;"
+                            "mc --insecure mb argoartifacts/intermediate-storage;"
+                            "mc --insecure mb argoartifacts/ready-for-review;"
+                            "mc --insecure mb argoartifacts/ready-for-egress;"
+                            "mc --insecure admin user add argoartifacts ingress-reader;"
+                            "mc --insecure admin policy attach argoartifacts ingress-read-only ingress-reader;"
+                            "/tmp/scripts/setup.sh +x;",
+                        ],
+                        resources={
+                            "requests": {
+                                "cpu": "100m",
+                                "memory": "128Mi",
+                            },
+                            "limits": {
+                                "cpu": "100m",
+                                "memory": "128Mi",
+                            },
+                        },
+                        env=[
+                            EnvVarArgs(name="MC_CONFIG_DIR", value="/tmp/.mc"),
+                            EnvVarArgs(
+                                name="MINIO_ROOT_USER",
+                                value=config.require_secret("minio_root_user"),
+                            ),
+                            EnvVarArgs(
+                                name="MINIO_ROOT_PASSWORD",
+                                value=config.require_secret("minio_root_password"),
                             ),
                         ],
-                        env=[EnvVarArgs(name="MC_CONFIG_DIR", value="/tmp/.mc")],
                         security_context=SecurityContextArgs(
                             allow_privilege_escalation=False,
                             capabilities={"drop": ["ALL"]},
@@ -534,6 +578,21 @@ minio_config_job = Job(
                             run_as_non_root=True,
                             run_as_user=1000,
                             seccomp_profile={"type": "RuntimeDefault"},
+                        ),
+                        volume_mounts=[
+                            VolumeMountArgs(
+                                name="minio-config-volume",
+                                mount_path="/tmp/scripts/",
+                            )
+                        ],
+                    )
+                ],
+                volumes=[
+                    VolumeArgs(
+                        name="minio-config-volume",
+                        config_map=ConfigMapVolumeSourceArgs(
+                            name="minio-configuration",
+                            default_mode=0o777,
                         ),
                     )
                 ],
