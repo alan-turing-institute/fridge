@@ -50,6 +50,6 @@ spec:
           - startupapicheck #  may not be this name
   egress:
     # Allow outbound to kube API
-    - fromEntities:
+    - toEntities:
         - kube-apiserver
   ingress: []
