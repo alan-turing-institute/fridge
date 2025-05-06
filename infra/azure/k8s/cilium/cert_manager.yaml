@@ -17,12 +17,14 @@ spec:
         - ports:
             - port: "53"
               protocol: ANY
+  ingress: []
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
 metadata:
   name: "cert-manager-webhook"
   namespace: "cert-manager"
+spec:
   # Apply to webhook pods only
   endpointSelector:
     matchLabels:
@@ -39,10 +41,11 @@ metadata:
   name: "cert-manager-kube-api"
   namespace: "cert-manager"
 spec:
+  # Apply to webhook, cainjector, controller and start up api check
   endpointSelector:
     matchExpressions:
       - key: app
-        operator: in
+        operator: In
         values:
           - webhook
           - cainjector
@@ -60,19 +63,20 @@ metadata:
   name: "cert-manager-external-dns"
   namespace: "cert-manager"
 spec:
+  # Apply to controller
   endpointSelector:
     matchLabels:
       app: cert-manager
   egress:
-    # Allow outbound to external DNS
-    - toEndpoints:
-        toCIDR:
-          - 8.8.8.8/32
-          - 1.1.1.1/32
-        toPorts:
-          - ports:
-              - port: "53"
-                protocol: ANY
+    # Allow outbound to external DNS on port 53
+    - toCIDR:
+        - 8.8.8.8/32
+        - 1.1.1.1/32
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+  ingress: []
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
@@ -80,15 +84,15 @@ metadata:
   name: "cert-manager-acmesolver"
   namespace: "cert-manager"
 spec:
+  # Apply to ephemeral ACME solver
   endpointSelector:
     matchLabels:
       app: acme-solver
-  # Allow ingress from the internet to acmesolver ephemeral pods
+  # Allow ingress from the internet for HTTP challenge
   ingress:
     - fromEntities:
         - world
       toPorts:
         - ports:
             - port: "80"
-  egress:
-    - {}
+  egress: []
