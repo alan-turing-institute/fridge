@@ -405,6 +405,11 @@ minio_tenant = Chart(
             "name": "argo-artifacts",
             "buckets": [
                 {"name": "argo-artifacts"},
+                {"name": "ingress"},
+                {"name": "sensitive-ingress"},
+                {"name": "intermediate-storage"},
+                {"name": "ready-for-review"},
+                {"name": "ready-for-egress"},
             ],
             "certificate": {
                 "requestAutoCert": "false",
@@ -541,11 +546,6 @@ minio_config_job = Job(
                         ],
                         args=[
                             "mc --insecure alias set argoartifacts http://minio.argo-artifacts.svc.cluster.local:80 $(MINIO_ROOT_USER) $(MINIO_ROOT_PASSWORD) &&"
-                            "mc --insecure mb argoartifacts/ingress;"
-                            "mc --insecure mb argoartifacts/sensitive-ingress;"
-                            "mc --insecure mb argoartifacts/intermediate-storage;"
-                            "mc --insecure mb argoartifacts/ready-for-review;"
-                            "mc --insecure mb argoartifacts/ready-for-egress;"
                             "mc --insecure admin user add argoartifacts ingress-reader;"
                             "mc --insecure admin policy attach argoartifacts ingress-read-only ingress-reader;"
                             "/tmp/scripts/setup.sh +x;",
