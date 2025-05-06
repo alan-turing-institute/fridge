@@ -73,3 +73,22 @@ spec:
           - ports:
               - port: "53"
                 protocol: ANY
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: "cert-manager-acmesolver"
+  namespace: "cert-manager"
+spec:
+  endpointSelector:
+    matchLabels:
+      app: acme-solver
+  # Allow ingress from the internet to acmesolver ephemeral pods
+  ingress:
+    - fromEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "80"
+  egress:
+    - {}
