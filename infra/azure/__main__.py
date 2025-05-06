@@ -284,7 +284,10 @@ cert_manager = Chart(
     repository_opts=RepositoryOptsArgs(
         repo="https://charts.jetstack.io",
     ),
-    values={"crds": {"enabled": True}},
+    values={
+        "crds": {"enabled": True},
+        "extraArgs": ["--acme-http01-solver-nameservers=8.8.8.8:53,1.1.1.1:53"],
+    },
     opts=ResourceOptions(
         provider=k8s_provider,
         depends_on=[cert_manager_ns, managed_cluster],
