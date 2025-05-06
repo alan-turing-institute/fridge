@@ -7,7 +7,7 @@ metadata:
     app: minio
 data:
   setup.sh: |
-    echo "Creating policies now"
+    echo "Creating default S3 policies"
     for policy in /tmp/scripts/*.json; do
       echo "Creating policy $$policy"
       mc --insecure admin policy create argoartifacts $$(basename $$policy) $$policy
