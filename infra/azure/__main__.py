@@ -877,3 +877,12 @@ network_policy_argo_workflows = ConfigFile(
         depends_on=[managed_cluster, minio_tenant, argo_workflows],
     ),
 )
+
+network_policy_cert_manager = ConfigFile(
+    "network_policy_cert_manager",
+    file="./k8s/cilium/cert_manager.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster, cert_manager],
+    ),
+)
