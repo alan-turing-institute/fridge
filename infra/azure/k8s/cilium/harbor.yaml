@@ -19,3 +19,19 @@ spec:
             - port: "80"
         - ports:
             - port: "433"
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+spec:
+  endpointSelector: {}
+  name: "harbor-internal"
+  namespace: "harbor"
+  ingress:
+    # Allow ingress from all other pods in this namespace
+    - toEndpoints:
+        - {}
+  egress:
+    # Allow egress to all other pods in this namespace
+    - toEndpoints:
+        - {}
