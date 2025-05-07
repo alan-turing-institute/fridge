@@ -394,6 +394,94 @@ minio_env_secret = Secret(
     ),
 )
 
+minio_ingress_reader_secret = Secret(
+    "minio-ingress-reader-secret",
+    metadata=ObjectMetaArgs(
+        name="ingress-reader-secret",
+        namespace=minio_tenant_ns.metadata.name,
+    ),
+    type="Opaque",
+    string_data={
+        "CONSOLE_ACCESS_KEY": "ingress-reader",
+        "CONSOLE_SECRET_KEY": random.RandomPassword(
+            "minio-ingress-reader-password",
+            length=16,
+            special=True,
+            upper=True,
+        ).result,
+    },
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[minio_tenant_ns],
+    ),
+)
+
+minio_sensitive_ingress_reader_secret = Secret(
+    "minio-sensitive_ingress-reader-secret",
+    metadata=ObjectMetaArgs(
+        name="sensitive-ingress-reader-secret",
+        namespace=minio_tenant_ns.metadata.name,
+    ),
+    type="Opaque",
+    string_data={
+        "CONSOLE_ACCESS_KEY": "sensitive-ingress-reader",
+        "CONSOLE_SECRET_KEY": random.RandomPassword(
+            "sensitive-ingress-reader-password",
+            length=16,
+            special=True,
+            upper=True,
+        ).result,
+    },
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[minio_tenant_ns],
+    ),
+)
+
+minio_export_for_review_secret = Secret(
+    "minio-export-for-review-secret",
+    metadata=ObjectMetaArgs(
+        name="export-for-review-secret",
+        namespace=minio_tenant_ns.metadata.name,
+    ),
+    type="Opaque",
+    string_data={
+        "CONSOLE_ACCESS_KEY": "export-for-review",
+        "CONSOLE_SECRET_KEY": random.RandomPassword(
+            "export-writer-password",
+            length=16,
+            special=True,
+            upper=True,
+        ).result,
+    },
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[minio_tenant_ns],
+    ),
+)
+
+minio_review_reader_secret = Secret(
+    "minio-review-reader-secrets",
+    metadata=ObjectMetaArgs(
+        name="review-reader-secret",
+        namespace=minio_tenant_ns.metadata.name,
+    ),
+    type="Opaque",
+    string_data={
+        "CONSOLE_ACCESS_KEY": "review-reader",
+        "CONSOLE_SECRET_KEY": random.RandomPassword(
+            "review-reader-password",
+            length=16,
+            special=True,
+            upper=True,
+        ).result,
+    },
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[minio_tenant_ns],
+    ),
+)
+
 minio_tenant = Chart(
     "minio-tenant",
     namespace=minio_tenant_ns.metadata.name,
@@ -454,12 +542,26 @@ minio_tenant = Chart(
                     },
                 },
             ],
-            "users": [{"name": "ingress-reader-secret"}],
+            "users": [
+                {"name": "ingress-reader-secret"},
+                {"name": "sensitive-ingress-reader-secret"},
+                {"name": "export-for-review-secret"},
+                {"name": "review-reader-secret"},
+            ],
         },
     },
     opts=ResourceOptions(
         provider=k8s_provider,
-        depends_on=[minio_env_secret, minio_operator, minio_tenant_ns, managed_cluster],
+        depends_on=[
+            minio_env_secret,
+            minio_operator,
+            minio_tenant_ns,
+            managed_cluster,
+            minio_ingress_reader_secret,
+            minio_sensitive_ingress_reader_secret,
+            minio_export_for_review_secret,
+            minio_review_reader_secret,
+        ],
     ),
 )
 
@@ -605,94 +707,6 @@ minio_config_job = Job(
     opts=ResourceOptions(
         provider=k8s_provider,
         depends_on=[minio_tenant, minio_env_secret],
-    ),
-)
-
-minio_ingress_reader_secret = Secret(
-    "minio-ingress-reader-secret",
-    metadata=ObjectMetaArgs(
-        name="ingress-reader-secret",
-        namespace=minio_tenant_ns.metadata.name,
-    ),
-    type="Opaque",
-    string_data={
-        "CONSOLE_ACCESS_KEY": "ingress-reader",
-        "CONSOLE_SECRET_KEY": random.RandomPassword(
-            "minio-ingress-reader-password",
-            length=16,
-            special=True,
-            upper=True,
-        ).result,
-    },
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[minio_tenant_ns],
-    ),
-)
-
-minio_sensitive_ingress_reader_secret = Secret(
-    "minio-sensitive_ingress-reader-secret",
-    metadata=ObjectMetaArgs(
-        name="sensitive-ingress-reader-secret",
-        namespace=minio_tenant_ns.metadata.name,
-    ),
-    type="Opaque",
-    string_data={
-        "CONSOLE_ACCESS_KEY": "sensitive-ingress-reader",
-        "CONSOLE_SECRET_KEY": random.RandomPassword(
-            "sensitive-ingress-reader-password",
-            length=16,
-            special=True,
-            upper=True,
-        ).result,
-    },
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[minio_tenant_ns],
-    ),
-)
-
-minio_export_for_review_secret = Secret(
-    "minio-export-for-review-secret",
-    metadata=ObjectMetaArgs(
-        name="export-for-review-secret",
-        namespace=minio_tenant_ns.metadata.name,
-    ),
-    type="Opaque",
-    string_data={
-        "CONSOLE_ACCESS_KEY": "export-for-review",
-        "CONSOLE_SECRET_KEY": random.RandomPassword(
-            "export-writer-password",
-            length=16,
-            special=True,
-            upper=True,
-        ).result,
-    },
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[minio_tenant_ns],
-    ),
-)
-
-minio_review_reader_secret = Secret(
-    "minio-review-reader-secrets",
-    metadata=ObjectMetaArgs(
-        name="review-reader-secret",
-        namespace=minio_tenant_ns.metadata.name,
-    ),
-    type="Opaque",
-    string_data={
-        "CONSOLE_ACCESS_KEY": "review-reader",
-        "CONSOLE_SECRET_KEY": random.RandomPassword(
-            "review-reader-password",
-            length=16,
-            special=True,
-            upper=True,
-        ).result,
-    },
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[minio_tenant_ns],
     ),
 )
 
