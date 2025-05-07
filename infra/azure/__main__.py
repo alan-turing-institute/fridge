@@ -7,6 +7,7 @@ from pulumi import FileAsset, Output, ResourceOptions
 from pulumi_azure_native import containerservice, managedidentity, resources
 import pulumi_tls as tls
 import pulumi_kubernetes as kubernetes
+import pulumi_random as random
 from pulumi_kubernetes.batch.v1 import (
     Job,
     JobSpecArgs,
@@ -38,6 +39,8 @@ from pulumi_kubernetes.rbac.v1 import (
     RoleRefArgs,
     SubjectArgs,
 )
+
+from pulumi_random import RandomPassword
 
 
 @unique
@@ -451,6 +454,7 @@ minio_tenant = Chart(
                     },
                 },
             ],
+            "users": [{"name": "ingress-reader-secret"}],
         },
     },
     opts=ResourceOptions(
@@ -546,8 +550,6 @@ minio_config_job = Job(
                         ],
                         args=[
                             "mc --insecure alias set argoartifacts http://minio.argo-artifacts.svc.cluster.local:80 $(MINIO_ROOT_USER) $(MINIO_ROOT_PASSWORD) &&"
-                            "mc --insecure admin user add argoartifacts ingress-reader;"
-                            "mc --insecure admin policy attach argoartifacts ingress-read-only ingress-reader;"
                             "/tmp/scripts/setup.sh +x;",
                         ],
                         resources={
@@ -603,6 +605,94 @@ minio_config_job = Job(
     opts=ResourceOptions(
         provider=k8s_provider,
         depends_on=[minio_tenant, minio_env_secret],
+    ),
+)
+
+minio_ingress_reader_secret = Secret(
+    "minio-ingress-reader-secret",
+    metadata=ObjectMetaArgs(
+        name="ingress-reader-secret",
+        namespace=minio_tenant_ns.metadata.name,
+    ),
+    type="Opaque",
+    string_data={
+        "CONSOLE_ACCESS_KEY": "ingress-reader",
+        "CONSOLE_SECRET_KEY": random.RandomPassword(
+            "minio-ingress-reader-password",
+            length=16,
+            special=True,
+            upper=True,
+        ).result,
+    },
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[minio_tenant_ns],
+    ),
+)
+
+minio_sensitive_ingress_reader_secret = Secret(
+    "minio-sensitive_ingress-reader-secret",
+    metadata=ObjectMetaArgs(
+        name="sensitive-ingress-reader-secret",
+        namespace=minio_tenant_ns.metadata.name,
+    ),
+    type="Opaque",
+    string_data={
+        "CONSOLE_ACCESS_KEY": "sensitive-ingress-reader",
+        "CONSOLE_SECRET_KEY": random.RandomPassword(
+            "sensitive-ingress-reader-password",
+            length=16,
+            special=True,
+            upper=True,
+        ).result,
+    },
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[minio_tenant_ns],
+    ),
+)
+
+minio_export_for_review_secret = Secret(
+    "minio-export-for-review-secret",
+    metadata=ObjectMetaArgs(
+        name="export-for-review-secret",
+        namespace=minio_tenant_ns.metadata.name,
+    ),
+    type="Opaque",
+    string_data={
+        "CONSOLE_ACCESS_KEY": "export-for-review",
+        "CONSOLE_SECRET_KEY": random.RandomPassword(
+            "export-writer-password",
+            length=16,
+            special=True,
+            upper=True,
+        ).result,
+    },
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[minio_tenant_ns],
+    ),
+)
+
+minio_review_reader_secret = Secret(
+    "minio-review-reader-secrets",
+    metadata=ObjectMetaArgs(
+        name="review-reader-secret",
+        namespace=minio_tenant_ns.metadata.name,
+    ),
+    type="Opaque",
+    string_data={
+        "CONSOLE_ACCESS_KEY": "review-reader",
+        "CONSOLE_SECRET_KEY": random.RandomPassword(
+            "review-reader-password",
+            length=16,
+            special=True,
+            upper=True,
+        ).result,
+    },
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[minio_tenant_ns],
     ),
 )
 
