@@ -502,6 +502,12 @@ minio_tenant = Chart(
                 {"name": "ready-for-review"},
                 {"name": "ready-for-egress"},
             ],
+            "users": [
+                {"name": "ingress-reader-secret"},
+                {"name": "sensitive-ingress-reader-secret"},
+                {"name": "export-for-review-secret"},
+                {"name": "review-reader-secret"},
+            ],
             "certificate": {
                 "requestAutoCert": "false",
             },
@@ -541,12 +547,6 @@ minio_tenant = Chart(
                         },
                     },
                 },
-            ],
-            "users": [
-                {"name": "ingress-reader-secret"},
-                {"name": "sensitive-ingress-reader-secret"},
-                {"name": "export-for-review-secret"},
-                {"name": "review-reader-secret"},
             ],
         },
     },
