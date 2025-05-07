@@ -29,7 +29,7 @@ spec:
   endpointSelector: {}
   ingress:
     # Allow ingress from all other pods in this namespace
-    - toEndpoints:
+    - fromEndpoints:
         - {}
   egress:
     # Allow egress to all other pods in this namespace
