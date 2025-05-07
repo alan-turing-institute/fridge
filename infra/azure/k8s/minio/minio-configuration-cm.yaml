@@ -10,8 +10,8 @@ data:
     echo "Creating default S3 policies"
     for policy in /tmp/scripts/*.json; do
       echo "Creating policy $$policy"
-      mc --insecure admin policy create argoartifacts $$(basename $$policy) $$policy
-      echo "Policy $$(basename $$policy) created"
+      mc --insecure admin policy create argoartifacts $$(basename $$policy .json) $$policy
+      echo "Policy $$(basename $$policy .json) created"
     done
   read-only-ingress.json: |
     {
@@ -65,7 +65,25 @@ data:
         }
       ]
     }
-  write-only-ready-for-export.json: |
+  read-only-ready-for-review.json: |
+    {
+      "version": "2012-10-17",
+      "statement": [
+        {
+          "Effect": "Allow",
+          "action": [
+            "s3:GetBucketLocation",
+            "s3:GetObject",
+            "s3:ListBucket"
+          ],
+          "resource": [
+            "arn:aws:s3:::ready-for-review",
+            "arn:aws:s3:::ready-for-review/*"
+          ]
+        }
+      ]
+    }
+  write-only-ready-for-egress.json: |
     {
       "version": "2012-10-17",
       "statement": [
@@ -75,8 +93,8 @@ data:
             "s3:PutObject"
           ],
           "resource": [
-            "arn:aws:s3:::ready-for-export",
-            "arn:aws:s3:::ready-for-export/*"
+            "arn:aws:s3:::ready-for-egress",
+            "arn:aws:s3:::ready-for-egress/*"
           ]
         }
       ]
