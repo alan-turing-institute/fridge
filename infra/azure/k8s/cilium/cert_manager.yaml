@@ -1,0 +1,98 @@
+# https://cert-manager.io/docs/installation/best-practice/#network-requirements
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: "cert-manager-kube-dns"
+  namespace: "cert-manager"
+spec:
+  # Apply to all pods in this namespace
+  endpointSelector: {}
+  egress:
+    # Outbound to k8s DNS to look up IPs
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+  ingress: []
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: "cert-manager-webhook"
+  namespace: "cert-manager"
+spec:
+  # Apply to webhook pods only
+  endpointSelector:
+    matchLabels:
+      app: webhook
+  egress: []
+  ingress:
+    # Allow inbound from kube API
+    - fromEntities:
+        - kube-apiserver
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: "cert-manager-kube-api"
+  namespace: "cert-manager"
+spec:
+  # Apply to webhook, cainjector, controller and start up api check
+  endpointSelector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values:
+          - webhook
+          - cainjector
+          - cert-manager
+          - startupapicheck #  may not be this name
+  egress:
+    # Allow outbound to kube API
+    - toEntities:
+        - kube-apiserver
+  ingress: []
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: "cert-manager-external-dns"
+  namespace: "cert-manager"
+spec:
+  # Apply to controller
+  endpointSelector:
+    matchLabels:
+      app: cert-manager
+  egress:
+    # Allow outbound to external DNS on port 53
+    - toCIDR:
+        - 8.8.8.8/32
+        - 1.1.1.1/32
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+  ingress: []
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: "cert-manager-acmesolver"
+  namespace: "cert-manager"
+spec:
+  # Apply to ephemeral ACME solver
+  endpointSelector:
+    matchLabels:
+      app: acme-solver
+  # Allow ingress from the internet for HTTP challenge
+  ingress:
+    - fromEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "80"
+  egress: []
