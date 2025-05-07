@@ -886,3 +886,12 @@ network_policy_cert_manager = ConfigFile(
         depends_on=[managed_cluster, cert_manager],
     ),
 )
+
+network_policy_harbor = ConfigFile(
+    "network_policy_harbor",
+    file="./k8s/cilium/harbor.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster, harbor],
+    ),
+)
