@@ -7,7 +7,6 @@ spec:
   endpointSelector:
     matchLabels:
       app.kubernetes.io/name: argo-workflows-server
-
   ingress:
     - fromEndpoints:
       - matchLabels:
