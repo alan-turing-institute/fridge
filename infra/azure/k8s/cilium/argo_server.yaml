@@ -7,6 +7,7 @@ spec:
   endpointSelector:
     matchLabels:
       app.kubernetes.io/name: argo-workflows-server
+
   ingress:
     - fromEndpoints:
       - matchLabels:
@@ -16,6 +17,7 @@ spec:
         - ports:
           - port: "2746"
             protocol: TCP
+      # The server offers its web UI on port 2746, which needs to be accessible from the ingress-nginx controller to be served externally
   egress:
     - toEndpoints:
       - matchLabels:
