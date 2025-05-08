@@ -1,7 +1,7 @@
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
-  name: argo-workflows-server-cnp
+  name: argo-workflows-server
   namespace: argo-server
 spec:
   endpointSelector:
