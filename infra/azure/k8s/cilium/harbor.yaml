@@ -11,9 +11,10 @@ spec:
       component: nginx
   egress: []
   ingress:
-    # Allow connection to web frontend from internet
+    # Allow connection to web frontend from internet and cluster
     - fromEntities:
         - world
+        - host
       toPorts:
         - ports:
             - port: "80"
