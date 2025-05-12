@@ -895,3 +895,12 @@ network_policy_argo_server = ConfigFile(
         depends_on=[managed_cluster, argo_workflows],
     ),
 )
+
+network_policy_harbor = ConfigFile(
+    "network_policy_harbor",
+    file="./k8s/cilium/quick_harbor_policy.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster, harbor],
+    ),
+)

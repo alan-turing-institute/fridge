@@ -1,0 +1,177 @@
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: harbor-kube-dns
+  namespace: harbor
+spec:
+  # Apply to all pods in this namespace
+  endpointSelector: {}
+  egress:
+    # Outbound to k8s DNS to look up IPs
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: harbor-allow-redis
+  namespace: harbor
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: harbor
+  egress:
+    - toEndpoints:
+      - matchLabels:
+          app.kubernetes.io/name: harbor
+      toPorts:
+        - ports:
+          - port: "6379"
+            protocol: TCP
+  ingress:
+    - fromEndpoints:
+      - matchLabels:
+          app.kubernetes.io/name: harbor
+      toPorts:
+        - ports:
+          - port: "6379"
+            protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: harbor-allow-ingress
+  namespace: harbor
+spec:
+  # Apply to all pods in this namespace
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: harbor
+  ingress:
+    - fromEndpoints:
+      - matchLabels:
+          app.kubernetes.io/name: ingress-nginx
+          k8s:io.kubernetes.pod.namespace: ingress-nginx
+      toPorts:
+        - ports:
+          - port: "8080"
+            protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: harbor-allow-readiness-probe
+  namespace: harbor
+spec:
+  # Apply to all pods in this namespace
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: harbor
+  ingress:
+    - fromEntities:
+        - host
+      toPorts:
+        - ports:
+          - port: "8080"
+            protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: harbor-allow-database
+  namespace: harbor
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: harbor
+  egress:
+    - toEndpoints:
+      - matchLabels:
+          app.kubernetes.io/name: harbor
+      toPorts:
+        - ports:
+          - port: "5432"
+            protocol: TCP
+  ingress:
+    - fromEndpoints:
+      - matchLabels:
+          app.kubernetes.io/name: harbor
+      toPorts:
+        - ports:
+          - port: "5432"
+            protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: harbor-allow-webui
+  namespace: harbor
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: harbor
+  egress:
+    - toEndpoints:
+      - matchLabels:
+          app.kubernetes.io/name: harbor
+      toPorts:
+        - ports:
+          - port: "8080"
+            protocol: TCP
+  ingress:
+    - fromEndpoints:
+      - matchLabels:
+          app.kubernetes.io/name: harbor
+      toPorts:
+        - ports:
+          - port: "8080"
+            protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: harbor-allow-registry
+  namespace: harbor
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: harbor
+  egress:
+    - toEndpoints:
+      - matchLabels:
+          app.kubernetes.io/name: harbor
+      toPorts:
+        - ports:
+          - port: "5000"
+            protocol: TCP
+  ingress:
+    - fromEndpoints:
+      - matchLabels:
+          app.kubernetes.io/name: harbor
+      toPorts:
+        - ports:
+          - port: "5000"
+            protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: harbor-allow-host-pull
+  namespace: harbor
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: harbor
+  ingress:
+    - fromEntities:
+        - host
+      toPorts:
+        - ports:
+          - port: "80"
+            protocol: TCP
