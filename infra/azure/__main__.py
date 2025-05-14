@@ -325,7 +325,9 @@ cert_manager_issuers = ConfigGroup(
     ),
 )
 
-# Minio
+# MinIO
+
+## Deploy the MinIO operator, which is responsible for managing MinIO tenants
 minio_operator_ns = Namespace(
     "minio-operator-ns",
     metadata=ObjectMetaArgs(
@@ -352,6 +354,7 @@ minio_operator = Chart(
     ),
 )
 
+## Set up the MinIO tenant
 minio_tenant_ns = Namespace(
     "minio-tenant-ns",
     metadata=ObjectMetaArgs(
@@ -369,6 +372,7 @@ minio_url = Output.format(
     config.require("minio_url_prefix"),
     config.require("base_fqdn"),
 )
+
 minio_config_env = Output.format(
     (
         "export MINIO_BROWSER_REDIRECT_URL=https://{0}\n"
@@ -397,6 +401,7 @@ minio_env_secret = Secret(
     ),
 )
 
+### MinIO user secrets
 minio_ingress_reader_secret = Secret(
     "minio-ingress-reader-secret",
     metadata=ObjectMetaArgs(
@@ -485,6 +490,7 @@ minio_review_reader_secret = Secret(
     ),
 )
 
+## Deploy the MinIO tenant
 minio_tenant = Chart(
     "minio-tenant",
     namespace=minio_tenant_ns.metadata.name,
@@ -617,7 +623,8 @@ minio_ingress = Ingress(
     ),
 )
 
-# Minio configuration
+## Once the MinIO tenant is created, we need to configure the standard user accounts and policies manually
+## Run a job to configure the MinIO tenant
 minio_config_map = Template(
     open("k8s/minio/minio-configuration-cm.yaml", "r").read()
 ).substitute(
