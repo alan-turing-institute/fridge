@@ -886,3 +886,12 @@ network_policy_cert_manager = ConfigFile(
         depends_on=[managed_cluster, cert_manager],
     ),
 )
+
+network_policy_containerd_config = ConfigFile(
+    "network_policy_containerd_config",
+    file="./k8s/cilium/containerd_config.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster, configure_containerd_daemonset],
+    ),
+)
