@@ -346,10 +346,11 @@ minio_tenant_ns = Namespace(
     ),
 )
 
-minio_fqdn = Output.concat(
-    config.require("minio_fqdn_prefix"),
-    ".",
-    config.require("base_fqdn"),
+minio_fqdn = ".".join(
+    (
+        config.require("minio_fqdn_prefix"),
+        config.require("base_fqdn"),
+    )
 )
 pulumi.export("minio_fqdn", minio_fqdn)
 
@@ -518,10 +519,11 @@ argo_workflows_ns = Namespace(
     ),
 )
 
-argo_fqdn = Output.concat(
-    config.require("argo_fqdn_prefix"),
-    ".",
-    config.require("base_fqdn"),
+argo_fqdn = ".".join(
+    (
+        config.require("argo_fqdn_prefix"),
+        config.require("base_fqdn"),
+    )
 )
 pulumi.export("argo_fqdn", argo_fqdn)
 
@@ -755,7 +757,14 @@ harbor_ns = Namespace(
     ),
 )
 
-harbor_fqdn = f"{config.require('harbor_fqdn_prefix')}.{config.require('base_fqdn')}"
+harbor_fqdn = ".".join(
+    (
+        config.require("harbor_fqdn_prefix"),
+        config.require("base_fqdn"),
+    )
+)
+
+f"{config.require('harbor_fqdn_prefix')}.{config.require('base_fqdn')}"
 pulumi.export("harbor_fqdn", harbor_fqdn)
 harbor_external_url = f"https://{harbor_fqdn}"
 
