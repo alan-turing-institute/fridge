@@ -145,10 +145,7 @@ admin_credentials = containerservice.list_managed_cluster_admin_credentials_outp
 )
 
 kubeconfig = admin_credentials.kubeconfigs.apply(get_kubeconfig)
-pulumi.export(
-    "kubeconfig",
-    kubeconfig,
-)
+pulumi.export("kubeconfig", kubeconfig)
 
 # Kubernetes configuration
 k8s_provider = kubernetes.Provider(
@@ -354,6 +351,8 @@ minio_url = Output.format(
     config.require("minio_url_prefix"),
     config.require("base_fqdn"),
 )
+pulumi.export("minio_url", minio_url)
+
 minio_config_env = Output.format(
     (
         "export MINIO_BROWSER_REDIRECT_URL=https://{0}\n"
@@ -524,6 +523,7 @@ argo_url = Output.concat(
     ".",
     config.require("base_fqdn"),
 )
+pulumi.export("argo_url", argo_url)
 
 argo_sso_secret = Secret(
     "argo-server-sso-secret",
@@ -757,6 +757,7 @@ harbor_ns = Namespace(
 
 harbor_fqdn = f"{config.require('harbor_url_prefix')}.{config.require('base_fqdn')}"
 harbor_external_url = f"https://{harbor_fqdn}"
+pulumi.export("harbor_fqdn", harbor_fqdn)
 
 harbor = Release(
     "harbor",
