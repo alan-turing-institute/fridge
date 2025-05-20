@@ -145,10 +145,7 @@ admin_credentials = containerservice.list_managed_cluster_admin_credentials_outp
 )
 
 kubeconfig = admin_credentials.kubeconfigs.apply(get_kubeconfig)
-pulumi.export(
-    "kubeconfig",
-    kubeconfig,
-)
+pulumi.export("kubeconfig", kubeconfig)
 
 # Kubernetes configuration
 k8s_provider = kubernetes.Provider(
@@ -349,11 +346,14 @@ minio_tenant_ns = Namespace(
     ),
 )
 
-minio_url = Output.format(
-    "{0}.{1}",
-    config.require("minio_url_prefix"),
-    config.require("base_fqdn"),
+minio_fqdn = ".".join(
+    (
+        config.require("minio_fqdn_prefix"),
+        config.require("base_fqdn"),
+    )
 )
+pulumi.export("minio_fqdn", minio_fqdn)
+
 minio_config_env = Output.format(
     (
         "export MINIO_BROWSER_REDIRECT_URL=https://{0}\n"
@@ -361,7 +361,7 @@ minio_config_env = Output.format(
         "export MINIO_ROOT_USER={1}\n"
         "export MINIO_ROOT_PASSWORD={2}"
     ),
-    minio_url,
+    minio_fqdn,
     config.require_secret("minio_root_user"),
     config.require_secret("minio_root_password"),
 )
@@ -411,9 +411,9 @@ minio_tenant = Chart(
             },
             "features": {
                 "domains": {
-                    "console": minio_url,
+                    "console": minio_fqdn,
                     "minio": [
-                        Output.concat(minio_url, "/api"),
+                        Output.concat(minio_fqdn, "/api"),
                         "minio.argo-artifacts.svc.cluster.local",
                     ],
                 }
@@ -461,14 +461,14 @@ minio_ingress = Ingress(
         "tls": [
             {
                 "hosts": [
-                    minio_url,
+                    minio_fqdn,
                 ],
                 "secret_name": "argo-artifacts-tls",
             }
         ],
         "rules": [
             {
-                "host": minio_url,
+                "host": minio_fqdn,
                 "http": {
                     "paths": [
                         {
@@ -519,11 +519,13 @@ argo_workflows_ns = Namespace(
     ),
 )
 
-argo_url = Output.concat(
-    config.require("argo_url_prefix"),
-    ".",
-    config.require("base_fqdn"),
+argo_fqdn = ".".join(
+    (
+        config.require("argo_fqdn_prefix"),
+        config.require("base_fqdn"),
+    )
 )
+pulumi.export("argo_fqdn", argo_fqdn)
 
 argo_sso_secret = Secret(
     "argo-server-sso-secret",
@@ -577,18 +579,18 @@ argo_workflows = Chart(
                 "annotations": {
                     "cert-manager.io/cluster-issuer": tls_issuer_names[tls_environment],
                 },
-                "hosts": [argo_url],
+                "hosts": [argo_fqdn],
                 "tls": [
                     {
                         "secretName": "argo-ingress-tls-letsencrypt",
-                        "hosts": [argo_url],
+                        "hosts": [argo_fqdn],
                     }
                 ],
             },
             "sso": {
                 "enabled": True,
                 "issuer": config.require_secret("sso_issuer_url"),
-                "redirectUrl": Output.concat("https://", argo_url, "/oauth2/callback"),
+                "redirectUrl": Output.concat("https://", argo_fqdn, "/oauth2/callback"),
                 "scopes": config.require_object("argo_scopes"),
             },
         },
@@ -755,7 +757,15 @@ harbor_ns = Namespace(
     ),
 )
 
-harbor_fqdn = f"{config.require('harbor_url_prefix')}.{config.require('base_fqdn')}"
+harbor_fqdn = ".".join(
+    (
+        config.require("harbor_fqdn_prefix"),
+        config.require("base_fqdn"),
+    )
+)
+
+f"{config.require('harbor_fqdn_prefix')}.{config.require('base_fqdn')}"
+pulumi.export("harbor_fqdn", harbor_fqdn)
 harbor_external_url = f"https://{harbor_fqdn}"
 
 harbor = Release(
