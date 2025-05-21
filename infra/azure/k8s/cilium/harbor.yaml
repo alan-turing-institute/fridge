@@ -69,6 +69,8 @@ metadata:
   name: harbor-allow-ingress
   namespace: harbor
 spec:
+  # Only allow ingress traffic from Ingress Nginx to the Harbor Nginx component
+  # No other ingress traffic is allowed
   endpointSelector:
     matchLabels:
       app.kubernetes.io/name: harbor
@@ -124,6 +126,7 @@ metadata:
   name: harbor-allow-egress-to-registries
   namespace: harbor
 spec:
+  # Allow the core component of Harbor to reach the Docker and GCHR registries
   endpointSelector:
     matchLabels:
       app.kubernetes.io/name: harbor
