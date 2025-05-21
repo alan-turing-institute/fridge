@@ -69,8 +69,9 @@ metadata:
   name: harbor-allow-ingress
   namespace: harbor
 spec:
-  # Only allow ingress traffic from Ingress Nginx to the Harbor Nginx component
-  # No other ingress traffic is allowed
+  # Allow ingress traffic to the nginx component of Harbor from Ingress NGINX
+  # and from remote nodes. A remote node is a node other than the one Harbor
+  # is running on, allowing kubelet to pull images from the registry from other nßodes
   endpointSelector:
     matchLabels:
       app.kubernetes.io/name: harbor
@@ -84,36 +85,7 @@ spec:
         - ports:
           - port: "8080"
             protocol: TCP
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
-  name: harbor-allow-readiness-probe
-  namespace: harbor
-spec:
-  endpointSelector:
-    matchLabels:
-      app.kubernetes.io/name: harbor
-  ingress:
     - fromEntities:
-        - host
-      toPorts:
-        - ports:
-          - port: "8080"
-            protocol: TCP
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
-  name: harbor-allow-host-pull
-  namespace: harbor
-spec:
-  endpointSelector:
-    matchLabels:
-      app.kubernetes.io/name: harbor
-  ingress:
-    - fromEntities:
-        - host
         - remote-node
       toPorts:
         - ports:
