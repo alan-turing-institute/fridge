@@ -5,19 +5,19 @@ config:
     - https://graph.microsoft.com/User.Read
     - https://graph.microsoft.com/Group.Read.All
     - email
-  fridge:argo_url_prefix: argo
+  fridge:argo_fqdn_prefix: argo
   fridge:base_fqdn: argo-dev.fridge.develop.turingsafehaven.ac.uk
   fridge:cluster_name: argo-dev
   fridge:harbor_admin_password:
     secure: v1:c/8IKS6cADZjppRg:ElwmNOAGgaxAt8ITMX2LpoaijzjZyOQqjxBl9Us=
   fridge:harbor_ip: 10.0.50.50
-  fridge:harbor_url_prefix: harbor
+  fridge:harbor_fqdn_prefix: harbor
   fridge:lets_encrypt_email: safehavendevs@turing.ac.uk
   fridge:minio_root_user:
     secure: v1:y6VaqKNeiwmjOoqI:UxCXIMqGV8mG2JF8VPUJ/VC+Qea3gxig
   fridge:minio_root_password:
     secure: v1:VOg9OAtisUtIcn+t:NEslilS5JLHXbVG+iZ2vJIp8VXaGmVaOe58Z
-  fridge:minio_url_prefix: minio
+  fridge:minio_fqdn_prefix: minio
   fridge:minio_pool_size: 20Gi
   fridge:oidc_client_id:
     secure: v1:WfbUqLfXQ5W5rUum:lEZHqSAiMVx798GT5rHR1g8XP+pH/+vTlCgWZk0+FSdNOPjAzrQxqfms1ij0xDLHdhM+LQ==
