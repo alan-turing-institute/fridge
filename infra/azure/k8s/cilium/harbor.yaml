@@ -6,6 +6,8 @@ metadata:
 spec:
   # Apply to all pods in this namespace
   endpointSelector: {}
+  # Deny all ingress by default
+  ingress: []
   egress:
     # Outbound to k8s DNS to look up IPs
     - toEndpoints:
@@ -28,6 +30,7 @@ spec:
     matchLabels:
       app.kubernetes.io/name: harbor
   egress:
+    # Allow egress to Redis pods
     - toEndpoints:
       - matchLabels:
           app.kubernetes.io/name: harbor
@@ -36,6 +39,7 @@ spec:
           - port: "6379"
             protocol: TCP
   ingress:
+    # Allow ingress from Redis pods
     - fromEndpoints:
       - matchLabels:
           app.kubernetes.io/name: harbor
@@ -53,6 +57,7 @@ spec:
   endpointSelector:
     matchLabels:
       app.kubernetes.io/name: harbor
+      component: nginx
   ingress:
     - fromEndpoints:
       - matchLabels:
@@ -170,7 +175,39 @@ spec:
   ingress:
     - fromEntities:
         - host
+        - remote-node
       toPorts:
         - ports:
-          - port: "80"
+          - port: "8080"
             protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: harbor-allow-egress-to-registries
+  namespace: harbor
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: harbor
+      component: core
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+          rules:
+            dns:
+              - matchName: "ghcr.io"
+              - matchName: "hub.docker.com"
+              - matchName: "registry-1.docker.io"
+              - matchName: "production.cloudflare.docker.com"
+    - toFQDNs:
+      - matchName: "ghcr.io"
+      - matchName: "hub.docker.com"
+      - matchName: "registry-1.docker.io"
+      - matchName: "production.cloudflare.docker.com"
