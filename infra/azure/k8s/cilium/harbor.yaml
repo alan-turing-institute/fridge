@@ -22,7 +22,7 @@ spec:
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
 metadata:
-  name: harbor-allow-databases
+  name: harbor-allow-internal-traffic
   namespace: harbor
 spec:
   # Apply to all pods in this namespace that have the label app.kubernetes.io/name: harbor
@@ -32,6 +32,8 @@ spec:
   # Allow ingress and egress to/from the database pods to/from all Harbor pods
   # Port 6379 is for Redis
   # Port 5432 is for PostgreSQL
+  # Port 8080 is required for all Harbor components except Redis and PostgreSQL
+  # Port 5000 is for the registry
   egress:
     - toEndpoints:
       - matchLabels:
@@ -42,6 +44,10 @@ spec:
             protocol: TCP
           - port: "5432"
             protocol: TCP
+          - port: "8080"
+            protocol: TCP
+          - port: "5000"
+            protocol: TCP
   ingress:
     - fromEndpoints:
       - matchLabels:
@@ -51,6 +57,10 @@ spec:
           - port: "6379"
             protocol: TCP
           - port: "5432"
+            protocol: TCP
+          - port: "8080"
+            protocol: TCP
+          - port: "5000"
             protocol: TCP
 ---
 apiVersion: "cilium.io/v2"
@@ -88,58 +98,6 @@ spec:
       toPorts:
         - ports:
           - port: "8080"
-            protocol: TCP
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
-  name: harbor-allow-webui
-  namespace: harbor
-spec:
-  endpointSelector:
-    matchLabels:
-      app.kubernetes.io/name: harbor
-  egress:
-    - toEndpoints:
-      - matchLabels:
-          app.kubernetes.io/name: harbor
-      toPorts:
-        - ports:
-          - port: "8080"
-            protocol: TCP
-  ingress:
-    - fromEndpoints:
-      - matchLabels:
-          app.kubernetes.io/name: harbor
-      toPorts:
-        - ports:
-          - port: "8080"
-            protocol: TCP
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
-  name: harbor-allow-registry
-  namespace: harbor
-spec:
-  endpointSelector:
-    matchLabels:
-      app.kubernetes.io/name: harbor
-  egress:
-    - toEndpoints:
-      - matchLabels:
-          app.kubernetes.io/name: harbor
-      toPorts:
-        - ports:
-          - port: "5000"
-            protocol: TCP
-  ingress:
-    - fromEndpoints:
-      - matchLabels:
-          app.kubernetes.io/name: harbor
-      toPorts:
-        - ports:
-          - port: "5000"
             protocol: TCP
 ---
 apiVersion: "cilium.io/v2"
