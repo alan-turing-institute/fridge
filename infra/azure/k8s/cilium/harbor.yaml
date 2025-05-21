@@ -22,15 +22,17 @@ spec:
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
 metadata:
-  name: harbor-allow-redis
+  name: harbor-allow-databases
   namespace: harbor
 spec:
   # Apply to all pods in this namespace that have the label app.kubernetes.io/name: harbor
   endpointSelector:
     matchLabels:
       app.kubernetes.io/name: harbor
+  # Allow ingress and egress to/from the database pods to/from all Harbor pods
+  # Port 6379 is for Redis
+  # Port 5432 is for PostgreSQL
   egress:
-    # Allow egress to Redis pods
     - toEndpoints:
       - matchLabels:
           app.kubernetes.io/name: harbor
@@ -38,14 +40,17 @@ spec:
         - ports:
           - port: "6379"
             protocol: TCP
+          - port: "5432"
+            protocol: TCP
   ingress:
-    # Allow ingress from Redis pods
     - fromEndpoints:
       - matchLabels:
           app.kubernetes.io/name: harbor
       toPorts:
         - ports:
           - port: "6379"
+            protocol: TCP
+          - port: "5432"
             protocol: TCP
 ---
 apiVersion: "cilium.io/v2"
@@ -83,32 +88,6 @@ spec:
       toPorts:
         - ports:
           - port: "8080"
-            protocol: TCP
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
-  name: harbor-allow-database
-  namespace: harbor
-spec:
-  endpointSelector:
-    matchLabels:
-      app.kubernetes.io/name: harbor
-  egress:
-    - toEndpoints:
-      - matchLabels:
-          app.kubernetes.io/name: harbor
-      toPorts:
-        - ports:
-          - port: "5432"
-            protocol: TCP
-  ingress:
-    - fromEndpoints:
-      - matchLabels:
-          app.kubernetes.io/name: harbor
-      toPorts:
-        - ports:
-          - port: "5432"
             protocol: TCP
 ---
 apiVersion: "cilium.io/v2"
