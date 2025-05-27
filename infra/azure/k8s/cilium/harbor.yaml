@@ -71,7 +71,7 @@ metadata:
 spec:
   # Allow ingress traffic to the nginx component of Harbor from Ingress NGINX
   # and from remote nodes. A remote node is a node other than the one Harbor
-  # is running on, allowing kubelet to pull images from the registry from other nßodes
+  # is running on, allowing kubelet to pull images from the registry from other nodes
   endpointSelector:
     matchLabels:
       app.kubernetes.io/name: harbor
