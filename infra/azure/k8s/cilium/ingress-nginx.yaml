@@ -1,7 +1,7 @@
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
 metadata:
-  name: deny-all-traffic
+  name: enable-external-ingress
   namespace: ingress-nginx
 spec:
   endpointSelector: {}
