@@ -118,8 +118,12 @@ spec:
               - matchName: "hub.docker.com"
               - matchName: "registry-1.docker.io"
               - matchName: "production.cloudflare.docker.com"
+              - matchName: "quay.io"
+              - matchPattern: "cdn*.quay.io"
     - toFQDNs:
       - matchName: "ghcr.io"
       - matchName: "hub.docker.com"
       - matchName: "registry-1.docker.io"
       - matchName: "production.cloudflare.docker.com"
+      - matchPattern: "cdn*.quay.io"
+      - matchName: "quay.io"
