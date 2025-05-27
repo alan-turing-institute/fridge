@@ -1,0 +1,41 @@
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: deny-all-traffic
+  namespace: ingress-nginx
+spec:
+  endpointSelector: {}
+  ingress: []
+  egress:
+    - toEntities:
+        - kube-apiserver
+        - world
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: harbor
+            app: harbor
+            component: nginx
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: argo-server
+            app: server
+      toPorts:
+        - ports:
+            - port: "2746"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: argo-artifacts
+            v1.min.io/tenant: argo-artifacts
+      toPorts:
+        - ports:
+            - port: "9090"
+              protocol: TCP
