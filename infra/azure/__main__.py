@@ -923,3 +923,12 @@ network_policy_containerd_config = ConfigFile(
         depends_on=[managed_cluster, configure_containerd_daemonset],
     ),
 )
+
+network_policy_minio_tenant = ConfigFile(
+    "network_policy_minio_tenant",
+    file="./k8s/cilium/minio-tenant.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster, minio_tenant],
+    ),
+)

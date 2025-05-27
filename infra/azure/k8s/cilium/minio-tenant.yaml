@@ -1,0 +1,47 @@
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: minio-tenant
+  namespace: argo-artifacts
+spec:
+  # Apply to all pods in this namespace
+  endpointSelector: {}
+  ingress:
+    # Allow ingress to web UI
+    # May want to adapt later to expose API
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: ingress-nginx
+            k8s:io.kubernetes.pod.namespace: ingress-nginx
+      toPorts:
+        - ports:
+            - port: "9090"
+              protocol: TCP
+    # Allow ingress from MinIO operator and Argo Workflows namespaces
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: operator
+            k8s:io.kubernetes.pod.namespace: minio-operator
+      toPorts:
+        - ports:
+            - port: "9000"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: argo-workflows
+      toPorts:
+        - ports:
+            - port: "9000"
+              protocol: TCP
+  egress:
+    # Outbound to k8s DNS to look up IPs
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+    - toEntities:
+        - kube-apiserver
