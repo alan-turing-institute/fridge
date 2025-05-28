@@ -47,6 +47,13 @@ spec:
         - ports:
             - port: "9500"
               protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            longhorn.io/component: share-manager
+      toPorts:
+        - ports:
+            - port: "9503"
+              protocol: TCP
   egress:
     - toEndpoints:
         - matchLabels:
@@ -66,6 +73,14 @@ spec:
     - toEndpoints:
         - matchExpressions:
           - { key: longhorn.io/job-task, operator: Exists }
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
     - toEntities:
         - kube-apiserver
 ---
@@ -134,6 +149,9 @@ spec:
     - fromEndpoints:
       - matchLabels:
           app: longhorn-manager
+    - fromEndpoints:
+      - matchLabels:
+          longhorn.io/managed-by: longhorn-manager
   egress:
     - toEndpoints:
       - matchLabels:
@@ -201,6 +219,24 @@ spec:
   endpointSelector:
     matchLabels:
       app: longhorn-ui
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            app: longhorn-manager
+      toPorts:
+        - ports:
+            - port: "9500"
+              protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: longhorn-instance-manager
+  namespace: longhorn-system
+spec:
+  endpointSelector:
+    matchLabels:
+      component: instance-manager
   egress:
     - toEndpoints:
         - matchLabels:
