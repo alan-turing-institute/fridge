@@ -26,6 +26,27 @@ spec:
         - matchLabels:
             app: konnectivity-agent
             k8s:io.kubernetes.pod.namespace: kube-system
+    - fromEndpoints:
+        - matchLabels:
+            app: longhorn-csi-plugin
+      toPorts:
+        - ports:
+            - port: "9500"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            app: longhorn-ui
+      toPorts:
+        - ports:
+            - port: "9500"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            app: longhorn-manager
+      toPorts:
+        - ports:
+            - port: "9500"
+              protocol: TCP
   egress:
     - toEndpoints:
         - matchLabels:
