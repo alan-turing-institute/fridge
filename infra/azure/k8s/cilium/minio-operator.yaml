@@ -6,8 +6,10 @@ metadata:
 spec:
   # Apply to all pods in this namespace
   endpointSelector: {}
-  ingress: []
+  ingress:
+    - {}
   egress:
+    # Allows the MinIO operator to communicate with the MinIO tenant through the MinIO API
     - toEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: argo-artifacts
@@ -25,5 +27,6 @@ spec:
         - ports:
             - port: "53"
               protocol: ANY
+    # Allow the MinIO operator to communicate with the API server to deploy and manage MinIO tenants
     - toEntities:
         - kube-apiserver
