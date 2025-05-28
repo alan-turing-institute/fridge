@@ -95,7 +95,7 @@ metadata:
 spec:
   endpointSelector:
     matchLabels:
-      app: longhorn-csi-resizer
+      app: csi-resizer
   egress:
     - toEntities:
         - kube-apiserver
