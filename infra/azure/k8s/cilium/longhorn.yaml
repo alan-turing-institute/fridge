@@ -26,6 +26,12 @@ spec:
         - matchLabels:
             app: konnectivity-agent
             k8s:io.kubernetes.pod.namespace: kube-system
+    - fromEntities:
+        - remote-node
+      toPorts:
+        - ports:
+            - port: "2049"
+              protocol: TCP
   egress:
     - toEndpoints:
         - matchLabels:
@@ -99,3 +105,17 @@ spec:
   egress:
     - toEntities:
         - kube-apiserver
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: longhorn-instance-managers
+  namespace: longhorn-system
+spec:
+  endpointSelector:
+    matchLabels:
+      component: instance-manager
+  ingress:
+    - fromEndpoints:
+      - matchLabels:
+          app: longhorn-manager
