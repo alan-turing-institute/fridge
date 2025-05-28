@@ -141,3 +141,22 @@ spec:
         - matchLabels:
             io.kubernetes.pod.namespace: kube-system
             k8s-app: kube-dns
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: longhorn-csi-plugin
+  namespace: longhorn-system
+spec:
+  endpointSelector:
+    matchLabels:
+      app: longhorn-csi-plugin
+  egress:
+    - toEndpoints:
+      - matchLabels:
+          k8s-app: kube-dns
+          io.kubernetes.pod.namespace: kube-system
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
