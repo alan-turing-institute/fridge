@@ -938,6 +938,6 @@ network_policy_minio_operator = ConfigFile(
     file="./k8s/cilium/minio-operator.yaml",
     opts=ResourceOptions(
         provider=k8s_provider,
-        depends_on=[managed_cluster, minio_tenant],
+        depends_on=[managed_cluster, minio_operator],
     ),
 )
