@@ -1,0 +1,101 @@
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-deny
+  namespace: longhorn-system
+spec:
+  # Apply to all pods in this namespace
+  endpointSelector: {}
+  ingress:
+    - {}
+  egress:
+    - {}
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: longhorn-manager
+  namespace: longhorn-system
+spec:
+  # Apply to all pods in this namespace
+  endpointSelector:
+    matchLabels:
+      app: longhorn-manager
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app: konnectivity-agent
+            k8s:io.kubernetes.pod.namespace: kube-system
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            app: longhorn-manager
+    - toEndpoints:
+        - matchLabels:
+            app: longhorn-ui
+    - toEndpoints:
+        - matchLabels:
+            app: longhorn-driver-deployer
+    - toEndpoints:
+        - matchLabels:
+            app: longhorn-csi-plugin
+    - toEndpoints:
+        - matchLabels:
+            longhorn.io/managed-by: longhorn-manager
+    - toEndpoints:
+        - matchExpressions:
+          - { key: longhorn.io/job-task, operator: Exists }
+    - toEntities:
+        - kube-apiserver
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: longhorn-csi-snapshotter
+  namespace: longhorn-system
+spec:
+  endpointSelector:
+    matchLabels:
+      app: csi-snapshotter
+  egress:
+    - toEntities:
+        - kube-apiserver
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: longhorn-csi-provisioner
+  namespace: longhorn-system
+spec:
+  endpointSelector:
+    matchLabels:
+      app: csi-provisioner
+  egress:
+    - toEntities:
+        - kube-apiserver
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: longhorn-csi-attacher
+  namespace: longhorn-system
+spec:
+  endpointSelector:
+    matchLabels:
+      app: csi-attacher
+  egress:
+    - toEntities:
+        - kube-apiserver
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: longhorn-csi-resizer
+  namespace: longhorn-system
+spec:
+  endpointSelector:
+    matchLabels:
+      app: longhorn-csi-resizer
+  egress:
+    - toEntities:
+        - kube-apiserver
