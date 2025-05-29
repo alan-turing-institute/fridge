@@ -9,3 +9,146 @@ spec:
     - {}
   egress:
     - {}
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: kube-dns
+  namespace: kube-system
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s-app: kube-dns
+  ingress:
+    - fromEntities:
+        - remote-node
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/component: server
+            k8s:io.kubernetes.pod.namespace: argo-server
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
+    - fromEndpoints:
+        - matchLabels:
+            app: konnectivity-agent
+            k8s:io.kubernetes.pod.namespace: kube-system
+      toPorts:
+        - ports:
+          - port: "9153"
+            protocol: ANY
+    - fromEndpoints:
+        - matchExpressions:
+            - key: k8s:io.kubernetes.pod.namespace
+              operator: In
+              values:
+                - longhorn-system
+            - key: app
+              operator: In
+              values:
+                - longhorn-manager
+                - longhorn-csi-plugin
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
+    - fromEndpoints:
+        - matchLabels:
+            app: harbor
+            k8s:io.kubernetes.pod.namespace: harbor
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
+    - fromEndpoints:
+        - matchExpressions:
+            - key: k8s:io.kubernetes.pod.namespace
+              operator: In
+              values:
+                - kube-system
+            - key: k8s-app
+              operator: In
+              values:
+                - hubble-ui
+                - hubble-relay
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
+    - fromEndpoints:
+        - matchLabels:
+            k8s-app: metrics-server
+            k8s:io.kubernetes.pod.namespace: kube-system
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: operator
+            io.kubernetes.pod.namespace: minio-operator
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
+    - fromEndpoints:
+        - matchLabels:
+            v1.min.io/tenant: argo-artifacts
+            k8s:io.kubernetes.pod.namespace: argo-artifacts
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
+  egress:
+    - toEntities:
+        - kube-apiserver
+        - remote-node
+        - world
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
+          - port: "443"
+            protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            app: harbor
+            k8s:io.kubernetes.pod.namespace: harbor
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
+    - toEndpoints:
+        - matchLabels:
+            app: longhorn-csi-plugin
+            k8s:io.kubernetes.pod.namespace: longhorn-system
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
+    - toEndpoints:
+        - matchLabels:
+            k8s-app: metrics-server
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
+    - toEndpoints:
+        - matchLabels:
+            k8s-app: hubble-ui
+      toPorts:
+        - ports:
+           - port: "53"
+             protocol: ANY
+    - toEndpoints:
+        - matchLabels:
+            k8s-app: hubble-relay
+      toPorts:
+        - ports:
+           - port: "53"
+             protocol: ANY
