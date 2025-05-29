@@ -28,5 +28,7 @@ spec:
             - port: "53"
               protocol: ANY
     # Allow the MinIO operator to communicate with the API server to deploy and manage MinIO tenants
+    # For full details, check the permissions granted by the `minio-operator` service account
+    # after deployment
     - toEntities:
         - kube-apiserver

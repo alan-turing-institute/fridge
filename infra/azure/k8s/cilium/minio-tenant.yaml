@@ -47,5 +47,8 @@ spec:
             - port: "53"
               protocol: ANY
     # Allows the MinIO tenant to make API calls
+    # For exact permissions, check the permissions
+    # granted by the `argo-artifacts-sa` service account
+    # after deployment
     - toEntities:
         - kube-apiserver
