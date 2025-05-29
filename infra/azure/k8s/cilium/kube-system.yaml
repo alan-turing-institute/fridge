@@ -248,3 +248,41 @@ spec:
         - ports:
           - port: "53"
             protocol: ANY
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: metrics-server
+  namespace: kube-system
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s-app: metrics-server
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app: konnectivity-agent
+      toPorts:
+        - ports:
+          - port: "4443"
+            protocol: TCP
+  egress:
+    - toEntities:
+        - remote-node
+      toPorts:
+        - ports:
+          - port: "10250"
+            protocol: TCP
+    - toEntities:
+        - kube-apiserver
+      toPorts:
+        - ports:
+          - port: "443"
+            protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
