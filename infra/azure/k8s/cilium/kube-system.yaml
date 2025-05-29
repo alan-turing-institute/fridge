@@ -225,3 +225,26 @@ spec:
         - ports:
           - port: "53"
             protocol: ANY
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: coredns-autoscaler
+  namespace: kube-system
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s-app: coredns-autoscaler
+  egress:
+    - toEntities:
+        - kube-apiserver
+      toPorts:
+        - ports:
+          - port: "443"
+            protocol: TCP
+    - toCIDR:
+      - 168.63.129.16/32
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
