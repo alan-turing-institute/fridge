@@ -108,13 +108,18 @@ spec:
     - toEntities:
         - kube-apiserver
         - remote-node
-        - world
       toPorts:
         - ports:
           - port: "53"
             protocol: ANY
           - port: "443"
             protocol: TCP
+    - toCIDR:
+      - 168.63.129.16/32
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
     - toEndpoints:
         - matchLabels:
             app: harbor
