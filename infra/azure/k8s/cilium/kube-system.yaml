@@ -114,6 +114,7 @@ spec:
             protocol: ANY
           - port: "443"
             protocol: TCP
+    # 168.63.129.16 is the upstream DNS server for Azure
     - toCIDR:
       - 168.63.129.16/32
       toPorts:
