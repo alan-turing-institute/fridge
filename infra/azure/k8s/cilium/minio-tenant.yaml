@@ -1,10 +1,24 @@
+
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: minio-tenant-deny-all
+  namespace: argo-artifacts
+spec:
+  endpointSelector:
+    - {}
+  ingress:
+    - {}
+  egress:
+    - {}
+---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
 metadata:
   name: minio-tenant
   namespace: argo-artifacts
 spec:
-  # Apply to all pods in this namespace
+  # Apply to Tenant pods in this namespace
   endpointSelector:
     matchLabels:
       v1.min.io/tenant: argo-artifacts
