@@ -145,9 +145,9 @@ spec:
             - key: k8s-app
               operator: In
               values:
-                - metrics-server
                 - hubble-ui
                 - hubble-relay
+                - metrics-server
       toPorts:
         - ports:
           - port: "53"
