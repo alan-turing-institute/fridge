@@ -923,3 +923,12 @@ network_policy_containerd_config = ConfigFile(
         depends_on=[managed_cluster, configure_containerd_daemonset],
     ),
 )
+
+network_policy_kubernetes_system = ConfigFile(
+    "network_policy_kubernetes_system",
+    file="./k8s/cilium/kube-system.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster],
+    ),
+)

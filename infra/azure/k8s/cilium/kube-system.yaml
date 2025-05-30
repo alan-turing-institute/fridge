@@ -1,0 +1,336 @@
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-deny
+  namespace: kube-system
+spec:
+  endpointSelector: {}
+  ingress:
+    - {}
+  egress:
+    - {}
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: kube-dns
+  namespace: kube-system
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s-app: kube-dns
+  ingress:
+    # Allow any DNS requests from nodes other than the host node
+    - fromEntities:
+        - remote-node
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
+          rules:
+            dns:
+              - matchPattern: "*"
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/component: server
+            k8s:io.kubernetes.pod.namespace: argo-server
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
+    - fromEndpoints:
+        - matchLabels:
+            app: konnectivity-agent
+            k8s:io.kubernetes.pod.namespace: kube-system
+      toPorts:
+        - ports:
+          - port: "9153"
+            protocol: ANY
+    - fromEndpoints:
+        - matchExpressions:
+            - key: k8s:io.kubernetes.pod.namespace
+              operator: In
+              values:
+                - longhorn-system
+            - key: app
+              operator: In
+              values:
+                - longhorn-manager
+                - longhorn-csi-plugin
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
+    - fromEndpoints:
+        - matchLabels:
+            app: harbor
+            k8s:io.kubernetes.pod.namespace: harbor
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
+    - fromEndpoints:
+        - matchExpressions:
+            - key: k8s:io.kubernetes.pod.namespace
+              operator: In
+              values:
+                - kube-system
+            - key: k8s-app
+              operator: In
+              values:
+                - hubble-ui
+                - hubble-relay
+                - metrics-server
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: operator
+            io.kubernetes.pod.namespace: minio-operator
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
+    - fromEndpoints:
+        - matchLabels:
+            v1.min.io/tenant: argo-artifacts
+            k8s:io.kubernetes.pod.namespace: argo-artifacts
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
+  egress:
+    # Allow CoreDNS to communicate with the Kubernetes API server
+    # and egress to non-host nodes
+    - toEntities:
+        - kube-apiserver
+        - remote-node
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
+          - port: "443"
+            protocol: TCP
+    # 168.63.129.16 is the upstream DNS server for Azure
+    - toCIDR:
+      - 168.63.129.16/32
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
+    - toEndpoints:
+        - matchLabels:
+            app: harbor
+            k8s:io.kubernetes.pod.namespace: harbor
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
+    - toEndpoints:
+        - matchLabels:
+            app: longhorn-csi-plugin
+            k8s:io.kubernetes.pod.namespace: longhorn-system
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
+    - toEndpoints:
+        - matchExpressions:
+            - key: k8s:io.kubernetes.pod.namespace
+              operator: In
+              values:
+                - kube-system
+            - key: k8s-app
+              operator: In
+              values:
+                - hubble-ui
+                - hubble-relay
+                - metrics-server
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: hubble-ui
+  namespace: kube-system
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s-app: hubble-ui
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
+  egress:
+    - toEntities:
+        - kube-apiserver
+    - toEndpoints:
+        - matchLabels:
+            k8s-app: hubble-relay
+      toPorts:
+        - ports:
+          - port: "4245"
+            protocol: TCP
+        - ports:
+          - port: "443"
+            protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: hubble-relay
+  namespace: kube-system
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s-app: hubble-relay
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s-app: hubble-ui
+      toPorts:
+        - ports:
+          - port: "4245"
+            protocol: TCP
+        - ports:
+          - port: "443"
+            protocol: TCP
+  egress:
+    - toEntities:
+        - remote-node
+      toPorts:
+        - ports:
+          - port: "4244"
+            protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: coredns-autoscaler
+  namespace: kube-system
+spec:
+  # `coredns-autoscaler` allows the CoreDNS pods to scale based on the number of DNS requests
+  endpointSelector:
+    matchLabels:
+      k8s-app: coredns-autoscaler
+  egress:
+    # Allow CoreDNS autoscaler to communicate with the Kubernetes API server
+    # Necessary to allow it to scale the CoreDNS pods
+    - toEntities:
+        - kube-apiserver
+      toPorts:
+        - ports:
+          - port: "443"
+            protocol: TCP
+    # 168.63.129.16 is the upstream DNS server for Azure
+    - toCIDR:
+      - 168.63.129.16/32
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: metrics-server
+  namespace: kube-system
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s-app: metrics-server
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app: konnectivity-agent
+      toPorts:
+        - ports:
+          - port: "4443"
+            protocol: TCP
+  egress:
+    - toEntities:
+        - remote-node
+      toPorts:
+        - ports:
+          - port: "10250"
+            protocol: TCP
+    - toEntities:
+        - kube-apiserver
+      toPorts:
+        - ports:
+          - port: "443"
+            protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: konnectivity-agent
+  namespace: kube-system
+spec:
+  endpointSelector:
+    matchLabels:
+      app: konnectivity-agent
+  # konnectivity-agent provides a way for the Kubernetes API server to connect to nodes
+  # https://kubernetes.io/docs/tasks/extend-kubernetes/setup-konnectivity/
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app: konnectivity-agent
+      toPorts:
+        - ports:
+          - port: "8082"
+            protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: konnectivity-agent-autoscaler
+  namespace: kube-system
+spec:
+  endpointSelector:
+    matchLabels:
+      app: konnectivity-agent-autoscaler
+  egress:
+    - toEntities:
+        - kube-apiserver
+      toPorts:
+        - ports:
+          - port: "443"
+            protocol: TCP
+    # 168.63.129.16 is the upstream DNS server for Azure
+    - toCIDR:
+      - 168.63.129.16/32
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
