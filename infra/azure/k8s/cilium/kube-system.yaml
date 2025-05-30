@@ -232,10 +232,13 @@ metadata:
   name: coredns-autoscaler
   namespace: kube-system
 spec:
+  # `coredns-autoscaler` allows the CoreDNS pods to scale based on the number of DNS requests
   endpointSelector:
     matchLabels:
       k8s-app: coredns-autoscaler
   egress:
+    # Allow CoreDNS autoscaler to communicate with the Kubernetes API server
+    # Necessary to allow it to scale the CoreDNS pods
     - toEntities:
         - kube-apiserver
       toPorts:
