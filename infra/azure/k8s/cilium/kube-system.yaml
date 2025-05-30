@@ -80,14 +80,7 @@ spec:
               values:
                 - hubble-ui
                 - hubble-relay
-      toPorts:
-        - ports:
-          - port: "53"
-            protocol: ANY
-    - fromEndpoints:
-        - matchLabels:
-            k8s-app: metrics-server
-            k8s:io.kubernetes.pod.namespace: kube-system
+                - metrics-server
       toPorts:
         - ports:
           - port: "53"
