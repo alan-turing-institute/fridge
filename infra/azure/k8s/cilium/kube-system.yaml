@@ -20,12 +20,16 @@ spec:
     matchLabels:
       k8s-app: kube-dns
   ingress:
+    # Allow any DNS requests from nodes other than the host node
     - fromEntities:
         - remote-node
       toPorts:
         - ports:
           - port: "53"
             protocol: ANY
+          rules:
+            dns:
+              - matchPattern: "*"
     - fromEndpoints:
         - matchLabels:
             app.kubernetes.io/component: server
@@ -105,6 +109,8 @@ spec:
           - port: "53"
             protocol: ANY
   egress:
+    # Allow CoreDNS to communicate with the Kubernetes API server
+    # and egress to non-host nodes
     - toEntities:
         - kube-apiserver
         - remote-node
@@ -138,26 +144,21 @@ spec:
           - port: "53"
             protocol: ANY
     - toEndpoints:
-        - matchLabels:
-            k8s-app: metrics-server
+        - matchExpressions:
+            - key: k8s:io.kubernetes.pod.namespace
+              operator: In
+              values:
+                - kube-system
+            - key: k8s-app
+              operator: In
+              values:
+                - metrics-server
+                - hubble-ui
+                - hubble-relay
       toPorts:
         - ports:
           - port: "53"
             protocol: ANY
-    - toEndpoints:
-        - matchLabels:
-            k8s-app: hubble-ui
-      toPorts:
-        - ports:
-           - port: "53"
-             protocol: ANY
-    - toEndpoints:
-        - matchLabels:
-            k8s-app: hubble-relay
-      toPorts:
-        - ports:
-           - port: "53"
-             protocol: ANY
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
@@ -248,6 +249,7 @@ spec:
         - ports:
           - port: "443"
             protocol: TCP
+    # 168.63.129.16 is the upstream DNS server for Azure
     - toCIDR:
       - 168.63.129.16/32
       toPorts:
@@ -302,6 +304,8 @@ spec:
   endpointSelector:
     matchLabels:
       app: konnectivity-agent
+  # konnectivity-agent provides a way for the Kubernetes API server to connect to nodes
+  # https://kubernetes.io/docs/tasks/extend-kubernetes/setup-konnectivity/
   ingress:
     - fromEndpoints:
         - matchLabels:
@@ -327,6 +331,7 @@ spec:
         - ports:
           - port: "443"
             protocol: TCP
+    # 168.63.129.16 is the upstream DNS server for Azure
     - toCIDR:
       - 168.63.129.16/32
       toPorts:
