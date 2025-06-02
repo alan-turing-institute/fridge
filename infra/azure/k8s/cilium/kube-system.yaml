@@ -137,13 +137,6 @@ spec:
         - ports:
           - port: "443"
             protocol: TCP
-    # 168.63.129.16 is the upstream DNS server for Azure
-    - toCIDR:
-      - 168.63.129.16/32
-      toPorts:
-        - ports:
-          - port: "53"
-            protocol: ANY
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
@@ -219,10 +212,3 @@ spec:
         - ports:
           - port: "443"
             protocol: TCP
-    # 168.63.129.16 is the upstream DNS server for Azure
-    - toCIDR:
-      - 168.63.129.16/32
-      toPorts:
-        - ports:
-          - port: "53"
-            protocol: ANY
