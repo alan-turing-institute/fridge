@@ -20,12 +20,14 @@ spec:
     matchLabels:
       k8s-app: kube-dns
   ingress:
+    # Allow kube-dns to receive DNS requests from any endpoint in the cluster
     - fromEntities:
         - cluster
       toPorts:
         - ports:
           - port: "53"
             protocol: ANY
+    # Allow konnectivity-agent to communicate with kube-dns
     - fromEndpoints:
         - matchLabels:
             app: konnectivity-agent
@@ -35,18 +37,21 @@ spec:
           - port: "9153"
             protocol: ANY
   egress:
+    # Allow kube-dns to send DNS requests in the cluster
     - toEntities:
         - cluster
       toPorts:
         - ports:
           - port: "53"
             protocol: ANY
+    # Allow kube-dns to communicate with the Kubernetes API server
     - toEntities:
         - kube-apiserver
       toPorts:
         - ports:
           - port: "443"
             protocol: TCP
+    # Allow kube-dns to communicate with the Azure DNS server
     - toCIDR:
       - 168.63.129.16/32
       toPorts:
