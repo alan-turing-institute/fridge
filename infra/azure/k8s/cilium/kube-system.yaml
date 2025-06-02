@@ -20,18 +20,8 @@ spec:
     matchLabels:
       k8s-app: kube-dns
   ingress:
-    # Allow any DNS requests from nodes other than the host node
     - fromEntities:
-        - remote-node
-      toPorts:
-        - ports:
-          - port: "53"
-            protocol: ANY
-    # Allow DNS requests from the argo server
-    - fromEndpoints:
-        - matchLabels:
-            app.kubernetes.io/component: server
-            k8s:io.kubernetes.pod.namespace: argo-server
+        - cluster
       toPorts:
         - ports:
           - port: "53"
@@ -44,109 +34,21 @@ spec:
         - ports:
           - port: "9153"
             protocol: ANY
-    - fromEndpoints:
-        - matchExpressions:
-            - key: k8s:io.kubernetes.pod.namespace
-              operator: In
-              values:
-                - longhorn-system
-            - key: app
-              operator: In
-              values:
-                - longhorn-manager
-                - longhorn-csi-plugin
-      toPorts:
-        - ports:
-          - port: "53"
-            protocol: ANY
-    - fromEndpoints:
-        - matchLabels:
-            app: harbor
-            k8s:io.kubernetes.pod.namespace: harbor
-      toPorts:
-        - ports:
-          - port: "53"
-            protocol: ANY
-    - fromEndpoints:
-        - matchExpressions:
-            - key: k8s:io.kubernetes.pod.namespace
-              operator: In
-              values:
-                - kube-system
-            - key: k8s-app
-              operator: In
-              values:
-                - hubble-ui
-                - hubble-relay
-                - metrics-server
-      toPorts:
-        - ports:
-          - port: "53"
-            protocol: ANY
-    - fromEndpoints:
-        - matchLabels:
-            app.kubernetes.io/name: operator
-            io.kubernetes.pod.namespace: minio-operator
-      toPorts:
-        - ports:
-          - port: "53"
-            protocol: ANY
-    # Allow DNS from the MinIO tenant pods
-    - fromEndpoints:
-        - matchLabels:
-            v1.min.io/tenant: argo-artifacts
-            k8s:io.kubernetes.pod.namespace: argo-artifacts
-      toPorts:
-        - ports:
-          - port: "53"
-            protocol: ANY
   egress:
-    # Allow CoreDNS to communicate with the Kubernetes API server
-    # and egress to non-host nodes
+    - toEntities:
+        - cluster
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
     - toEntities:
         - kube-apiserver
-        - remote-node
       toPorts:
         - ports:
-          - port: "53"
-            protocol: ANY
           - port: "443"
             protocol: TCP
-    # 168.63.129.16 is the upstream DNS server for Azure
     - toCIDR:
       - 168.63.129.16/32
-      toPorts:
-        - ports:
-          - port: "53"
-            protocol: ANY
-    - toEndpoints:
-        - matchLabels:
-            app: harbor
-            k8s:io.kubernetes.pod.namespace: harbor
-      toPorts:
-        - ports:
-          - port: "53"
-            protocol: ANY
-    - toEndpoints:
-        - matchLabels:
-            app: longhorn-csi-plugin
-            k8s:io.kubernetes.pod.namespace: longhorn-system
-      toPorts:
-        - ports:
-          - port: "53"
-            protocol: ANY
-    - toEndpoints:
-        - matchExpressions:
-            - key: k8s:io.kubernetes.pod.namespace
-              operator: In
-              values:
-                - kube-system
-            - key: k8s-app
-              operator: In
-              values:
-                - hubble-ui
-                - hubble-relay
-                - metrics-server
       toPorts:
         - ports:
           - port: "53"
