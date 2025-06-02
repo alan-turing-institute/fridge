@@ -21,6 +21,7 @@ spec:
       k8s-app: kube-dns
   ingress:
     # Allow kube-dns to receive DNS requests from any endpoint in the cluster
+    # Policies for those endpoints will determine if and how they can communicate with kube-dns
     - fromEntities:
         - cluster
       toPorts:
@@ -68,15 +69,9 @@ spec:
   endpointSelector:
     matchLabels:
       k8s-app: hubble-ui
-  ingress:
-    - fromEndpoints:
-        - matchLabels:
-            k8s-app: kube-dns
-      toPorts:
-        - ports:
-          - port: "53"
-            protocol: ANY
   egress:
+    # Allow hubble-ui to communicate with the Kubernetes API server
+    # Necessary for hubble-ui to be able to observe
     - toEntities:
         - kube-apiserver
       toPorts:
@@ -115,9 +110,6 @@ spec:
         - ports:
           - port: "4245"
             protocol: TCP
-        - ports:
-          - port: "443"
-            protocol: TCP
   egress:
     - toEntities:
         - remote-node
@@ -125,13 +117,6 @@ spec:
         - ports:
           - port: "4244"
             protocol: TCP
-    - toEndpoints:
-        - matchLabels:
-            k8s-app: kube-dns
-      toPorts:
-        - ports:
-          - port: "53"
-            protocol: ANY
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
