@@ -27,9 +27,7 @@ spec:
         - ports:
           - port: "53"
             protocol: ANY
-          rules:
-            dns:
-              - matchPattern: "*"
+    # Allow DNS requests from the argo server
     - fromEndpoints:
         - matchLabels:
             app.kubernetes.io/component: server
@@ -93,6 +91,7 @@ spec:
         - ports:
           - port: "53"
             protocol: ANY
+    # Allow DNS from the MinIO tenant pods
     - fromEndpoints:
         - matchLabels:
             v1.min.io/tenant: argo-artifacts
