@@ -56,17 +56,14 @@ spec:
               protocol: TCP
   egress:
     - toEndpoints:
-        - matchLabels:
-            app: longhorn-manager
-    - toEndpoints:
-        - matchLabels:
-            app: longhorn-ui
-    - toEndpoints:
-        - matchLabels:
-            app: longhorn-driver-deployer
-    - toEndpoints:
-        - matchLabels:
-            app: longhorn-csi-plugin
+        - matchExpressions:
+          - key: app
+            operator: In
+            values:
+              - longhorn-manager
+              - longhorn-ui
+              - longhorn-driver-deployer
+              - longhorn-csi-plugin
     - toEndpoints:
         - matchLabels:
             longhorn.io/managed-by: longhorn-manager
