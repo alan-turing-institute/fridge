@@ -66,3 +66,7 @@ spec:
     # after deployment
     - toEntities:
         - kube-apiserver
+      toPorts:
+        - ports:
+          - port: "443"
+            protocol: TCP
