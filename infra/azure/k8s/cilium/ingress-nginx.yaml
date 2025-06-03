@@ -5,15 +5,22 @@ metadata:
   namespace: ingress-nginx
 spec:
   endpointSelector: {}
-  ingress: []
-  egress:
-    - toEntities:
-        - kube-apiserver
+  ingress:
+    # Allow https ingress traffic
+    - fromEntities:
         - world
       toPorts:
         - ports:
             - port: "443"
               protocol: TCP
+  egress:
+    - toEntities:
+        - kube-apiserver
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+    # Allow ingress to the Harbor Nginx component, which redirects to the Harbor registry or web UI
     - toEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: harbor
@@ -23,6 +30,7 @@ spec:
         - ports:
             - port: "8080"
               protocol: TCP
+    # Allow ingress to the Argo Server web UI
     - toEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: argo-server
@@ -31,6 +39,7 @@ spec:
         - ports:
             - port: "2746"
               protocol: TCP
+    # Allow ingress to the MinIO tenant web UI
     - toEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: argo-artifacts
