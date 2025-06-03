@@ -5,8 +5,8 @@ metadata:
   name: minio-tenant-deny-all
   namespace: argo-artifacts
 spec:
-  endpointSelector:
-    - {}
+  endpointSelector: {}
+  # Deny all ingress and egress traffic by default
   ingress:
     - {}
   egress:
