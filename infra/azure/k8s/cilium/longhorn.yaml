@@ -27,22 +27,17 @@ spec:
             app: konnectivity-agent
             k8s:io.kubernetes.pod.namespace: kube-system
     - fromEndpoints:
-        - matchLabels:
-            app: longhorn-csi-plugin
-      toPorts:
-        - ports:
-            - port: "9500"
-              protocol: TCP
-    - fromEndpoints:
-        - matchLabels:
-            app: longhorn-ui
-      toPorts:
-        - ports:
-            - port: "9500"
-              protocol: TCP
-    - fromEndpoints:
-        - matchLabels:
-            app: longhorn-manager
+        - matchExpressions:
+          - key: app
+            operator: In
+            values:
+              - longhorn-csi-plugin
+              - longhorn-ui
+              - longhorn-manager
+          - key: k8s:io.kubernetes.pod.namespace
+            operator: In
+            values:
+              - longhorn-system
       toPorts:
         - ports:
             - port: "9500"
@@ -186,6 +181,7 @@ spec:
   # Share-manager handles ReadWriteMany volumes
   ingress:
     # Allows cross-node traffic for the shared volume
+    # Within node traffic is allowed by default
     - fromEntities:
         - remote-node
       toPorts:
@@ -200,6 +196,10 @@ spec:
         - matchLabels:
             io.kubernetes.pod.namespace: kube-system
             k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
