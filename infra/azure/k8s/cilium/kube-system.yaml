@@ -71,7 +71,8 @@ spec:
       k8s-app: hubble-ui
   egress:
     # Allow hubble-ui to communicate with the Kubernetes API server
-    # Necessary for hubble-ui to be able to observe
+    # Necessary for hubble-ui to be able to observe network policies and other resources
+    # https://docs.cilium.io/en/stable/gettingstarted/hubble/
     - toEntities:
         - kube-apiserver
       toPorts:
@@ -99,6 +100,8 @@ metadata:
   name: hubble-relay
   namespace: kube-system
 spec:
+  # Hubble-relay collects data from the cilium pods running on each node
+  # and provides it to the hubble-ui for visualization
   endpointSelector:
     matchLabels:
       k8s-app: hubble-relay
@@ -148,7 +151,7 @@ spec:
     matchLabels:
       k8s-app: metrics-server
   # The metrics-server collects realtime metrics from kubelets
-  # and provides them to the Kubernetes API server for use in in autoscaling
+  # and provides them to the Kubernetes API server for use in autoscaling
   # https://kubernetes-sigs.github.io/metrics-server/
   ingress:
     - fromEndpoints:
