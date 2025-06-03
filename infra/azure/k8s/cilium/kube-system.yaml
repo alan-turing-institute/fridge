@@ -124,13 +124,13 @@ metadata:
   name: coredns-autoscaler
   namespace: kube-system
 spec:
-  # `coredns-autoscaler` allows the CoreDNS pods to scale based on the number of DNS requests
+  # `coredns-autoscaler` allows the CoreDNS pods to scale based on load/number of nodes
   endpointSelector:
     matchLabels:
       k8s-app: coredns-autoscaler
   egress:
     # Allow CoreDNS autoscaler to communicate with the Kubernetes API server
-    # Necessary to allow it to scale the CoreDNS pods
+    # Necessary to allow it to monitor the number of pods/nodes and scale accordingly
     - toEntities:
         - kube-apiserver
       toPorts:
@@ -147,6 +147,9 @@ spec:
   endpointSelector:
     matchLabels:
       k8s-app: metrics-server
+  # The metrics-server collects realtime metrics from kubelets
+  # and provides them to the Kubernetes API server for use in in autoscaling
+  # https://kubernetes-sigs.github.io/metrics-server/
   ingress:
     - fromEndpoints:
         - matchLabels:
@@ -185,7 +188,7 @@ spec:
   endpointSelector:
     matchLabels:
       app: konnectivity-agent
-  # konnectivity-agent provides a way for the Kubernetes API server to connect to nodes
+  # konnectivity-agent provides a way for the Kubernetes API server to connect to nodes/pods
   # https://kubernetes.io/docs/tasks/extend-kubernetes/setup-konnectivity/
   ingress:
     - fromEndpoints:
@@ -195,6 +198,8 @@ spec:
         - ports:
           - port: "8082"
             protocol: TCP
+  egress:
+    - {}
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
@@ -206,6 +211,7 @@ spec:
     matchLabels:
       app: konnectivity-agent-autoscaler
   egress:
+    # The autoscaler needs to communicate with the API to determine how many konnectivity agents to run
     - toEntities:
         - kube-apiserver
       toPorts:
