@@ -17,7 +17,7 @@ metadata:
   name: longhorn-manager
   namespace: longhorn-system
 spec:
-  # Apply to all pods in this namespace
+  # Apply to longhorn-manager pods only
   endpointSelector:
     matchLabels:
       app: longhorn-manager
@@ -83,6 +83,10 @@ spec:
               protocol: ANY
     - toEntities:
         - kube-apiserver
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
@@ -96,6 +100,10 @@ spec:
   egress:
     - toEntities:
         - kube-apiserver
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
@@ -109,6 +117,10 @@ spec:
   egress:
     - toEntities:
         - kube-apiserver
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
@@ -122,6 +134,10 @@ spec:
   egress:
     - toEntities:
         - kube-apiserver
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
@@ -135,6 +151,10 @@ spec:
   egress:
     - toEntities:
         - kube-apiserver
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
