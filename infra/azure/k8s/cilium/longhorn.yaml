@@ -1,3 +1,4 @@
+# See https://longhorn.io/docs/1.9.0/references/networking/ for more details on Longhorn networking policies
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
 metadata:
@@ -23,17 +24,24 @@ spec:
       app: longhorn-manager
   ingress:
     - fromEndpoints:
+        # Konnectivity agent manages some communication between Longhorn's webhooks and the Longhorn manager
         - matchLabels:
             app: konnectivity-agent
             k8s:io.kubernetes.pod.namespace: kube-system
+      toPorts:
+        - ports:
+            - port: "9501"
+              endPort: 9502
+              protocol: TCP
     - fromEndpoints:
         - matchExpressions:
           - key: app
             operator: In
             values:
               - longhorn-csi-plugin
-              - longhorn-ui
+              - longhorn-driver-deployer
               - longhorn-manager
+              - longhorn-ui
           - key: k8s:io.kubernetes.pod.namespace
             operator: In
             values:
@@ -42,13 +50,6 @@ spec:
         - ports:
             - port: "9500"
               protocol: TCP
-    - fromEndpoints:
-        - matchLabels:
-            longhorn.io/component: share-manager
-      toPorts:
-        - ports:
-            - port: "9503"
-              protocol: TCP
   egress:
     - toEndpoints:
         - matchExpressions:
@@ -56,10 +57,13 @@ spec:
             operator: In
             values:
               - longhorn-manager
-              - longhorn-ui
-              - longhorn-driver-deployer
-              - longhorn-csi-plugin
+      toPorts:
+        - ports:
+            - port: "9500"
+              protocol: TCP
     - toEndpoints:
+        # This allows longhorn-manager to communicate with other Longhorn manager components,
+        # such as the instance manager and share manager
         - matchLabels:
             longhorn.io/managed-by: longhorn-manager
     - toEndpoints:
@@ -73,6 +77,7 @@ spec:
         - ports:
             - port: "53"
               protocol: ANY
+    # Longhorn manager needs to be able to create and manage all Longhorn resources, such as volumes and recurring jobs
     - toEntities:
         - kube-apiserver
       toPorts:
@@ -157,6 +162,7 @@ spec:
   endpointSelector:
     matchLabels:
       longhorn.io/managed-by: longhorn-manager
+  # Allow longhorn managed pods to communicate with each other
   ingress:
     - fromEndpoints:
       - matchLabels:
@@ -188,10 +194,14 @@ spec:
         - ports:
             - port: "2049"
               protocol: TCP
-  egress:
-    - toEndpoints:
+    - fromEndpoints:
         - matchLabels:
             app: longhorn-manager
+      toPorts:
+        - ports:
+            - port: "9600"
+              protocol: TCP
+  egress:
     - toEndpoints:
         - matchLabels:
             io.kubernetes.pod.namespace: kube-system
@@ -237,6 +247,7 @@ spec:
     matchLabels:
       app: longhorn-ui
   egress:
+    # Allow longhorn-ui to communicate with longhorn-manager and manage Longhorn resources
     - toEndpoints:
         - matchLabels:
             app: longhorn-manager
