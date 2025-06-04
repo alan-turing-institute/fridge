@@ -221,6 +221,10 @@ spec:
     matchLabels:
       app: longhorn-csi-plugin
   egress:
+    # The longhorn CSI plugin needs to communicate with the Longhorn manager
+    # It is the Container Storage Interface (CSI) driver for Longhorn
+    # Note that the individual CSI components (provisioner, attacher, etc.) have their own policies
+    # and also require access to the kube-apiserver
     - toEndpoints:
       - matchLabels:
           k8s-app: kube-dns
