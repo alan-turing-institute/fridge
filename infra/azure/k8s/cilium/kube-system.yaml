@@ -201,8 +201,6 @@ spec:
         - ports:
           - port: "8082"
             protocol: TCP
-  egress:
-    - {}
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
