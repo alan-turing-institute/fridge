@@ -6,11 +6,13 @@ metadata:
 spec:
   endpointSelector: {}
   ingress:
-    # Allow https ingress traffic
+    # Allow http/https ingress traffic
     - fromEntities:
         - world
       toPorts:
         - ports:
+            - port: "80"
+              protocol: TCP
             - port: "443"
               protocol: TCP
   egress:
