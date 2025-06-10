@@ -924,6 +924,24 @@ network_policy_containerd_config = ConfigFile(
     ),
 )
 
+network_policy_kube_public = ConfigFile(
+    "network_policy_kube_public",
+    file="./k8s/cilium/kube-public.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster],
+    ),
+)
+
+network_policy_kube_node_lease = ConfigFile(
+    "network_policy_kube_node_lease",
+    file="./k8s/cilium/kube-node-lease.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster],
+    ),
+)
+
 network_policy_minio_tenant = ConfigFile(
     "network_policy_minio_tenant",
     file="./k8s/cilium/minio-tenant.yaml",
