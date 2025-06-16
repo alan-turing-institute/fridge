@@ -141,6 +141,7 @@ kind: CiliumNetworkPolicy
 metadata:
   name: longhorn-csi-resizer
   namespace: longhorn-system
+# Allow longhorn resizer service to resize longhorn pods.
 spec:
   endpointSelector:
     matchLabels:
