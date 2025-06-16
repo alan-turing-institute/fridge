@@ -924,6 +924,24 @@ network_policy_containerd_config = ConfigFile(
     ),
 )
 
+network_policy_minio_tenant = ConfigFile(
+    "network_policy_minio_tenant",
+    file="./k8s/cilium/minio-tenant.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster, minio_tenant],
+    ),
+)
+
+network_policy_minio_operator = ConfigFile(
+    "network_policy_minio_operator",
+    file="./k8s/cilium/minio-operator.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster, minio_operator],
+    ),
+)
+
 network_policy_ingress_nginx = ConfigFile(
     "network_policy_ingress_nginx",
     file="./k8s/cilium/ingress-nginx.yaml",
