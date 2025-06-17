@@ -924,6 +924,33 @@ network_policy_containerd_config = ConfigFile(
     ),
 )
 
+network_policy_kubernetes_system = ConfigFile(
+    "network_policy_kubernetes_system",
+    file="./k8s/cilium/kube-system.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster],
+    ),
+)
+
+network_policy_hubble = ConfigFile(
+    "network_policy_hubble",
+    file="./k8s/cilium/hubble.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster],
+    ),
+)
+
+network_policy_aks = ConfigFile(
+    "network_policy_aks",
+    file="./k8s/cilium/aks.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster],
+    ),
+)
+
 network_policy_longhorn = ConfigFile(
     "network_policy_longhorn",
     file="./k8s/cilium/longhorn.yaml",
