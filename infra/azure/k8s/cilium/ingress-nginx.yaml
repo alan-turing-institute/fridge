@@ -21,7 +21,7 @@ spec:
       k8s:app.kubernetes.io/name: ingress-nginx
       k8s:app.kubernetes.io/component: controller
   ingress:
-    # Allow http/https ingress traffic
+    # Allow HTTP/HTTPS from outside world
     - fromEntities:
         - world
       toPorts:
@@ -30,9 +30,9 @@ spec:
               protocol: TCP
             - port: "443"
               protocol: TCP
-
     # Allow access to the Ingress NGINX controller from the Konnectivity Agent,
-    # which mediates traffic from the Kubernetes API server resulting from webhooks
+    # which mediates traffic from the Kubernetes API server resulting from
+    # webhooks
     - fromEndpoints:
         - matchLabels:
             app: konnectivity-agent
@@ -42,14 +42,16 @@ spec:
             - port: "8443"
               protocol: TCP
   egress:
-    # Allow egress to the Kubernetes API server for Ingress NGINX to manage resources
+    # Allow egress to the Kubernetes API server for Ingress NGINX to manage
+    # resources
     - toEntities:
         - kube-apiserver
       toPorts:
         - ports:
             - port: "443"
               protocol: TCP
-    # Allow forwarding traffic to the Harbor Nginx component, which redirects to the Harbor registry or web UI
+    # Allow forwarding traffic to the Harbor Nginx component, which redirects
+    # to the Harbor registry or web UI
     - toEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: harbor
