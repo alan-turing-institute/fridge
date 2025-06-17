@@ -941,3 +941,12 @@ network_policy_minio_operator = ConfigFile(
         depends_on=[managed_cluster, minio_operator],
     ),
 )
+
+network_policy_ingress_nginx = ConfigFile(
+    "network_policy_ingress_nginx",
+    file="./k8s/cilium/ingress-nginx.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster, ingress_nginx],
+    ),
+)
