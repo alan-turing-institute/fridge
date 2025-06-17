@@ -932,3 +932,21 @@ network_policy_kubernetes_system = ConfigFile(
         depends_on=[managed_cluster],
     ),
 )
+
+network_policy_kubernetes_system = ConfigFile(
+    "network_policy_hubble",
+    file="./k8s/cilium/hubble.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster],
+    ),
+)
+
+network_policy_kubernetes_system = ConfigFile(
+    "network_policy_aks",
+    file="./k8s/cilium/aks.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[managed_cluster],
+    ),
+)
