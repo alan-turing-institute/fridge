@@ -24,7 +24,8 @@ spec:
       app: longhorn-manager
   ingress:
     - fromEndpoints:
-        # Konnectivity agent manages some communication between Longhorn's webhooks and the Longhorn manager
+        # Konnectivity agent manages some communication between Longhorn's
+        # webhooks and the Longhorn manager
         - matchLabels:
             app: konnectivity-agent
             k8s:io.kubernetes.pod.namespace: kube-system
@@ -62,8 +63,8 @@ spec:
             - port: "9500"
               protocol: TCP
     - toEndpoints:
-        # This allows longhorn-manager to communicate with other Longhorn manager components,
-        # such as the instance manager and share manager
+        # This allows longhorn-manager to communicate with other Longhorn
+        # manager components, such as the instance manager and share manager
         - matchLabels:
             longhorn.io/managed-by: longhorn-manager
     - toEndpoints:
@@ -77,7 +78,8 @@ spec:
         - ports:
             - port: "53"
               protocol: ANY
-    # Longhorn manager needs to be able to create and manage all Longhorn resources, such as volumes and recurring jobs
+    # Longhorn manager needs to be able to create and manage all Longhorn
+    # resources, such as volumes and recurring jobs
     - toEntities:
         - kube-apiserver
       toPorts:
@@ -166,15 +168,15 @@ spec:
   # Allow longhorn managed pods to communicate with each other
   ingress:
     - fromEndpoints:
-      - matchLabels:
-          app: longhorn-manager
+        - matchLabels:
+            app: longhorn-manager
     - fromEndpoints:
-      - matchLabels:
-          longhorn.io/managed-by: longhorn-manager
+        - matchLabels:
+            longhorn.io/managed-by: longhorn-manager
   egress:
     - toEndpoints:
-      - matchLabels:
-          longhorn.io/managed-by: longhorn-manager
+        - matchLabels:
+            longhorn.io/managed-by: longhorn-manager
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
@@ -227,20 +229,20 @@ spec:
     # Note that the individual CSI components (provisioner, attacher, etc.) have their own policies
     # and also require access to the kube-apiserver
     - toEndpoints:
-      - matchLabels:
-          k8s-app: kube-dns
-          io.kubernetes.pod.namespace: kube-system
+        - matchLabels:
+            k8s-app: kube-dns
+            io.kubernetes.pod.namespace: kube-system
       toPorts:
         - ports:
-          - port: "53"
-            protocol: ANY
+            - port: "53"
+              protocol: ANY
     - toEndpoints:
-      - matchLabels:
-          app: longhorn-manager
+        - matchLabels:
+            app: longhorn-manager
       toPorts:
         - ports:
-          - port: "9500"
-            protocol: TCP
+            - port: "9500"
+              protocol: TCP
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
