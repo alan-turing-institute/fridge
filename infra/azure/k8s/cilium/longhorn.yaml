@@ -253,6 +253,7 @@ spec:
       app: longhorn-ui
   egress:
     # Allow longhorn-ui to instruct longhorn-manager to manage Longhorn resources
+    # Longhorn resources
     - toEndpoints:
         - matchLabels:
             app: longhorn-manager
@@ -271,6 +272,8 @@ spec:
     matchLabels:
       component: instance-manager
   egress:
+    # Allow instance manager to instruct longhorn manager to manage engines and
+    # replicas on a node
     - toEndpoints:
         - matchLabels:
             app: longhorn-manager
