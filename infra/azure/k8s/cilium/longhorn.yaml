@@ -252,7 +252,7 @@ spec:
     matchLabels:
       app: longhorn-ui
   egress:
-    # Allow longhorn-ui to communicate with longhorn-manager and manage Longhorn resources
+    # Allow longhorn-ui to instruct longhorn-manager to manage Longhorn resources
     - toEndpoints:
         - matchLabels:
             app: longhorn-manager
