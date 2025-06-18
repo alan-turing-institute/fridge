@@ -163,6 +163,7 @@ longhorn = Chart(
             ]
         },
         "defaultSettings": {"taintToleration": "gpu.intel.com/i915:NoSchedule"},
+        "persistence": {"defaultClassReplicaCount": 2},
     },
     opts=ResourceOptions(
         provider=k8s_provider,
