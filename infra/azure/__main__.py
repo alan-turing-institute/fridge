@@ -7,10 +7,23 @@ from pulumi import FileAsset, Output, ResourceOptions
 from pulumi_azure_native import containerservice, managedidentity, resources
 import pulumi_tls as tls
 import pulumi_kubernetes as kubernetes
+import pulumi_random as random
+from pulumi_kubernetes.batch.v1 import (
+    Job,
+    JobSpecArgs,
+)
 from pulumi_kubernetes.core.v1 import (
+    ConfigMapVolumeSourceArgs,
+    ContainerArgs,
+    EnvVarArgs,
     Namespace,
+    PodSpecArgs,
+    PodTemplateSpecArgs,
     Secret,
+    SecurityContextArgs,
     ServiceAccount,
+    VolumeArgs,
+    VolumeMountArgs,
 )
 
 from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs
@@ -26,6 +39,8 @@ from pulumi_kubernetes.rbac.v1 import (
     RoleRefArgs,
     SubjectArgs,
 )
+
+from pulumi_random import RandomPassword
 
 
 @unique
@@ -307,7 +322,9 @@ cert_manager_issuers = ConfigGroup(
     ),
 )
 
-# Minio
+# MinIO
+
+## Deploy the MinIO operator, which is responsible for managing MinIO tenants
 minio_operator_ns = Namespace(
     "minio-operator-ns",
     metadata=ObjectMetaArgs(
@@ -334,6 +351,7 @@ minio_operator = Chart(
     ),
 )
 
+## Set up the MinIO tenant
 minio_tenant_ns = Namespace(
     "minio-tenant-ns",
     metadata=ObjectMetaArgs(
@@ -382,6 +400,96 @@ minio_env_secret = Secret(
     ),
 )
 
+### MinIO user secrets
+minio_ingress_reader_secret = Secret(
+    "minio-ingress-reader-secret",
+    metadata=ObjectMetaArgs(
+        name="ingress-reader-secret",
+        namespace=minio_tenant_ns.metadata.name,
+    ),
+    type="Opaque",
+    string_data={
+        "CONSOLE_ACCESS_KEY": "ingress-reader",
+        "CONSOLE_SECRET_KEY": random.RandomPassword(
+            "minio-ingress-reader-password",
+            length=16,
+            special=True,
+            upper=True,
+        ).result,
+    },
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[minio_tenant_ns],
+    ),
+)
+
+minio_sensitive_ingress_reader_secret = Secret(
+    "minio-sensitive_ingress-reader-secret",
+    metadata=ObjectMetaArgs(
+        name="sensitive-ingress-reader-secret",
+        namespace=minio_tenant_ns.metadata.name,
+    ),
+    type="Opaque",
+    string_data={
+        "CONSOLE_ACCESS_KEY": "sensitive-ingress-reader",
+        "CONSOLE_SECRET_KEY": random.RandomPassword(
+            "sensitive-ingress-reader-password",
+            length=16,
+            special=True,
+            upper=True,
+        ).result,
+    },
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[minio_tenant_ns],
+    ),
+)
+
+minio_export_for_review_secret = Secret(
+    "minio-export-for-review-secret",
+    metadata=ObjectMetaArgs(
+        name="export-for-review-secret",
+        namespace=minio_tenant_ns.metadata.name,
+    ),
+    type="Opaque",
+    string_data={
+        "CONSOLE_ACCESS_KEY": "export-for-review",
+        "CONSOLE_SECRET_KEY": random.RandomPassword(
+            "export-writer-password",
+            length=16,
+            special=True,
+            upper=True,
+        ).result,
+    },
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[minio_tenant_ns],
+    ),
+)
+
+minio_review_reader_secret = Secret(
+    "minio-review-reader-secrets",
+    metadata=ObjectMetaArgs(
+        name="review-reader-secret",
+        namespace=minio_tenant_ns.metadata.name,
+    ),
+    type="Opaque",
+    string_data={
+        "CONSOLE_ACCESS_KEY": "review-reader",
+        "CONSOLE_SECRET_KEY": random.RandomPassword(
+            "review-reader-password",
+            length=16,
+            special=True,
+            upper=True,
+        ).result,
+    },
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[minio_tenant_ns],
+    ),
+)
+
+## Deploy the MinIO tenant
 minio_tenant = Chart(
     "minio-tenant",
     namespace=minio_tenant_ns.metadata.name,
@@ -396,6 +504,17 @@ minio_tenant = Chart(
             "name": "argo-artifacts",
             "buckets": [
                 {"name": "argo-artifacts"},
+                {"name": "ingress"},
+                {"name": "sensitive-ingress"},
+                {"name": "intermediate-storage"},
+                {"name": "ready-for-review"},
+                {"name": "ready-for-egress"},
+            ],
+            "users": [
+                {"name": "ingress-reader-secret"},
+                {"name": "sensitive-ingress-reader-secret"},
+                {"name": "export-for-review-secret"},
+                {"name": "review-reader-secret"},
             ],
             "certificate": {
                 "requestAutoCert": "false",
@@ -441,7 +560,16 @@ minio_tenant = Chart(
     },
     opts=ResourceOptions(
         provider=k8s_provider,
-        depends_on=[minio_env_secret, minio_operator, minio_tenant_ns, managed_cluster],
+        depends_on=[
+            minio_env_secret,
+            minio_operator,
+            minio_tenant_ns,
+            managed_cluster,
+            minio_ingress_reader_secret,
+            minio_sensitive_ingress_reader_secret,
+            minio_export_for_review_secret,
+            minio_review_reader_secret,
+        ],
     ),
 )
 
@@ -491,6 +619,103 @@ minio_ingress = Ingress(
     opts=ResourceOptions(
         provider=k8s_provider,
         depends_on=[minio_tenant],
+    ),
+)
+
+## Once the MinIO tenant is created, we need to configure the standard user accounts and policies manually
+## Run a job to configure the MinIO tenant
+minio_config_map = Template(
+    open("k8s/minio/minio-configuration-cm.yaml", "r").read()
+).substitute(
+    namespace="argo-artifacts",
+    minio_alias="argoartifacts",
+    minio_url="http://minio.argo-artifacts.svc.cluster.local:80",
+)
+
+minio_config_cm = ConfigGroup(
+    "minio-configuration-cm",
+    yaml=[minio_config_map],
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[minio_tenant],
+    ),
+)
+
+minio_config_job = Job(
+    "minio-config-job",
+    metadata=ObjectMetaArgs(
+        name="minio-config-job",
+        namespace=minio_tenant_ns.metadata.name,
+    ),
+    spec=JobSpecArgs(
+        backoff_limit=1,
+        template=PodTemplateSpecArgs(
+            spec=PodSpecArgs(
+                containers=[
+                    ContainerArgs(
+                        name="minio-config-job",
+                        image="minio/mc:latest",
+                        command=[
+                            "/bin/sh",
+                            "-c",
+                        ],
+                        args=[
+                            "mc --insecure alias set argoartifacts http://minio.argo-artifacts.svc.cluster.local:80 $(MINIO_ROOT_USER) $(MINIO_ROOT_PASSWORD) &&"
+                            "/tmp/scripts/setup.sh +x;",
+                        ],
+                        resources={
+                            "requests": {
+                                "cpu": "100m",
+                                "memory": "128Mi",
+                            },
+                            "limits": {
+                                "cpu": "100m",
+                                "memory": "128Mi",
+                            },
+                        },
+                        env=[
+                            EnvVarArgs(name="MC_CONFIG_DIR", value="/tmp/.mc"),
+                            EnvVarArgs(
+                                name="MINIO_ROOT_USER",
+                                value=config.require_secret("minio_root_user"),
+                            ),
+                            EnvVarArgs(
+                                name="MINIO_ROOT_PASSWORD",
+                                value=config.require_secret("minio_root_password"),
+                            ),
+                        ],
+                        security_context=SecurityContextArgs(
+                            allow_privilege_escalation=False,
+                            capabilities={"drop": ["ALL"]},
+                            run_as_group=1000,
+                            run_as_non_root=True,
+                            run_as_user=1000,
+                            seccomp_profile={"type": "RuntimeDefault"},
+                        ),
+                        volume_mounts=[
+                            VolumeMountArgs(
+                                name="minio-config-volume",
+                                mount_path="/tmp/scripts/",
+                            )
+                        ],
+                    )
+                ],
+                volumes=[
+                    VolumeArgs(
+                        name="minio-config-volume",
+                        config_map=ConfigMapVolumeSourceArgs(
+                            name="minio-configuration",
+                            default_mode=0o777,
+                        ),
+                    )
+                ],
+                restart_policy="Never",
+            ),
+        ),
+    ),
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[minio_tenant, minio_env_secret],
     ),
 )
 
