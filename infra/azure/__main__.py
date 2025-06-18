@@ -1,11 +1,8 @@
-import base64
 from enum import Enum, unique
 from string import Template
 
 import pulumi
 from pulumi import FileAsset, Output, ResourceOptions
-from pulumi_azure_native import containerservice, managedidentity, resources
-import pulumi_tls as tls
 import pulumi_kubernetes as kubernetes
 from pulumi_kubernetes.core.v1 import (
     Namespace,
@@ -40,14 +37,6 @@ class PodSecurityStandard(Enum):
     PRIVILEGED = {"pod-security.kubernetes.io/enforce": "privileged"}
 
 
-def get_kubeconfig(
-    credentials: list[containerservice.outputs.CredentialResultResponse],
-) -> str:
-    for credential in credentials:
-        if credential.name == "clusterAdmin":
-            return base64.b64decode(credential.value).decode()
-
-
 config = pulumi.Config()
 
 tls_environment = TlsEnvironment(config.require("tls_environment"))
@@ -56,113 +45,80 @@ tls_issuer_names = {
     TlsEnvironment.PRODUCTION: "letsencrypt-prod",
 }
 
-resource_group = resources.ResourceGroup(
-    "resource_group",
-    resource_group_name=config.require("resource_group_name"),
-)
-
-ssh_key = tls.PrivateKey("ssh-key", algorithm="RSA", rsa_bits="3072")
-
-identity = managedidentity.UserAssignedIdentity(
-    "cluster_managed_identity",
-    resource_group_name=resource_group.name,
-)
-
-# AKS cluster
-managed_cluster = containerservice.ManagedCluster(
-    config.require("cluster_name"),
-    resource_group_name=resource_group.name,
-    agent_pool_profiles=[
-        containerservice.ManagedClusterAgentPoolProfileArgs(
-            enable_auto_scaling=True,
-            max_count=5,
-            max_pods=100,
-            min_count=3,
-            mode="System",
-            name="gppool",
-            node_labels={
-                "context": "fridge",
-                "size": "B4als_v2",
-                "arch": "x86_64",
-            },
-            os_disk_size_gb=0,  # when == 0 sets default size
-            os_type="Linux",
-            os_sku="Ubuntu",
-            type="VirtualMachineScaleSets",
-            vm_size="Standard_B4als_v2",
-        ),
-        containerservice.ManagedClusterAgentPoolProfileArgs(
-            enable_auto_scaling=True,
-            max_count=5,
-            max_pods=100,
-            min_count=2,
-            mode="System",
-            name="systempool",
-            node_labels={
-                "context": "fridge",
-                "size": "B2als_v2",
-                "arch": "x86_64",
-            },
-            os_disk_size_gb=0,  # when == 0 sets default size
-            os_type="Linux",
-            os_sku="Ubuntu",
-            type="VirtualMachineScaleSets",
-            vm_size="Standard_B2als_v2",
-        ),
-    ],
-    dns_prefix="fridge",
-    identity=containerservice.ManagedClusterIdentityArgs(
-        type=containerservice.ResourceIdentityType.USER_ASSIGNED,
-        user_assigned_identities=[identity.id],
-    ),
-    kubernetes_version="1.32",
-    linux_profile=containerservice.ContainerServiceLinuxProfileArgs(
-        admin_username="fridgeadmin",
-        ssh=containerservice.ContainerServiceSshConfigurationArgs(
-            public_keys=[
-                containerservice.ContainerServiceSshPublicKeyArgs(
-                    key_data=ssh_key.public_key_openssh,
-                )
-            ],
-        ),
-    ),
-    network_profile=containerservice.ContainerServiceNetworkProfileArgs(
-        advanced_networking=containerservice.AdvancedNetworkingArgs(
-            enabled=True,
-            observability=containerservice.AdvancedNetworkingObservabilityArgs(
-                enabled=True,
-            ),
-        ),
-        network_dataplane=containerservice.NetworkDataplane.CILIUM,
-        network_plugin=containerservice.NetworkPlugin.AZURE,
-        network_policy=containerservice.NetworkPolicy.CILIUM,
-    ),
-    opts=pulumi.ResourceOptions(replace_on_changes=["agent_pool_profiles"]),
-)
-
-admin_credentials = containerservice.list_managed_cluster_admin_credentials_output(
-    resource_group_name=resource_group.name, resource_name=managed_cluster.name
-)
-
-kubeconfig = admin_credentials.kubeconfigs.apply(get_kubeconfig)
-pulumi.export("kubeconfig", kubeconfig)
+k8s_environment = config.get("k8s_env")
+if k8s_environment not in ["AKS", "DAWN"]:
+    raise ValueError(
+        f"Invalid k8s environment: {k8s_environment}. "
+        "Supported values are 'AKS' and 'DAWN'."
+    )
 
 # Kubernetes configuration
 k8s_provider = kubernetes.Provider(
     "k8s_provider",
-    kubeconfig=kubeconfig,
+    context=config.require("k8s_context"),
 )
 
-# Hubble UI
-# Interface for Cilium
-hubble_ui = ConfigFile(
-    "hubble-ui",
-    file="./k8s/hubble/hubble_ui.yaml",
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[managed_cluster],
-    ),
-)
+if k8s_environment == "AKS":
+    # Hubble UI
+    # Interface for Cilium
+    hubble_ui = ConfigFile(
+        "hubble-ui",
+        file="./k8s/hubble/hubble_ui.yaml",
+        opts=ResourceOptions(
+            provider=k8s_provider,
+        ),
+    )
+
+    # Ingress NGINX (ingress provider)
+    ingress_nginx_ns = Namespace(
+        "ingress-nginx-ns",
+        metadata=ObjectMetaArgs(
+            name="ingress-nginx",
+            labels={} | PodSecurityStandard.RESTRICTED.value,
+        ),
+        opts=ResourceOptions(
+            provider=k8s_provider,
+        ),
+    )
+
+    ingress_nginx = ConfigFile(
+        "ingress-nginx",
+        file="https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.1/deploy/static/provider/cloud/deploy.yaml",
+        opts=ResourceOptions(
+            provider=k8s_provider,
+            depends_on=[ingress_nginx_ns],
+        ),
+    )
+
+    # CertManager (TLS automation)
+    cert_manager_ns = Namespace(
+        "cert-manager-ns",
+        metadata=ObjectMetaArgs(
+            name="cert-manager",
+            labels={} | PodSecurityStandard.RESTRICTED.value,
+        ),
+        opts=ResourceOptions(
+            provider=k8s_provider,
+        ),
+    )
+
+    cert_manager = Chart(
+        "cert-manager",
+        namespace=cert_manager_ns.metadata.name,
+        chart="cert-manager",
+        version="1.17.1",
+        repository_opts=RepositoryOptsArgs(
+            repo="https://charts.jetstack.io",
+        ),
+        values={
+            "crds": {"enabled": True},
+            "extraArgs": ["--acme-http01-solver-nameservers=8.8.8.8:53,1.1.1.1:53"],
+        },
+        opts=ResourceOptions(
+            provider=k8s_provider,
+            depends_on=[cert_manager_ns],
+        ),
+    )
 
 # Patch default namespace with pod security policies
 default_ns = Namespace(
@@ -173,7 +129,6 @@ default_ns = Namespace(
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
-        depends_on=[managed_cluster],
     ),
 )
 
@@ -186,7 +141,6 @@ longhorn_ns = Namespace(
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
-        depends_on=[managed_cluster],
     ),
 )
 
@@ -200,7 +154,7 @@ longhorn = Chart(
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
-        depends_on=[managed_cluster],
+        depends_on=[longhorn_ns],
     ),
 )
 
@@ -223,73 +177,19 @@ longhorn_storage_class = StorageClass(
     ),
 )
 
-
-# Ingress NGINX (ingress provider)
-ingress_nginx_ns = Namespace(
-    "ingress-nginx-ns",
-    metadata=ObjectMetaArgs(
-        name="ingress-nginx",
-        labels={} | PodSecurityStandard.RESTRICTED.value,
-    ),
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[managed_cluster],
-    ),
-)
-
-ingress_nginx = ConfigFile(
-    "ingress-nginx",
-    file="https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.1/deploy/static/provider/cloud/deploy.yaml",
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[ingress_nginx_ns, managed_cluster],
-    ),
-)
-
-# Get public IP address and ports of Nginx Ingress loadbalancer service
-pulumi.export(
-    "ingress_ip",
-    ingress_nginx.resources["v1/Service:ingress-nginx/ingress-nginx-controller"]
-    .status.load_balancer.ingress[0]
-    .ip,
-)
-pulumi.export(
-    "ingress_ports",
-    ingress_nginx.resources[
-        "v1/Service:ingress-nginx/ingress-nginx-controller"
-    ].spec.ports.apply(lambda ports: [item.port for item in ports]),
-)
-
-# CertManager (TLS automation)
-cert_manager_ns = Namespace(
-    "cert-manager-ns",
-    metadata=ObjectMetaArgs(
-        name="cert-manager",
-        labels={} | PodSecurityStandard.RESTRICTED.value,
-    ),
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[managed_cluster],
-    ),
-)
-
-cert_manager = Chart(
-    "cert-manager",
-    namespace=cert_manager_ns.metadata.name,
-    chart="cert-manager",
-    version="1.17.1",
-    repository_opts=RepositoryOptsArgs(
-        repo="https://charts.jetstack.io",
-    ),
-    values={
-        "crds": {"enabled": True},
-        "extraArgs": ["--acme-http01-solver-nameservers=8.8.8.8:53,1.1.1.1:53"],
-    },
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[cert_manager_ns, managed_cluster],
-    ),
-)
+# Get public IP address and ports of Ingress Nginx loadbalancer service
+# pulumi.export(
+#     "ingress_ip",
+#     ingress_nginx.resources["v1/Service:ingress-nginx/ingress-nginx-controller"]
+#     .status.load_balancer.ingress[0]
+#     .ip,
+# )
+# pulumi.export(
+#     "ingress_ports",
+#     ingress_nginx.resources[
+#         "v1/Service:ingress-nginx/ingress-nginx-controller"
+#     ].spec.ports.apply(lambda ports: [item.port for item in ports]),
+# )
 
 cluster_issuer_config = Template(
     open("k8s/cert_manager/clusterissuer.yaml", "r").read()
@@ -298,14 +198,14 @@ cluster_issuer_config = Template(
     issuer_name_staging=tls_issuer_names[TlsEnvironment.STAGING],
     issuer_name_production=tls_issuer_names[TlsEnvironment.PRODUCTION],
 )
-cert_manager_issuers = ConfigGroup(
-    "cert-manager-issuers",
-    yaml=[cluster_issuer_config],
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[cert_manager, cert_manager_ns, managed_cluster],
-    ),
-)
+# cert_manager_issuers = ConfigGroup(
+#     "cert-manager-issuers",
+#     yaml=[cluster_issuer_config],
+#     opts=ResourceOptions(
+#         provider=k8s_provider,
+#         depends_on=[cert_manager, cert_manager_ns],
+#     ),
+# )
 
 # Minio
 minio_operator_ns = Namespace(
@@ -316,7 +216,6 @@ minio_operator_ns = Namespace(
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
-        depends_on=[managed_cluster],
     ),
 )
 
@@ -330,7 +229,7 @@ minio_operator = Chart(
     version="7.1.1",
     opts=ResourceOptions(
         provider=k8s_provider,
-        depends_on=[minio_operator_ns, managed_cluster],
+        depends_on=[minio_operator_ns],
     ),
 )
 
@@ -342,7 +241,6 @@ minio_tenant_ns = Namespace(
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
-        depends_on=[managed_cluster],
     ),
 )
 
@@ -441,7 +339,7 @@ minio_tenant = Chart(
     },
     opts=ResourceOptions(
         provider=k8s_provider,
-        depends_on=[minio_env_secret, minio_operator, minio_tenant_ns, managed_cluster],
+        depends_on=[minio_env_secret, minio_operator, minio_tenant_ns],
     ),
 )
 
@@ -503,7 +401,6 @@ argo_server_ns = Namespace(
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
-        depends_on=[managed_cluster],
     ),
 )
 
@@ -515,7 +412,6 @@ argo_workflows_ns = Namespace(
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
-        depends_on=[managed_cluster],
     ),
 )
 
@@ -753,7 +649,6 @@ harbor_ns = Namespace(
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
-        depends_on=[managed_cluster],
     ),
 )
 
@@ -790,7 +685,7 @@ harbor = Release(
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
-        depends_on=[managed_cluster],
+        depends_on=[harbor_ns, longhorn_storage_class],
     ),
 )
 
@@ -843,101 +738,101 @@ harbor_ingress = Ingress(
     ),
 )
 
-# Create a daemonset to skip TLS verification for the harbor registry
-# This is needed while using staging/self-signed certificates for Harbor
-# A daemonset is used to run the configuration on all nodes in the cluster
+# # Create a daemonset to skip TLS verification for the harbor registry
+# # This is needed while using staging/self-signed certificates for Harbor
+# # A daemonset is used to run the configuration on all nodes in the cluster
 
-containerd_config_ns = Namespace(
-    "containerd-config-ns",
-    metadata=ObjectMetaArgs(
-        name="containerd-config",
-        labels={} | PodSecurityStandard.PRIVILEGED.value,
-    ),
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[harbor, managed_cluster],
-    ),
-)
+# containerd_config_ns = Namespace(
+#     "containerd-config-ns",
+#     metadata=ObjectMetaArgs(
+#         name="containerd-config",
+#         labels={} | PodSecurityStandard.PRIVILEGED.value,
+#     ),
+#     opts=ResourceOptions(
+#         provider=k8s_provider,
+#         depends_on=[harbor],
+#     ),
+# )
 
-skip_harbor_tls = Template(
-    open("k8s/harbor/skip_harbor_tls_verification.yaml", "r").read()
-).substitute(
-    namespace="containerd-config",
-    harbor_fqdn=harbor_fqdn,
-    harbor_url=harbor_external_url,
-    harbor_ip=config.require("harbor_ip"),
-    harbor_internal_url="http://" + config.require("harbor_ip"),
-)
+# skip_harbor_tls = Template(
+#     open("k8s/harbor/skip_harbor_tls_verification.yaml", "r").read()
+# ).substitute(
+#     namespace="containerd-config",
+#     harbor_fqdn=harbor_fqdn,
+#     harbor_url=harbor_external_url,
+#     harbor_ip=config.require("harbor_ip"),
+#     harbor_internal_url="http://" + config.require("harbor_ip"),
+# )
 
-configure_containerd_daemonset = ConfigGroup(
-    "configure-containerd-daemon",
-    yaml=[skip_harbor_tls],
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[harbor, managed_cluster],
-    ),
-)
+# configure_containerd_daemonset = ConfigGroup(
+#     "configure-containerd-daemon",
+#     yaml=[skip_harbor_tls],
+#     opts=ResourceOptions(
+#         provider=k8s_provider,
+#         depends_on=[harbor],
+#     ),
+# )
 
-# Network policy (through Cilium)
-network_policy_argo_workflows = ConfigFile(
-    "network_policy_argo_workflows",
-    file="./k8s/cilium/argo_workflows.yaml",
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[managed_cluster, minio_tenant, argo_workflows],
-    ),
-)
+# # Network policy (through Cilium)
+# network_policy_argo_workflows = ConfigFile(
+#     "network_policy_argo_workflows",
+#     file="./k8s/cilium/argo_workflows.yaml",
+#     opts=ResourceOptions(
+#         provider=k8s_provider,
+#         depends_on=[minio_tenant, argo_workflows],
+#     ),
+# )
 
-network_policy_cert_manager = ConfigFile(
-    "network_policy_cert_manager",
-    file="./k8s/cilium/cert_manager.yaml",
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[managed_cluster, cert_manager],
-    ),
-)
+# network_policy_cert_manager = ConfigFile(
+#     "network_policy_cert_manager",
+#     file="./k8s/cilium/cert_manager.yaml",
+#     opts=ResourceOptions(
+#         provider=k8s_provider,
+#         depends_on=[cert_manager],
+#     ),
+# )
 
-network_policy_argo_server = ConfigFile(
-    "network_policy_argo_server",
-    file="./k8s/cilium/argo_server.yaml",
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[managed_cluster, argo_workflows],
-    ),
-)
+# network_policy_argo_server = ConfigFile(
+#     "network_policy_argo_server",
+#     file="./k8s/cilium/argo_server.yaml",
+#     opts=ResourceOptions(
+#         provider=k8s_provider,
+#         depends_on=[argo_workflows],
+#     ),
+# )
 
-network_policy_harbor = ConfigFile(
-    "network_policy_harbor",
-    file="./k8s/cilium/harbor.yaml",
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[managed_cluster, harbor],
-    ),
-)
+# network_policy_harbor = ConfigFile(
+#     "network_policy_harbor",
+#     file="./k8s/cilium/harbor.yaml",
+#     opts=ResourceOptions(
+#         provider=k8s_provider,
+#         depends_on=[harbor],
+#     ),
+# )
 
-network_policy_containerd_config = ConfigFile(
-    "network_policy_containerd_config",
-    file="./k8s/cilium/containerd_config.yaml",
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[managed_cluster, configure_containerd_daemonset],
-    ),
-)
+# network_policy_containerd_config = ConfigFile(
+#     "network_policy_containerd_config",
+#     file="./k8s/cilium/containerd_config.yaml",
+#     opts=ResourceOptions(
+#         provider=k8s_provider,
+#         depends_on=[configure_containerd_daemonset],
+#     ),
+# )
 
-network_policy_minio_tenant = ConfigFile(
-    "network_policy_minio_tenant",
-    file="./k8s/cilium/minio-tenant.yaml",
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[managed_cluster, minio_tenant],
-    ),
-)
+# network_policy_minio_tenant = ConfigFile(
+#     "network_policy_minio_tenant",
+#     file="./k8s/cilium/minio-tenant.yaml",
+#     opts=ResourceOptions(
+#         provider=k8s_provider,
+#         depends_on=[minio_tenant],
+#     ),
+# )
 
-network_policy_minio_operator = ConfigFile(
-    "network_policy_minio_operator",
-    file="./k8s/cilium/minio-operator.yaml",
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[managed_cluster, minio_operator],
-    ),
-)
+# network_policy_minio_operator = ConfigFile(
+#     "network_policy_minio_operator",
+#     file="./k8s/cilium/minio-operator.yaml",
+#     opts=ResourceOptions(
+#         provider=k8s_provider,
+#         depends_on=[minio_operator],
+#     ),
+# )
