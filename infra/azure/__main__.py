@@ -152,6 +152,18 @@ longhorn = Chart(
     repository_opts=RepositoryOptsArgs(
         repo="https://charts.longhorn.io",
     ),
+    values={
+        "global": {
+            "tolerations": [
+                {
+                    "key": "gpu.intel.com/i915",
+                    "operator": "Exists",
+                    "effect": "NoSchedule",
+                }
+            ]
+        },
+        "defaultSettings": {"taintToleration": "gpu.intel.com/i915:NoSchedule"},
+    },
     opts=ResourceOptions(
         provider=k8s_provider,
         depends_on=[longhorn_ns],
