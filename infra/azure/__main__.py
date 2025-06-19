@@ -123,6 +123,9 @@ if k8s_environment == "AKS":
 else:
 
     def patch_namespace(name: str, pss: PodSecurityStandard) -> None:
+        """
+        Apply a PodSecurityStandard label to a namespace
+        """
         NamespacePatch(
             f"{name}-ns-pod-security",
             metadata=ObjectMetaPatchArgs(name=name, labels={} | pss.value),
