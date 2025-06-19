@@ -825,23 +825,23 @@ network_policy_argo_workflows = ConfigFile(
 )
 
 
-# network_policy_argo_server = ConfigFile(
-#     "network_policy_argo_server",
-#     file="./k8s/cilium/argo_server.yaml",
-#     opts=ResourceOptions(
-#         provider=k8s_provider,
-#         depends_on=[argo_workflows_ns],
-#     ),
-# )
+network_policy_argo_server = ConfigFile(
+    "network_policy_argo_server",
+    file="./k8s/cilium/argo_server.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[argo_workflows_ns],
+    ),
+)
 
-# network_policy_cert_manager = ConfigFile(
-#     "network_policy_cert_manager",
-#     file="./k8s/cilium/cert_manager.yaml",
-#     opts=ResourceOptions(
-#         provider=k8s_provider,
-#         depends_on=[cert_manager_ns],
-#     ),
-# )
+network_policy_cert_manager = ConfigFile(
+    "network_policy_cert_manager",
+    file="./k8s/cilium/cert_manager.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[cert_manager_ns],
+    ),
+)
 
 # network_policy_containerd_config = ConfigFile(
 #     "network_policy_containerd_config",
@@ -852,14 +852,14 @@ network_policy_argo_workflows = ConfigFile(
 #     ),
 # )
 
-# network_policy_harbor = ConfigFile(
-#     "network_policy_harbor",
-#     file="./k8s/cilium/harbor.yaml",
-#     opts=ResourceOptions(
-#         provider=k8s_provider,
-#         depends_on=[harbor],
-#     ),
-# )
+network_policy_harbor = ConfigFile(
+    "network_policy_harbor",
+    file="./k8s/cilium/harbor.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[harbor],
+    ),
+)
 
 # network_policy_hubble = ConfigFile(
 #     "network_policy_hubble",
@@ -870,14 +870,22 @@ network_policy_argo_workflows = ConfigFile(
 #     ),
 # )
 
-# network_policy_ingress_nginx = ConfigFile(
-#     "network_policy_ingress_nginx",
-#     file="./k8s/cilium/ingress-nginx.yaml",
-#     opts=ResourceOptions(
-#         provider=k8s_provider,
-#         depends_on=[ingress_nginx_ns],
-#     ),
-# )
+network_policy_ingress_nginx = ConfigFile(
+    "network_policy_ingress_nginx",
+    file="./k8s/cilium/ingress-nginx.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[ingress_nginx_ns],
+    ),
+)
+
+network_policy_prometheus = ConfigFile(
+    "network_policy_prometheus",
+    file="./k8s/cilium/prometheus.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+    ),
+)
 
 # network_policy_kube_node_lease = ConfigFile(
 #     "network_policy_kube_node_lease",
