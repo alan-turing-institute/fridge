@@ -121,9 +121,17 @@ if k8s_environment == "AKS":
         ),
     )
 else:
+
+    def patch_namespace(name: str, pss: PodSecurityStandard) -> None:
+        NamespacePatch(
+            f"{name}-ns-pod-security",
+            metadata=ObjectMetaPatchArgs(name=name, labels={} | pss.value),
+        )
+
+    dawn_managed_resources = ["cert-manager", "ingress-nginx"]
     cert_manager_ns = Namespace.get("cert-manager-ns", "cert-manager")
     ingress_nginx_ns = Namespace.get("ingress-nginx-ns", "ingress-nginx")
-
+    [patch_namespace(x, PodSecurityStandard.RESTRICTED) for x in dawn_managed_resources]
 
 # Patch default namespace with pod security policies
 default_ns = Namespace(
