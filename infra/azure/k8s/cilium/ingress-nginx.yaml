@@ -30,17 +30,6 @@ spec:
               protocol: TCP
             - port: "443"
               protocol: TCP
-    # Allow access to the Ingress NGINX controller from the Konnectivity Agent,
-    # which mediates traffic from the Kubernetes API server resulting from
-    # webhooks
-    - fromEndpoints:
-        - matchLabels:
-            app: konnectivity-agent
-            k8s:io.kubernetes.pod.namespace: kube-system
-      toPorts:
-        - ports:
-            - port: "8443"
-              protocol: TCP
   egress:
     # Allow egress to the Kubernetes API server for Ingress NGINX to manage
     # resources
