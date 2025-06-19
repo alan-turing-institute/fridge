@@ -788,21 +788,22 @@ harbor_ingress = Ingress(
 # )
 
 # # Network policy (through Cilium)
+
+# network_policy_aks = ConfigFile(
+#     "network_policy_aks",
+#     file="./k8s/cilium/aks.yaml",
+#     opts=ResourceOptions(
+#         provider=k8s_provider,
+#         depends_on=[managed_cluster],
+#     ),
+# )
+
 # network_policy_argo_workflows = ConfigFile(
 #     "network_policy_argo_workflows",
 #     file="./k8s/cilium/argo_workflows.yaml",
 #     opts=ResourceOptions(
 #         provider=k8s_provider,
 #         depends_on=[minio_tenant, argo_workflows],
-#     ),
-# )
-
-# network_policy_cert_manager = ConfigFile(
-#     "network_policy_cert_manager",
-#     file="./k8s/cilium/cert_manager.yaml",
-#     opts=ResourceOptions(
-#         provider=k8s_provider,
-#         depends_on=[cert_manager],
 #     ),
 # )
 
@@ -815,12 +816,12 @@ harbor_ingress = Ingress(
 #     ),
 # )
 
-# network_policy_harbor = ConfigFile(
-#     "network_policy_harbor",
-#     file="./k8s/cilium/harbor.yaml",
+# network_policy_cert_manager = ConfigFile(
+#     "network_policy_cert_manager",
+#     file="./k8s/cilium/cert_manager.yaml",
 #     opts=ResourceOptions(
 #         provider=k8s_provider,
-#         depends_on=[harbor],
+#         depends_on=[cert_manager],
 #     ),
 # )
 
@@ -830,6 +831,80 @@ harbor_ingress = Ingress(
 #     opts=ResourceOptions(
 #         provider=k8s_provider,
 #         depends_on=[configure_containerd_daemonset],
+#     ),
+# )
+
+# network_policy_harbor = ConfigFile(
+#     "network_policy_harbor",
+#     file="./k8s/cilium/harbor.yaml",
+#     opts=ResourceOptions(
+#         provider=k8s_provider,
+#         depends_on=[harbor],
+#     ),
+# )
+
+# network_policy_hubble = ConfigFile(
+#     "network_policy_hubble",
+#     file="./k8s/cilium/hubble.yaml",
+#     opts=ResourceOptions(
+#         provider=k8s_provider,
+#         depends_on=[managed_cluster],
+#     ),
+# )
+
+# network_policy_ingress_nginx = ConfigFile(
+#     "network_policy_ingress_nginx",
+#     file="./k8s/cilium/ingress-nginx.yaml",
+#     opts=ResourceOptions(
+#         provider=k8s_provider,
+#         depends_on=[managed_cluster, ingress_nginx],
+#     ),
+# )
+
+# network_policy_kube_node_lease = ConfigFile(
+#     "network_policy_kube_node_lease",
+#     file="./k8s/cilium/kube-node-lease.yaml",
+#     opts=ResourceOptions(
+#         provider=k8s_provider,
+#         depends_on=[managed_cluster],
+#     ),
+# )
+
+
+# network_policy_kube_public = ConfigFile(
+#     "network_policy_kube_public",
+#     file="./k8s/cilium/kube-public.yaml",
+#     opts=ResourceOptions(
+#         provider=k8s_provider,
+#         depends_on=[managed_cluster],
+#     ),
+# )
+
+# network_policy_kubernetes_system = ConfigFile(
+#     "network_policy_kubernetes_system",
+#     file="./k8s/cilium/kube-system.yaml",
+#     opts=ResourceOptions(
+#         provider=k8s_provider,
+#         depends_on=[managed_cluster],
+#     ),
+# )
+
+# network_policy_kube_node_lease = ConfigFile(
+#     "network_policy_kube_node_lease",
+#     file="./k8s/cilium/kube-node-lease.yaml",
+#     opts=ResourceOptions(
+#         provider=k8s_provider,
+#         depends_on=[managed_cluster],
+#     ),
+# )
+
+
+# network_policy_longhorn = ConfigFile(
+#     "network_policy_longhorn",
+#     file="./k8s/cilium/longhorn.yaml",
+#     opts=ResourceOptions(
+#         provider=k8s_provider,
+#         depends_on=[managed_cluster, longhorn],
 #     ),
 # )
 
