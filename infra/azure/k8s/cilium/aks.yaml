@@ -170,3 +170,28 @@ spec:
         - ports:
             - port: "8443"
               protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: konnectivity-longhorn
+  namespace: longhorn-system
+  # Allow access to the Ingress NGINX controller from the Konnectivity Agent,
+  # which mediates traffic from the Kubernetes API server resulting from
+  # webhooks
+spec:
+  endpointSelector:
+    matchLabels:
+      app: longhorn-manager
+  # Konnectivity agent manages some communication between Longhorn's
+  # webhooks and the Longhorn manager
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app: konnectivity-agent
+            k8s:io.kubernetes.pod.namespace: kube-system
+      toPorts:
+        - ports:
+            - port: "9501"
+              endPort: 9502
+              protocol: TCP
