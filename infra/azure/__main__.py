@@ -6,13 +6,14 @@ from pulumi import FileAsset, Output, ResourceOptions
 import pulumi_kubernetes as kubernetes
 from pulumi_kubernetes.core.v1 import (
     Namespace,
+    NamespacePatch,
     Secret,
     ServiceAccount,
 )
 
 from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
-from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
+from pulumi_kubernetes.meta.v1 import ObjectMetaArgs, ObjectMetaPatchArgs
 from pulumi_kubernetes.networking.v1 import Ingress
 from pulumi_kubernetes.storage.v1 import StorageClass
 from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
@@ -119,6 +120,10 @@ if k8s_environment == "AKS":
             depends_on=[cert_manager_ns],
         ),
     )
+else:
+    cert_manager_ns = Namespace.get("cert-manager-ns", "cert-manager")
+    ingress_nginx_ns = Namespace.get("ingress-nginx-ns", "ingress-nginx")
+
 
 # Patch default namespace with pod security policies
 default_ns = Namespace(
@@ -799,14 +804,15 @@ if k8s_environment == "AKS":
         ),
     )
 
-# network_policy_argo_workflows = ConfigFile(
-#     "network_policy_argo_workflows",
-#     file="./k8s/cilium/argo_workflows.yaml",
-#     opts=ResourceOptions(
-#         provider=k8s_provider,
-#         depends_on=[minio_tenant, argo_workflows_ns],
-#     ),
-# )
+network_policy_argo_workflows = ConfigFile(
+    "network_policy_argo_workflows",
+    file="./k8s/cilium/argo_workflows.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[minio_tenant, argo_workflows_ns],
+    ),
+)
+
 
 # network_policy_argo_server = ConfigFile(
 #     "network_policy_argo_server",
@@ -853,14 +859,14 @@ if k8s_environment == "AKS":
 #     ),
 # )
 
-network_policy_ingress_nginx = ConfigFile(
-    "network_policy_ingress_nginx",
-    file="./k8s/cilium/ingress-nginx.yaml",
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[ingress_nginx_ns],
-    ),
-)
+# network_policy_ingress_nginx = ConfigFile(
+#     "network_policy_ingress_nginx",
+#     file="./k8s/cilium/ingress-nginx.yaml",
+#     opts=ResourceOptions(
+#         provider=k8s_provider,
+#         depends_on=[ingress_nginx_ns],
+#     ),
+# )
 
 # network_policy_kube_node_lease = ConfigFile(
 #     "network_policy_kube_node_lease",
