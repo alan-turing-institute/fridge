@@ -148,7 +148,7 @@ longhorn = Chart(
     "longhorn",
     namespace=longhorn_ns.metadata.name,
     chart="longhorn",
-    version="1.8.1",
+    version="1.9.0",
     repository_opts=RepositoryOptsArgs(
         repo="https://charts.longhorn.io",
     ),
@@ -211,6 +211,7 @@ cluster_issuer_config = Template(
     issuer_name_staging=tls_issuer_names[TlsEnvironment.STAGING],
     issuer_name_production=tls_issuer_names[TlsEnvironment.PRODUCTION],
 )
+
 # cert_manager_issuers = ConfigGroup(
 #     "cert-manager-issuers",
 #     yaml=[cluster_issuer_config],
