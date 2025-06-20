@@ -17,3 +17,22 @@ spec:
         - ports:
           - port: "10254"
             protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-prometheus
+  namespace: argo-artifacts
+spec:
+  endpointSelector:
+    matchLabels:
+      v1.min.io/tenant: argo-artifacts
+  egress:
+    - toEndpoints:
+      - matchLabels:
+          k8s:io.kubernetes.pod.namespace: monitoring-system
+          k8s:app.kubernetes.io/name: alertmanager
+      toPorts:
+        - ports:
+          - port: "443"
+            protocol: TCP
