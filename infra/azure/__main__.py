@@ -914,14 +914,14 @@ network_policy_kube_public = ConfigFile(
 # )
 
 
-# network_policy_longhorn = ConfigFile(
-#     "network_policy_longhorn",
-#     file="./k8s/cilium/longhorn.yaml",
-#     opts=ResourceOptions(
-#         provider=k8s_provider,
-#         depends_on=[managed_cluster, longhorn],
-#     ),
-# )
+network_policy_longhorn = ConfigFile(
+    "network_policy_longhorn",
+    file="./k8s/cilium/longhorn.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[longhorn],
+    ),
+)
 
 network_policy_minio_tenant = ConfigFile(
     "network_policy_minio_tenant",
