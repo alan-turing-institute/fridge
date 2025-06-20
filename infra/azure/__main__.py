@@ -8,6 +8,9 @@ from pulumi_kubernetes.core.v1 import (
     Namespace,
     NamespacePatch,
     Secret,
+    Service,
+    ServicePortArgs,
+    ServiceSpecArgs,
     ServiceAccount,
 )
 
@@ -531,6 +534,41 @@ argo_workflows = Chart(
         ],
     ),
 )
+
+# Add service for metrics endpoint
+argo_workflows_metrics_svc = Service(
+    "argo-workflows-metrics-svc",
+    metadata=ObjectMetaArgs(
+        name="workflow-controller-metrics",
+        namespace=argo_server_ns.metadata.name,
+        labels={"app": "workflow-controller"},
+    ),
+    spec=ServiceSpecArgs(
+        cluster_ip=None,
+        ports=[
+            ServicePortArgs(
+                name="metrics",
+                port=9090,
+                protocol="TCP",
+                target_port=9090,
+            )
+        ],
+        selector={"app": "workflow-controller"},
+    ),
+    opts=ResourceOptions(
+        depends_on=[argo_workflows],
+    ),
+)
+
+# Add service monitor to allow Prometheus to scrape the metrics
+# Note: Pulumi has no native support for ServiceMonitor,
+# so using ConfigFile
+argo_workflows_service_monitor = ConfigFile(
+    "argo-workflows-service-monitor",
+    file="./k8s/argo_workflows/prometheus.yaml",
+    opts=ResourceOptions(provider=k8s_provider),
+)
+
 
 # Define argo workflows service accounts and roles
 # See https://argo-workflows.readthedocs.io/en/latest/security/
