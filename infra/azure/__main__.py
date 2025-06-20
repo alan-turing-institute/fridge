@@ -418,7 +418,7 @@ minio_ingress = Ingress(
     },
     opts=ResourceOptions(
         provider=k8s_provider,
-        depends_on=[minio_tenant],
+        depends_on=[minio_tenant_ns],
     ),
 )
 
@@ -820,7 +820,7 @@ network_policy_argo_workflows = ConfigFile(
     file="./k8s/cilium/argo_workflows.yaml",
     opts=ResourceOptions(
         provider=k8s_provider,
-        depends_on=[minio_tenant, argo_workflows_ns],
+        depends_on=[minio_tenant_ns, argo_workflows_ns],
     ),
 )
 
@@ -887,37 +887,26 @@ network_policy_prometheus = ConfigFile(
     ),
 )
 
-# network_policy_kube_node_lease = ConfigFile(
-#     "network_policy_kube_node_lease",
-#     file="./k8s/cilium/kube-node-lease.yaml",
-#     opts=ResourceOptions(
-#         provider=k8s_provider,
-#         depends_on=[managed_cluster],
-#     ),
-# )
+network_policy_kube_node_lease = ConfigFile(
+    "network_policy_kube_node_lease",
+    file="./k8s/cilium/kube-node-lease.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+    ),
+)
 
 
-# network_policy_kube_public = ConfigFile(
-#     "network_policy_kube_public",
-#     file="./k8s/cilium/kube-public.yaml",
-#     opts=ResourceOptions(
-#         provider=k8s_provider,
-#         depends_on=[managed_cluster],
-#     ),
-# )
+network_policy_kube_public = ConfigFile(
+    "network_policy_kube_public",
+    file="./k8s/cilium/kube-public.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+    ),
+)
 
 # network_policy_kubernetes_system = ConfigFile(
 #     "network_policy_kubernetes_system",
 #     file="./k8s/cilium/kube-system.yaml",
-#     opts=ResourceOptions(
-#         provider=k8s_provider,
-#         depends_on=[managed_cluster],
-#     ),
-# )
-
-# network_policy_kube_node_lease = ConfigFile(
-#     "network_policy_kube_node_lease",
-#     file="./k8s/cilium/kube-node-lease.yaml",
 #     opts=ResourceOptions(
 #         provider=k8s_provider,
 #         depends_on=[managed_cluster],
@@ -934,20 +923,20 @@ network_policy_prometheus = ConfigFile(
 #     ),
 # )
 
-# network_policy_minio_tenant = ConfigFile(
-#     "network_policy_minio_tenant",
-#     file="./k8s/cilium/minio-tenant.yaml",
-#     opts=ResourceOptions(
-#         provider=k8s_provider,
-#         depends_on=[minio_tenant],
-#     ),
-# )
+network_policy_minio_tenant = ConfigFile(
+    "network_policy_minio_tenant",
+    file="./k8s/cilium/minio-tenant.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[minio_tenant],
+    ),
+)
 
-# network_policy_minio_operator = ConfigFile(
-#     "network_policy_minio_operator",
-#     file="./k8s/cilium/minio-operator.yaml",
-#     opts=ResourceOptions(
-#         provider=k8s_provider,
-#         depends_on=[minio_operator],
-#     ),
-# )
+network_policy_minio_operator = ConfigFile(
+    "network_policy_minio_operator",
+    file="./k8s/cilium/minio-operator.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[minio_operator],
+    ),
+)
