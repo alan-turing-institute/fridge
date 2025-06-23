@@ -17,7 +17,8 @@ spec:
         - ports:
             - port: "53"
               protocol: ANY
-  ingress: []
+  ingress:
+    - {}
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
@@ -29,7 +30,8 @@ spec:
   endpointSelector:
     matchLabels:
       app: webhook
-  egress: []
+  egress:
+    - {}
   ingress:
     # Allow inbound from kube API
     - fromEntities:
@@ -55,7 +57,8 @@ spec:
     # Allow outbound to kube API
     - toEntities:
         - kube-apiserver
-  ingress: []
+  ingress:
+    - {}
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
@@ -76,7 +79,8 @@ spec:
         - ports:
             - port: "53"
               protocol: ANY
-  ingress: []
+  ingress:
+    - {}
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
@@ -95,4 +99,5 @@ spec:
       toPorts:
         - ports:
             - port: "80"
-  egress: []
+  egress:
+    - {}
