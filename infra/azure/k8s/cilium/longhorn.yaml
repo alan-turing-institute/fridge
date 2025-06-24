@@ -40,6 +40,22 @@ spec:
         - ports:
             - port: "9500"
               protocol: TCP
+    # Share-manager needs to contact Longhorn manager during mounting of RWX volumes
+    - fromEndpoints:
+      - matchLabels:
+          longhorn.io/component: share-manager
+      toPorts:
+        - ports:
+          - port: "9503"
+            protocol: TCP
+    # Added remote-node for Dawn compatibility
+    - fromEntities:
+        - remote-node
+      toPorts:
+        - ports:
+          - port: "9501"
+            endPort: 9502
+            protocol: TCP
   egress:
     - toEndpoints:
         - matchExpressions:
@@ -73,7 +89,11 @@ spec:
         - kube-apiserver
       toPorts:
         - ports:
+            # AKS API server is on port 443
+            # Dawn API server is on port 6443
             - port: "443"
+              protocol: TCP
+            - port: "6443"
               protocol: TCP
 ---
 apiVersion: "cilium.io/v2"
@@ -90,7 +110,11 @@ spec:
         - kube-apiserver
       toPorts:
         - ports:
+            # AKS API server is on port 443
+            # Dawn API server is on port 6443
             - port: "443"
+              protocol: TCP
+            - port: "6443"
               protocol: TCP
 ---
 apiVersion: "cilium.io/v2"
@@ -107,7 +131,11 @@ spec:
         - kube-apiserver
       toPorts:
         - ports:
+            # AKS API server is on port 443
+            # Dawn API server is on port 6443
             - port: "443"
+              protocol: TCP
+            - port: "6443"
               protocol: TCP
 ---
 apiVersion: "cilium.io/v2"
@@ -124,7 +152,11 @@ spec:
         - kube-apiserver
       toPorts:
         - ports:
+            # AKS API server is on port 443
+            # Dawn API server is on port 6443
             - port: "443"
+              protocol: TCP
+            - port: "6443"
               protocol: TCP
 ---
 apiVersion: "cilium.io/v2"
@@ -142,8 +174,19 @@ spec:
         - kube-apiserver
       toPorts:
         - ports:
+            # AKS API server is on port 443
+            # Dawn API server is on port 6443
             - port: "443"
               protocol: TCP
+            - port: "6443"
+              protocol: TCP
+    # Added remote-node for Dawn compatibility
+    - toEntities:
+        - remote-node
+      toPorts:
+        - ports:
+          - port: "6443"
+            protocol: TCP
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
@@ -191,6 +234,8 @@ spec:
             app: longhorn-manager
       toPorts:
         - ports:
+            - port: "9503"
+              protocol: TCP
             - port: "9600"
               protocol: TCP
   egress:
@@ -202,6 +247,14 @@ spec:
         - ports:
             - port: "53"
               protocol: ANY
+    - toEndpoints:
+        - matchLabels:
+            app: longhorn-manager
+            k8s:io.kubernetes.pod.namespace: longhorn-system
+      toPorts:
+        - ports:
+            - port: "9503"
+              protocol: TCP
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
