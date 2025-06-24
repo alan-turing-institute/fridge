@@ -7,7 +7,8 @@ spec:
   # Apply to all pods in this namespace
   endpointSelector: {}
   # Deny all ingress by default
-  ingress: []
+  ingress:
+    - {}
   egress:
     # Outbound to k8s DNS to look up IPs
     - toEndpoints:
