@@ -39,6 +39,7 @@ spec:
       toPorts:
         - ports:
             - port: "9500"
+              endPort: 9502
               protocol: TCP
     # Share-manager needs to contact Longhorn manager during mounting of RWX volumes
     - fromEndpoints:
