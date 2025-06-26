@@ -17,6 +17,9 @@ spec:
         - ports:
             - port: "53"
               protocol: ANY
+          rules:
+            dns:
+              - matchPattern: "*"
   ingress:
     - {}
 ---
@@ -81,6 +84,14 @@ spec:
         - ports:
             - port: "53"
               protocol: ANY
+    # Allow outbound to LetsEncrypt servers, necessary to set up certificate issuers
+    - toFQDNs:
+        - matchName: acme-staging-v02.api.letsencrypt.org
+        - matchName: acme-v02.api.letsencrypt.org
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
   ingress:
     - {}
 ---
