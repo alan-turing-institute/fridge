@@ -9,6 +9,14 @@ spec:
     matchLabels:
       k8s-app: hubble-ui
   egress:
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
     # Allow hubble-ui to communicate with the Kubernetes API server
     # Necessary for hubble-ui to be able to observe network policies and other resources
     # https://docs.cilium.io/en/stable/gettingstarted/hubble/
@@ -16,7 +24,10 @@ spec:
         - kube-apiserver
       toPorts:
         - ports:
+          # port 6443 is required on Dawn
             - port: "443"
+              protocol: TCP
+            - port: "6443"
               protocol: TCP
     - toEndpoints:
         - matchLabels:
@@ -53,8 +64,20 @@ spec:
             - port: "4245"
               protocol: TCP
   egress:
+    - toServices:
+      - k8sService:
+          serviceName: hubble-peer
+          namespace : kube-system
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
     - toEntities:
-        - remote-node
+        - cluster
       toPorts:
         - ports:
             - port: "4244"
