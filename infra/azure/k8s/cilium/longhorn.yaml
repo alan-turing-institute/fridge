@@ -67,6 +67,7 @@ spec:
       toPorts:
         - ports:
             - port: "9500"
+              endPort: 9502
               protocol: TCP
     - toEndpoints:
         # This allows longhorn-manager to communicate with other Longhorn
@@ -306,6 +307,14 @@ spec:
         - ports:
             - port: "9500"
               protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
@@ -326,3 +335,24 @@ spec:
         - ports:
             - port: "9500"
               protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: longhorn-driver-deployer
+  namespace: longhorn-system
+spec:
+  endpointSelector:
+    matchLabels:
+      app: longhorn-driver-deployer
+  egress:
+    - toEntities:
+      - kube-apiserver
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
