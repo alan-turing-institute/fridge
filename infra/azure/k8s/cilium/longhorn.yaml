@@ -89,14 +89,6 @@ spec:
     # resources, such as volumes and recurring jobs
     - toEntities:
         - kube-apiserver
-      toPorts:
-        - ports:
-            # AKS API server is on port 443
-            # Dawn API server is on port 6443
-            - port: "443"
-              protocol: TCP
-            - port: "6443"
-              protocol: TCP
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
@@ -110,14 +102,6 @@ spec:
   egress:
     - toEntities:
         - kube-apiserver
-      toPorts:
-        - ports:
-            # AKS API server is on port 443
-            # Dawn API server is on port 6443
-            - port: "443"
-              protocol: TCP
-            - port: "6443"
-              protocol: TCP
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
@@ -131,14 +115,6 @@ spec:
   egress:
     - toEntities:
         - kube-apiserver
-      toPorts:
-        - ports:
-            # AKS API server is on port 443
-            # Dawn API server is on port 6443
-            - port: "443"
-              protocol: TCP
-            - port: "6443"
-              protocol: TCP
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
@@ -152,14 +128,6 @@ spec:
   egress:
     - toEntities:
         - kube-apiserver
-      toPorts:
-        - ports:
-            # AKS API server is on port 443
-            # Dawn API server is on port 6443
-            - port: "443"
-              protocol: TCP
-            - port: "6443"
-              protocol: TCP
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
@@ -174,21 +142,6 @@ spec:
   egress:
     - toEntities:
         - kube-apiserver
-      toPorts:
-        - ports:
-            # AKS API server is on port 443
-            # Dawn API server is on port 6443
-            - port: "443"
-              protocol: TCP
-            - port: "6443"
-              protocol: TCP
-    # Added remote-node for Dawn compatibility
-    - toEntities:
-        - remote-node
-      toPorts:
-        - ports:
-          - port: "6443"
-            protocol: TCP
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
