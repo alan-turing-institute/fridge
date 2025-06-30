@@ -128,3 +128,22 @@ spec:
       - matchName: "production.cloudflare.docker.com"
       - matchPattern: "cdn*.quay.io"
       - matchName: "quay.io"
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: acme-http-solver
+  namespace: harbor
+spec:
+  endpointSelector:
+    matchLabels:
+      acme.cert-manager.io/http01-solver: "true"
+  ingress:
+    - fromEndpoints:
+      - matchLabels:
+          k8s:app.kubernetes.io/name: ingress-nginx
+          k8s:io.kubernetes.pod.namespace: ingress-nginx
+      toPorts:
+        - ports:
+          - port: "8089"
+            protocol: TCP
