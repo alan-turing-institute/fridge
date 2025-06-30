@@ -8,12 +8,10 @@ from pulumi_kubernetes.core.v1 import (
     Namespace,
     NamespacePatch,
     Secret,
-    Service,
-    ServicePortArgs,
-    ServiceSpecArgs,
     ServiceAccount,
 )
 
+from pulumi_kubernetes.batch.v1 import CronJobPatch, CronJobSpecPatchArgs
 from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs, ObjectMetaPatchArgs
@@ -140,6 +138,19 @@ else:
     ingress_nginx_ns = Namespace.get("ingress-nginx-ns", "ingress-nginx")
     [patch_namespace(x, PodSecurityStandard.RESTRICTED) for x in dawn_managed_resources]
     cert_manager = Release.get("cert-manager", "cert-manager")
+
+    # Add label to etcd-defrag jobs to allow Cilium to permit them to communicate with the API server
+    # These jobs are installed automatically on DAWN using Helm, and do not otherwise have a consistent label
+    # so cannot be selected by Cilium.
+    CronJobPatch(
+        "etcd-defrag-cronjob-label",
+        metadata=ObjectMetaPatchArgs(name="etcd-defrag", namespace="kube-system"),
+        spec=CronJobSpecPatchArgs(
+            job_template={
+                "spec": {"template": {"metadata": {"labels": {"etcd-defrag": "true"}}}}
+            }
+        ),
+    )
 
 # Use patches for standard namespaces rather then trying to create them, so Pulumi does not try to delete them
 standard_namespaces = ["default", "kube-node-lease", "kube-public"]
