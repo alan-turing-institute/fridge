@@ -50,22 +50,6 @@ spec:
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
 metadata:
-  name: etcd-jobs
-  namespace: kube-system
-spec:
-  endpointSelector:
-    matchExpressions:
-      - key: "job-name"
-        operator: In
-        values: ["etcd-defrag"]
-  egress:
-    {}
-  ingress:
-    {}
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
   name: metrics-server
   namespace: kube-system
 spec:
