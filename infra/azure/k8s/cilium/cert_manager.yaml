@@ -84,6 +84,18 @@ spec:
         - ports:
             - port: "53"
               protocol: ANY
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: "cert-manager-certificate-issuers"
+  namespace: "cert-manager"
+spec:
+  # Apply to controller
+  endpointSelector:
+    matchLabels:
+      app: cert-manager
+  egress:
     # Allow outbound to LetsEncrypt servers, necessary to set up certificate issuers
     - toFQDNs:
         - matchName: acme-staging-v02.api.letsencrypt.org
