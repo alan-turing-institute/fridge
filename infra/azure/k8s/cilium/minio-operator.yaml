@@ -32,11 +32,3 @@ spec:
     # after deployment
     - toEntities:
         - kube-apiserver
-      toPorts:
-        - ports:
-            # AKS API server is on port 443
-            # Dawn API server is on port 6443
-            - port: "443"
-              protocol: TCP
-            - port: "6443"
-              protocol: TCP
