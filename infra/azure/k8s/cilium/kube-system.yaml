@@ -40,12 +40,6 @@ spec:
     # Allow kube-dns to communicate with the Kubernetes API server
     - toEntities:
         - kube-apiserver
-      toPorts:
-        - ports:
-            - port: "443"
-              protocol: TCP
-            - port: "6443"
-              protocol: TCP
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
@@ -76,14 +70,6 @@ spec:
               protocol: TCP
     - toEntities:
         - kube-apiserver
-      toPorts:
-        - ports:
-            - port: "443"
-              protocol: TCP
-            - port: "6443"
-              protocol: TCP
-            - port: "10250"
-              protocol: TCP
     - toEndpoints:
         - matchLabels:
             k8s-app: kube-dns
