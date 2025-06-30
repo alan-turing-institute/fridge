@@ -1,0 +1,31 @@
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: kube-dns-dawn
+  namespace: kube-system
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s-app: kube-dns
+  egress:
+    # Allow kube-dns to communicate with the local DAWN DNS servers
+    - toCIDR:
+        - 192.168.3.2/32
+        - 192.168.3.3/32
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-etcd-jobs
+  namespace: kube-system
+spec:
+  endpointSelector:
+    matchLabels:
+      etcd-defrag: "true"
+  egress:
+    - toEntities:
+      - kube-apiserver
