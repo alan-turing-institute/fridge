@@ -380,7 +380,7 @@ minio_tenant = Chart(
     },
     opts=ResourceOptions(
         provider=k8s_provider,
-        depends_on=[minio_env_secret, minio_operator, minio_tenant_ns],
+        depends_on=[longhorn, minio_env_secret, minio_operator, minio_tenant_ns],
     ),
 )
 
