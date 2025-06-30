@@ -46,14 +46,6 @@ spec:
               protocol: TCP
             - port: "6443"
               protocol: TCP
-    # Allow kube-dns to communicate with the local DNS server
-    - toCIDR:
-        - 192.168.3.2/32
-        - 192.168.3.3/32
-      toPorts:
-        - ports:
-            - port: "53"
-              protocol: ANY
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
@@ -67,18 +59,9 @@ spec:
         operator: In
         values: ["etcd-defrag"]
   egress:
-    - toEntities:
-      - kube-apiserver
-      - remote-node
+    {}
   ingress:
-    # Allow kube-dns to receive DNS requests from any endpoint in the cluster
-    # Policies for those endpoints will determine if and how they can communicate with kube-dns
-    - fromEntities:
-        - cluster
-      toPorts:
-        - ports:
-            - port: "53"
-              protocol: ANY
+    {}
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
