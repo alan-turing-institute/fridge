@@ -807,7 +807,6 @@ harbor_ingress = Ingress(
 # # Network policy (through Cilium)
 
 if k8s_environment == "AKS":
-
     network_policy_aks = ConfigFile(
         "network_policy_aks",
         file="./k8s/cilium/aks.yaml",
@@ -816,6 +815,13 @@ if k8s_environment == "AKS":
         ),
     )
 elif k8s_environment == "DAWN":
+    network_policy_dawn = ConfigFile(
+        "network_policy_dawn",
+        file="./k8s/cilium/dawn.yaml",
+        opts=ResourceOptions(
+            provider=k8s_provider,
+        ),
+    )
     ## Add network policy to allow Prometheus monitoring
     ## On Dawn, Prometheus is already deployed
     network_policy_prometheus = ConfigFile(
