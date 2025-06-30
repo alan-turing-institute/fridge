@@ -97,6 +97,7 @@ spec:
         - ports:
             - port: "9090"
               protocol: TCP
+    # Allow traffic to the ACME http01-solver during ingress creation
     # Port 8089 is necessary for the ACME solver using during TLS certificate issuance
     - toEndpoints:
         - matchExpressions:
