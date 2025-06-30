@@ -74,3 +74,22 @@ spec:
             protocol: TCP
           - port: "6443"
             protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: acme-http-solver
+  namespace: argo-artifacts
+spec:
+  endpointSelector:
+    matchLabels:
+      acme.cert-manager.io/http01-solver: "true"
+  ingress:
+    - fromEndpoints:
+      - matchLabels:
+          k8s:app.kubernetes.io/name: ingress-nginx
+          k8s:io.kubernetes.pod.namespace: ingress-nginx
+      toPorts:
+        - ports:
+          - port: "8089"
+            protocol: TCP
