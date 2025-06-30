@@ -49,6 +49,17 @@ tls_issuer_names = {
     TlsEnvironment.PRODUCTION: "letsencrypt-prod",
 }
 
+
+def patch_namespace(name: str, pss: PodSecurityStandard) -> None:
+    """
+    Apply a PodSecurityStandard label to a namespace
+    """
+    NamespacePatch(
+        f"{name}-ns-pod-security",
+        metadata=ObjectMetaPatchArgs(name=name, labels={} | pss.value),
+    )
+
+
 k8s_environment = config.get("k8s_env")
 if k8s_environment not in ["AKS", "DAWN"]:
     raise ValueError(
@@ -124,32 +135,18 @@ if k8s_environment == "AKS":
         ),
     )
 else:
-
-    def patch_namespace(name: str, pss: PodSecurityStandard) -> None:
-        """
-        Apply a PodSecurityStandard label to a namespace
-        """
-        NamespacePatch(
-            f"{name}-ns-pod-security",
-            metadata=ObjectMetaPatchArgs(name=name, labels={} | pss.value),
-        )
-
     dawn_managed_resources = ["cert-manager", "ingress-nginx"]
     cert_manager_ns = Namespace.get("cert-manager-ns", "cert-manager")
     ingress_nginx_ns = Namespace.get("ingress-nginx-ns", "ingress-nginx")
     [patch_namespace(x, PodSecurityStandard.RESTRICTED) for x in dawn_managed_resources]
+    cert_manager = Release.get("cert-manager", "cert-manager")
 
-# Patch default namespace with pod security policies
-default_ns = Namespace(
-    "default-ns",
-    metadata=ObjectMetaArgs(
-        name="default",
-        labels={} | PodSecurityStandard.RESTRICTED.value,
-    ),
-    opts=ResourceOptions(
-        provider=k8s_provider,
-    ),
-)
+# Use patches for standard namespaces rather then trying to create them, so Pulumi does not try to delete them
+standard_namespaces = ["default", "kube-node-lease", "kube-public"]
+[
+    patch_namespace(namespace, PodSecurityStandard.RESTRICTED)
+    for namespace in standard_namespaces
+]
 
 # Longhorn
 longhorn_ns = Namespace(
@@ -167,7 +164,7 @@ longhorn = Chart(
     "longhorn",
     namespace=longhorn_ns.metadata.name,
     chart="longhorn",
-    version="1.9.0",
+    version="1.8.1",
     repository_opts=RepositoryOptsArgs(
         repo="https://charts.longhorn.io",
     ),
@@ -231,14 +228,14 @@ cluster_issuer_config = Template(
     issuer_name_production=tls_issuer_names[TlsEnvironment.PRODUCTION],
 )
 
-# cert_manager_issuers = ConfigGroup(
-#     "cert-manager-issuers",
-#     yaml=[cluster_issuer_config],
-#     opts=ResourceOptions(
-#         provider=k8s_provider,
-#         depends_on=[cert_manager, cert_manager_ns],
-#     ),
-# )
+cert_manager_issuers = ConfigGroup(
+    "cert-manager-issuers",
+    yaml=[cluster_issuer_config],
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[cert_manager, cert_manager_ns],
+    ),
+)
 
 # Minio
 minio_operator_ns = Namespace(
@@ -421,7 +418,7 @@ minio_ingress = Ingress(
     },
     opts=ResourceOptions(
         provider=k8s_provider,
-        depends_on=[minio_tenant_ns],
+        depends_on=[minio_tenant],
     ),
 )
 
@@ -533,40 +530,6 @@ argo_workflows = Chart(
             argo_workflows_ns,
         ],
     ),
-)
-
-# Add service for metrics endpoint
-argo_workflows_metrics_svc = Service(
-    "argo-workflows-metrics-svc",
-    metadata=ObjectMetaArgs(
-        name="workflow-controller-metrics",
-        namespace=argo_server_ns.metadata.name,
-        labels={"app": "workflow-controller"},
-    ),
-    spec=ServiceSpecArgs(
-        cluster_ip=None,
-        ports=[
-            ServicePortArgs(
-                name="metrics",
-                port=9090,
-                protocol="TCP",
-                target_port=9090,
-            )
-        ],
-        selector={"app": "workflow-controller"},
-    ),
-    opts=ResourceOptions(
-        depends_on=[argo_workflows],
-    ),
-)
-
-# Add service monitor to allow Prometheus to scrape the metrics
-# Note: Pulumi has no native support for ServiceMonitor,
-# so using ConfigFile
-argo_workflows_service_monitor = ConfigFile(
-    "argo-workflows-service-monitor",
-    file="./k8s/argo_workflows/prometheus.yaml",
-    opts=ResourceOptions(provider=k8s_provider),
 )
 
 
@@ -753,7 +716,7 @@ harbor = Release(
     ),
     opts=ResourceOptions(
         provider=k8s_provider,
-        depends_on=[harbor_ns, longhorn_storage_class],
+        depends_on=[harbor_ns, longhorn, longhorn_storage_class],
     ),
 )
 
@@ -802,7 +765,7 @@ harbor_ingress = Ingress(
     },
     opts=ResourceOptions(
         provider=k8s_provider,
-        depends_on=[harbor, harbor_ns],
+        depends_on=[harbor],
     ),
 )
 
@@ -852,23 +815,32 @@ if k8s_environment == "AKS":
             provider=k8s_provider,
         ),
     )
+elif k8s_environment == "DAWN":
+    ## Add network policy to allow Prometheus monitoring
+    ## On Dawn, Prometheus is already deployed
+    network_policy_prometheus = ConfigFile(
+        "network_policy_prometheus",
+        file="./k8s/cilium/prometheus.yaml",
+        opts=ResourceOptions(
+            provider=k8s_provider,
+        ),
+    )
 
 network_policy_argo_workflows = ConfigFile(
     "network_policy_argo_workflows",
     file="./k8s/cilium/argo_workflows.yaml",
     opts=ResourceOptions(
         provider=k8s_provider,
-        depends_on=[minio_tenant_ns, argo_workflows_ns],
+        depends_on=[minio_tenant, argo_workflows],
     ),
 )
-
 
 network_policy_argo_server = ConfigFile(
     "network_policy_argo_server",
     file="./k8s/cilium/argo_server.yaml",
     opts=ResourceOptions(
         provider=k8s_provider,
-        depends_on=[argo_workflows_ns],
+        depends_on=[argo_workflows],
     ),
 )
 
@@ -877,7 +849,7 @@ network_policy_cert_manager = ConfigFile(
     file="./k8s/cilium/cert_manager.yaml",
     opts=ResourceOptions(
         provider=k8s_provider,
-        depends_on=[cert_manager_ns],
+        depends_on=[cert_manager],
     ),
 )
 
@@ -899,14 +871,13 @@ network_policy_harbor = ConfigFile(
     ),
 )
 
-# network_policy_hubble = ConfigFile(
-#     "network_policy_hubble",
-#     file="./k8s/cilium/hubble.yaml",
-#     opts=ResourceOptions(
-#         provider=k8s_provider,
-#         depends_on=[managed_cluster],
-#     ),
-# )
+network_policy_hubble = ConfigFile(
+    "network_policy_hubble",
+    file="./k8s/cilium/hubble.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+    ),
+)
 
 network_policy_ingress_nginx = ConfigFile(
     "network_policy_ingress_nginx",
@@ -917,13 +888,6 @@ network_policy_ingress_nginx = ConfigFile(
     ),
 )
 
-network_policy_prometheus = ConfigFile(
-    "network_policy_prometheus",
-    file="./k8s/cilium/prometheus.yaml",
-    opts=ResourceOptions(
-        provider=k8s_provider,
-    ),
-)
 
 network_policy_kube_node_lease = ConfigFile(
     "network_policy_kube_node_lease",
@@ -942,14 +906,13 @@ network_policy_kube_public = ConfigFile(
     ),
 )
 
-# network_policy_kubernetes_system = ConfigFile(
-#     "network_policy_kubernetes_system",
-#     file="./k8s/cilium/kube-system.yaml",
-#     opts=ResourceOptions(
-#         provider=k8s_provider,
-#         depends_on=[managed_cluster],
-#     ),
-# )
+network_policy_kubernetes_system = ConfigFile(
+    "network_policy_kubernetes_system",
+    file="./k8s/cilium/kube-system.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+    ),
+)
 
 
 network_policy_longhorn = ConfigFile(
@@ -966,7 +929,7 @@ network_policy_minio_tenant = ConfigFile(
     file="./k8s/cilium/minio-tenant.yaml",
     opts=ResourceOptions(
         provider=k8s_provider,
-        depends_on=[minio_tenant],
+        depends_on=[minio_tenant, minio_ingress],
     ),
 )
 
