@@ -1,7 +1,5 @@
 singleNamespace: false
 controller:
-  metricsConfig:
-    enabled: true
   securityContext:
     allowPrivilegeEscalation: false
     capabilities:
