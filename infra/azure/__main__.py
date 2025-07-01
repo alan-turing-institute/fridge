@@ -784,38 +784,38 @@ harbor_ingress = Ingress(
 # # This is needed while using staging/self-signed certificates for Harbor
 # # A daemonset is used to run the configuration on all nodes in the cluster
 
-# containerd_config_ns = Namespace(
-#     "containerd-config-ns",
-#     metadata=ObjectMetaArgs(
-#         name="containerd-config",
-#         labels={} | PodSecurityStandard.PRIVILEGED.value,
-#     ),
-#     opts=ResourceOptions(
-#         provider=k8s_provider,
-#         depends_on=[harbor],
-#     ),
-# )
+containerd_config_ns = Namespace(
+    "containerd-config-ns",
+    metadata=ObjectMetaArgs(
+        name="containerd-config",
+        labels={} | PodSecurityStandard.PRIVILEGED.value,
+    ),
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[harbor],
+    ),
+)
 
-# skip_harbor_tls = Template(
-#     open("k8s/harbor/skip_harbor_tls_verification.yaml", "r").read()
-# ).substitute(
-#     namespace="containerd-config",
-#     harbor_fqdn=harbor_fqdn,
-#     harbor_url=harbor_external_url,
-#     harbor_ip=config.require("harbor_ip"),
-#     harbor_internal_url="http://" + config.require("harbor_ip"),
-# )
+skip_harbor_tls = Template(
+    open("k8s/harbor/skip_harbor_tls_verification.yaml", "r").read()
+).substitute(
+    namespace="containerd-config",
+    harbor_fqdn=harbor_fqdn,
+    harbor_url=harbor_external_url,
+    harbor_ip=config.require("harbor_ip"),
+    harbor_internal_url="http://" + config.require("harbor_ip"),
+)
 
-# configure_containerd_daemonset = ConfigGroup(
-#     "configure-containerd-daemon",
-#     yaml=[skip_harbor_tls],
-#     opts=ResourceOptions(
-#         provider=k8s_provider,
-#         depends_on=[harbor],
-#     ),
-# )
+configure_containerd_daemonset = ConfigGroup(
+    "configure-containerd-daemon",
+    yaml=[skip_harbor_tls],
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[harbor],
+    ),
+)
 
-# # Network policy (through Cilium)
+## Network policy (through Cilium)
 
 if k8s_environment == "AKS":
     network_policy_aks = ConfigFile(
@@ -870,14 +870,14 @@ network_policy_cert_manager = ConfigFile(
     ),
 )
 
-# network_policy_containerd_config = ConfigFile(
-#     "network_policy_containerd_config",
-#     file="./k8s/cilium/containerd_config.yaml",
-#     opts=ResourceOptions(
-#         provider=k8s_provider,
-#         depends_on=[configure_containerd_daemonset_ns],
-#     ),
-# )
+network_policy_containerd_config = ConfigFile(
+    "network_policy_containerd_config",
+    file="./k8s/cilium/containerd_config.yaml",
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[containerd_config_ns],
+    ),
+)
 
 network_policy_harbor = ConfigFile(
     "network_policy_harbor",

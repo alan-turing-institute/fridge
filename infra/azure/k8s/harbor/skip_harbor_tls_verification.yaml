@@ -46,6 +46,13 @@ spec:
               mountPath: /root
             - name: setup-script
               mountPath: /scripts
+          resources:
+            requests:
+              cpu: 100m
+              memory: 30Mi
+            limits:
+              cpu: 100m
+              memory: 100Mi
           securityContext:
             privileged: true
       volumes:
@@ -59,3 +66,7 @@ spec:
       containers:
         - name: wait
           image: registry.k8s.io/pause:3.8
+      tolerations:
+        - key: gpu.intel.com/i915
+          operator: Exists
+          effect: NoSchedule
