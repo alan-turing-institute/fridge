@@ -147,3 +147,22 @@ spec:
         - ports:
           - port: "8089"
             protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-trivy
+  namespace: harbor
+spec:
+  endpointSelector:
+    matchLabels:
+      component: trivy
+  egress:
+    # Trivy needs to be able to talk to the below IP address to be able to conduct scans.
+    # This seems to be a Google-owned IP address - not clear what Trivy is doing.
+    - toCIDR:
+      - 64.233.167.82/32
+      toPorts:
+        - ports:
+          - port: "443"
+            protocol: TCP
