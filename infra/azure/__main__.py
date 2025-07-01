@@ -132,12 +132,29 @@ if k8s_environment == "AKS":
             depends_on=[cert_manager_ns],
         ),
     )
+    # Get public IP address and ports of Ingress Nginx loadbalancer service
+    # Note that this relies on Ingress-Nginx being installed as for AKS
+    # On Dawn it is installed using a Helm chart and has different properties.
+    pulumi.export(
+        "ingress_ip",
+        ingress_nginx.resources["v1/Service:ingress-nginx/ingress-nginx-controller"]
+        .status.load_balancer.ingress[0]
+        .ip,
+    )
+    pulumi.export(
+        "ingress_ports",
+        ingress_nginx.resources[
+            "v1/Service:ingress-nginx/ingress-nginx-controller"
+        ].spec.ports.apply(lambda ports: [item.port for item in ports]),
+    )
+
 else:
     dawn_managed_resources = ["cert-manager", "ingress-nginx"]
     cert_manager_ns = Namespace.get("cert-manager-ns", "cert-manager")
     ingress_nginx_ns = Namespace.get("ingress-nginx-ns", "ingress-nginx")
     [patch_namespace(x, PodSecurityStandard.RESTRICTED) for x in dawn_managed_resources]
     cert_manager = Release.get("cert-manager", "cert-manager")
+    ingress_nginx = Release.get("ingress-nginx", "ingress-nginx")
 
     # Add label to etcd-defrag jobs to allow Cilium to permit them to communicate with the API server
     # These jobs are installed automatically on DAWN using Helm, and do not otherwise have a consistent label
@@ -152,7 +169,7 @@ else:
         ),
     )
 
-# Use patches for standard namespaces rather then trying to create them, so Pulumi does not try to delete them
+# Use patches for standard namespaces rather then trying to create them, so Pulumi does not try to delete them on teardown
 standard_namespaces = ["default", "kube-node-lease", "kube-public"]
 [
     patch_namespace(namespace, PodSecurityStandard.RESTRICTED)
@@ -179,6 +196,7 @@ longhorn = Chart(
     repository_opts=RepositoryOptsArgs(
         repo="https://charts.longhorn.io",
     ),
+    # Add a toleration for the GPU node, to allow Longhorn to schedule pods/create volumes there
     values={
         "global": {
             "tolerations": [
@@ -217,19 +235,6 @@ longhorn_storage_class = StorageClass(
     ),
 )
 
-# Get public IP address and ports of Ingress Nginx loadbalancer service
-# pulumi.export(
-#     "ingress_ip",
-#     ingress_nginx.resources["v1/Service:ingress-nginx/ingress-nginx-controller"]
-#     .status.load_balancer.ingress[0]
-#     .ip,
-# )
-# pulumi.export(
-#     "ingress_ports",
-#     ingress_nginx.resources[
-#         "v1/Service:ingress-nginx/ingress-nginx-controller"
-#     ].spec.ports.apply(lambda ports: [item.port for item in ports]),
-# )
 
 cluster_issuer_config = Template(
     open("k8s/cert_manager/clusterissuer.yaml", "r").read()
