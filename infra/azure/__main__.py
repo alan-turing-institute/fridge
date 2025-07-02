@@ -152,7 +152,8 @@ else:
     dawn_managed_resources = ["cert-manager", "ingress-nginx"]
     cert_manager_ns = Namespace.get("cert-manager-ns", "cert-manager")
     ingress_nginx_ns = Namespace.get("ingress-nginx-ns", "ingress-nginx")
-    [patch_namespace(x, PodSecurityStandard.RESTRICTED) for x in dawn_managed_resources]
+    for namespace in dawn_managed_namespaces:
+        patch_namespace(namespace, PodSecurityStandard.RESTRICTED)
     cert_manager = Release.get("cert-manager", "cert-manager")
     ingress_nginx = Release.get("ingress-nginx", "ingress-nginx")
 
