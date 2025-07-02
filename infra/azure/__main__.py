@@ -172,10 +172,8 @@ else:
 
 # Use patches for standard namespaces rather then trying to create them, so Pulumi does not try to delete them on teardown
 standard_namespaces = ["default", "kube-node-lease", "kube-public"]
-[
+for namespace in standard_namespaces:
     patch_namespace(namespace, PodSecurityStandard.RESTRICTED)
-    for namespace in standard_namespaces
-]
 
 # Longhorn
 longhorn_ns = Namespace(
