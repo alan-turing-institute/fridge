@@ -819,7 +819,7 @@ configure_containerd_daemonset = ConfigGroup(
     ),
 )
 
-## Network policy (through Cilium)
+# Network policy (through Cilium)
 
 if k8s_environment == "AKS":
     network_policy_aks = ConfigFile(
