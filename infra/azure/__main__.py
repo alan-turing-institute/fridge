@@ -48,11 +48,11 @@ tls_issuer_names = {
 }
 
 
-def patch_namespace(name: str, pss: PodSecurityStandard) -> None:
+def patch_namespace(name: str, pss: PodSecurityStandard) -> NamespacePatch:
     """
     Apply a PodSecurityStandard label to a namespace
     """
-    NamespacePatch(
+    return NamespacePatch(
         f"{name}-ns-pod-security",
         metadata=ObjectMetaPatchArgs(name=name, labels={} | pss.value),
     )
