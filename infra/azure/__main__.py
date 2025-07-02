@@ -784,9 +784,9 @@ harbor_ingress = Ingress(
     ),
 )
 
-# # Create a daemonset to skip TLS verification for the harbor registry
-# # This is needed while using staging/self-signed certificates for Harbor
-# # A daemonset is used to run the configuration on all nodes in the cluster
+# Create a daemonset to skip TLS verification for the harbor registry
+# This is needed while using staging/self-signed certificates for Harbor
+# A daemonset is used to run the configuration on all nodes in the cluster
 
 containerd_config_ns = Namespace(
     "containerd-config-ns",
