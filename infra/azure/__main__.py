@@ -149,7 +149,7 @@ if k8s_environment == "AKS":
     )
 
 else:
-    dawn_managed_resources = ["cert-manager", "ingress-nginx"]
+    dawn_managed_namespaces = ["cert-manager", "ingress-nginx"]
     cert_manager_ns = Namespace.get("cert-manager-ns", "cert-manager")
     ingress_nginx_ns = Namespace.get("ingress-nginx-ns", "ingress-nginx")
     for namespace in dawn_managed_namespaces:
