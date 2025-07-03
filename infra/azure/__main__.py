@@ -71,104 +71,107 @@ k8s_provider = kubernetes.Provider(
     context=config.require("k8s_context"),
 )
 
-if k8s_environment == "AKS":
-    # Hubble UI
-    # Interface for Cilium
-    hubble_ui = ConfigFile(
-        "hubble-ui",
-        file="./k8s/hubble/hubble_ui.yaml",
-        opts=ResourceOptions(
-            provider=k8s_provider,
-        ),
-    )
+match k8s_environment:
+    case "AKS":
+        # Hubble UI
+        # Interface for Cilium
+        hubble_ui = ConfigFile(
+            "hubble-ui",
+            file="./k8s/hubble/hubble_ui.yaml",
+            opts=ResourceOptions(
+                provider=k8s_provider,
+            ),
+        )
 
-    # Ingress NGINX (ingress provider)
-    ingress_nginx_ns = Namespace(
-        "ingress-nginx-ns",
-        metadata=ObjectMetaArgs(
-            name="ingress-nginx",
-            labels={} | PodSecurityStandard.RESTRICTED.value,
-        ),
-        opts=ResourceOptions(
-            provider=k8s_provider,
-        ),
-    )
+        # Ingress NGINX (ingress provider)
+        ingress_nginx_ns = Namespace(
+            "ingress-nginx-ns",
+            metadata=ObjectMetaArgs(
+                name="ingress-nginx",
+                labels={} | PodSecurityStandard.RESTRICTED.value,
+            ),
+            opts=ResourceOptions(
+                provider=k8s_provider,
+            ),
+        )
 
-    ingress_nginx = ConfigFile(
-        "ingress-nginx",
-        file="https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.1/deploy/static/provider/cloud/deploy.yaml",
-        opts=ResourceOptions(
-            provider=k8s_provider,
-            depends_on=[ingress_nginx_ns],
-        ),
-    )
+        ingress_nginx = ConfigFile(
+            "ingress-nginx",
+            file="https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.1/deploy/static/provider/cloud/deploy.yaml",
+            opts=ResourceOptions(
+                provider=k8s_provider,
+                depends_on=[ingress_nginx_ns],
+            ),
+        )
 
-    # CertManager (TLS automation)
-    cert_manager_ns = Namespace(
-        "cert-manager-ns",
-        metadata=ObjectMetaArgs(
-            name="cert-manager",
-            labels={} | PodSecurityStandard.RESTRICTED.value,
-        ),
-        opts=ResourceOptions(
-            provider=k8s_provider,
-        ),
-    )
+        # CertManager (TLS automation)
+        cert_manager_ns = Namespace(
+            "cert-manager-ns",
+            metadata=ObjectMetaArgs(
+                name="cert-manager",
+                labels={} | PodSecurityStandard.RESTRICTED.value,
+            ),
+            opts=ResourceOptions(
+                provider=k8s_provider,
+            ),
+        )
 
-    cert_manager = Chart(
-        "cert-manager",
-        namespace=cert_manager_ns.metadata.name,
-        chart="cert-manager",
-        version="1.17.1",
-        repository_opts=RepositoryOptsArgs(
-            repo="https://charts.jetstack.io",
-        ),
-        values={
-            "crds": {"enabled": True},
-            "extraArgs": ["--acme-http01-solver-nameservers=8.8.8.8:53,1.1.1.1:53"],
-        },
-        opts=ResourceOptions(
-            provider=k8s_provider,
-            depends_on=[cert_manager_ns],
-        ),
-    )
-    # Get public IP address and ports of Ingress Nginx loadbalancer service
-    # Note that this relies on Ingress-Nginx being installed as for AKS
-    # On Dawn it is installed using a Helm chart and has different properties.
-    pulumi.export(
-        "ingress_ip",
-        ingress_nginx.resources["v1/Service:ingress-nginx/ingress-nginx-controller"]
-        .status.load_balancer.ingress[0]
-        .ip,
-    )
-    pulumi.export(
-        "ingress_ports",
-        ingress_nginx.resources[
-            "v1/Service:ingress-nginx/ingress-nginx-controller"
-        ].spec.ports.apply(lambda ports: [item.port for item in ports]),
-    )
+        cert_manager = Chart(
+            "cert-manager",
+            namespace=cert_manager_ns.metadata.name,
+            chart="cert-manager",
+            version="1.17.1",
+            repository_opts=RepositoryOptsArgs(
+                repo="https://charts.jetstack.io",
+            ),
+            values={
+                "crds": {"enabled": True},
+                "extraArgs": ["--acme-http01-solver-nameservers=8.8.8.8:53,1.1.1.1:53"],
+            },
+            opts=ResourceOptions(
+                provider=k8s_provider,
+                depends_on=[cert_manager_ns],
+            ),
+        )
+        # Get public IP address and ports of Ingress Nginx loadbalancer service
+        # Note that this relies on Ingress-Nginx being installed as for AKS
+        # On Dawn it is installed using a Helm chart and has different properties.
+        pulumi.export(
+            "ingress_ip",
+            ingress_nginx.resources["v1/Service:ingress-nginx/ingress-nginx-controller"]
+            .status.load_balancer.ingress[0]
+            .ip,
+        )
+        pulumi.export(
+            "ingress_ports",
+            ingress_nginx.resources[
+                "v1/Service:ingress-nginx/ingress-nginx-controller"
+            ].spec.ports.apply(lambda ports: [item.port for item in ports]),
+        )
 
-else:
-    dawn_managed_namespaces = ["cert-manager", "ingress-nginx"]
-    cert_manager_ns = Namespace.get("cert-manager-ns", "cert-manager")
-    ingress_nginx_ns = Namespace.get("ingress-nginx-ns", "ingress-nginx")
-    for namespace in dawn_managed_namespaces:
-        patch_namespace(namespace, PodSecurityStandard.RESTRICTED)
-    cert_manager = Release.get("cert-manager", "cert-manager")
-    ingress_nginx = Release.get("ingress-nginx", "ingress-nginx")
+    case "DAWN":
+        dawn_managed_namespaces = ["cert-manager", "ingress-nginx"]
+        cert_manager_ns = Namespace.get("cert-manager-ns", "cert-manager")
+        ingress_nginx_ns = Namespace.get("ingress-nginx-ns", "ingress-nginx")
+        for namespace in dawn_managed_namespaces:
+            patch_namespace(namespace, PodSecurityStandard.RESTRICTED)
+        cert_manager = Release.get("cert-manager", "cert-manager")
+        ingress_nginx = Release.get("ingress-nginx", "ingress-nginx")
 
-    # Add label to etcd-defrag jobs to allow Cilium to permit them to communicate with the API server
-    # These jobs are installed automatically on DAWN using Helm, and do not otherwise have a consistent label
-    # so cannot be selected by Cilium.
-    CronJobPatch(
-        "etcd-defrag-cronjob-label",
-        metadata=ObjectMetaPatchArgs(name="etcd-defrag", namespace="kube-system"),
-        spec=CronJobSpecPatchArgs(
-            job_template={
-                "spec": {"template": {"metadata": {"labels": {"etcd-defrag": "true"}}}}
-            }
-        ),
-    )
+        # Add label to etcd-defrag jobs to allow Cilium to permit them to communicate with the API server
+        # These jobs are installed automatically on DAWN using Helm, and do not otherwise have a consistent label
+        # so cannot be selected by Cilium.
+        CronJobPatch(
+            "etcd-defrag-cronjob-label",
+            metadata=ObjectMetaPatchArgs(name="etcd-defrag", namespace="kube-system"),
+            spec=CronJobSpecPatchArgs(
+                job_template={
+                    "spec": {
+                        "template": {"metadata": {"labels": {"etcd-defrag": "true"}}}
+                    }
+                }
+            ),
+        )
 
 # Use patches for standard namespaces rather then trying to create them, so Pulumi does not try to delete them on teardown
 standard_namespaces = ["default", "kube-node-lease", "kube-public"]
