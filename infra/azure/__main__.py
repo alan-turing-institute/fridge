@@ -824,31 +824,34 @@ configure_containerd_daemonset = ConfigGroup(
 
 # Network policy (through Cilium)
 
-if k8s_environment == "AKS":
-    network_policy_aks = ConfigFile(
-        "network_policy_aks",
-        file="./k8s/cilium/aks.yaml",
-        opts=ResourceOptions(
-            provider=k8s_provider,
-        ),
-    )
-elif k8s_environment == "DAWN":
-    network_policy_dawn = ConfigFile(
-        "network_policy_dawn",
-        file="./k8s/cilium/dawn.yaml",
-        opts=ResourceOptions(
-            provider=k8s_provider,
-        ),
-    )
-    ## Add network policy to allow Prometheus monitoring
-    ## On Dawn, Prometheus is already deployed
-    network_policy_prometheus = ConfigFile(
-        "network_policy_prometheus",
-        file="./k8s/cilium/prometheus.yaml",
-        opts=ResourceOptions(
-            provider=k8s_provider,
-        ),
-    )
+match k8s_environment:
+    case "AKS":
+        # AKS uses Konnectivity to mediate some API/webhook traffic, and uses a different external DNS server
+        network_policy_aks = ConfigFile(
+            "network_policy_aks",
+            file="./k8s/cilium/aks.yaml",
+            opts=ResourceOptions(
+                provider=k8s_provider,
+            ),
+        )
+    case "DAWN":
+        # Dawn uses a different external DNS server to AKS, and also runs regular jobs that do not run on AKS
+        network_policy_dawn = ConfigFile(
+            "network_policy_dawn",
+            file="./k8s/cilium/dawn.yaml",
+            opts=ResourceOptions(
+                provider=k8s_provider,
+            ),
+        )
+        # Add network policy to allow Prometheus monitoring
+        # On Dawn, Prometheus is already deployed
+        network_policy_prometheus = ConfigFile(
+            "network_policy_prometheus",
+            file="./k8s/cilium/prometheus.yaml",
+            opts=ResourceOptions(
+                provider=k8s_provider,
+            ),
+        )
 
 network_policy_argo_workflows = ConfigFile(
     "network_policy_argo_workflows",
