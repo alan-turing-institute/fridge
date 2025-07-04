@@ -1,6 +1,7 @@
 config:
   azure-native:location: uksouth
   azure-native:subscriptionId: "36cfe11d-bfcd-4dce-9b70-c3905a4f3d01"
+  azure-native:tenantId: "4395f4a7-e455-4f95-8a9f-1fbaef6384f9"
   fridge:argo_scopes:
     - https://graph.microsoft.com/User.Read
     - https://graph.microsoft.com/Group.Read.All

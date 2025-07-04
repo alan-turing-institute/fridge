@@ -48,6 +48,7 @@ def get_kubeconfig(
 
 
 config = pulumi.Config()
+azure_config = pulumi.Config("azure-native")
 
 tls_environment = TlsEnvironment(config.require("tls_environment"))
 tls_issuer_names = {
@@ -79,6 +80,23 @@ keyvault = keyvault.Vault(
         soft_delete_retention_in_days=90,
     ),
     resource_group_name=resource_group.name,
+)
+
+access_policy = keyvault.AccessPolicy(
+    "access-policy",
+    vault_name=keyvault.name,
+    resource_group_name=resource_group.name,
+    policy=keyvault.AccessPolicyEntryArgs(
+        object_id=disk_encryption_set.object_id,
+        tenant_id=azure_config.require("tenantId"),
+        permissions=keyvault.PermissionsArgs(
+            keys=[
+                keyvault.KeyPermissions.UNWRAP_KEY,
+                keyvault.KeyPermissions.WRAP_KEY,
+                keyvault.KeyPermissions.GET,
+            ],
+        ),
+    ),
 )
 
 # AKS cluster
