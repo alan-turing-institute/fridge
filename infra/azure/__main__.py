@@ -4,7 +4,7 @@ from string import Template
 
 import pulumi
 from pulumi import FileAsset, Output, ResourceOptions
-from pulumi_azure_native import containerservice, managedidentity, resources
+from pulumi_azure_native import containerservice, managedidentity, resources, keyvault
 import pulumi_tls as tls
 import pulumi_kubernetes as kubernetes
 from pulumi_kubernetes.core.v1 import (
@@ -12,7 +12,6 @@ from pulumi_kubernetes.core.v1 import (
     Secret,
     ServiceAccount,
 )
-
 from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
@@ -65,6 +64,20 @@ ssh_key = tls.PrivateKey("ssh-key", algorithm="RSA", rsa_bits="3072")
 
 identity = managedidentity.UserAssignedIdentity(
     "cluster_managed_identity",
+    resource_group_name=resource_group.name,
+)
+
+keyvault = keyvault.Vault(
+    "keyvault",
+    vault_name="fridge-kv",
+    properties=keyvault.VaultPropertiesArgs(
+        # To use this keyvault for BYOK, it requires vault authorisation (not RBAC),
+        # purge protection and soft delete
+        enable_purge_protection=True,
+        enable_rbac_authorization=False,
+        enable_soft_delete=True,
+        soft_delete_retention_in_days=90,
+    ),
     resource_group_name=resource_group.name,
 )
 
