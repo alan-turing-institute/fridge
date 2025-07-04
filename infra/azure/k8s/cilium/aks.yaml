@@ -100,6 +100,7 @@ spec:
     # The autoscaler needs to communicate with the API to determine how many konnectivity agents to run
     - toEntities:
         - kube-apiserver
+      # We can be specific about the port since this rule is only applied on AKS
       toPorts:
         - ports:
             - port: "443"
