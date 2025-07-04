@@ -10,6 +10,7 @@ from pulumi_kubernetes.core.v1 import (
     Secret,
     ServiceAccount,
 )
+from components.network_policies import NetworkPolicies
 
 from pulumi_kubernetes.batch.v1 import CronJobPatch, CronJobSpecPatchArgs
 from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs
@@ -40,6 +41,7 @@ class PodSecurityStandard(Enum):
 
 
 config = pulumi.Config()
+stack_name = pulumi.get_stack()
 
 tls_environment = TlsEnvironment(config.require("tls_environment"))
 tls_issuer_names = {
@@ -837,116 +839,8 @@ resources = [
     minio_tenant,
 ]
 
-
-class NetworkPolicies(ComponentResource):
-    def __init__(self, name: str, k8s_environment: str, opts=ResourceOptions) -> None:
-        super().__init__("frige:dev:NetworkPolicies", name, {}, opts)
-        child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
-
-        match k8s_environment:
-            case "AKS":
-                # AKS uses Konnectivity to mediate some API/webhook traffic, and uses a different external DNS server
-                network_policy_aks = ConfigFile(
-                    "network_policy_aks",
-                    file="./k8s/cilium/aks.yaml",
-                    opts=child_opts,
-                )
-            case "DAWN":
-                # Dawn uses a different external DNS server to AKS, and also runs regular jobs that do not run on AKS
-                network_policy_dawn = ConfigFile(
-                    "network_policy_dawn",
-                    file="./k8s/cilium/dawn.yaml",
-                    opts=child_opts,
-                )
-                # Add network policy to allow Prometheus monitoring for resources already deployed on Dawn
-                # On Dawn, Prometheus is also already deployed
-                network_policy_prometheus = ConfigFile(
-                    "network_policy_prometheus",
-                    file="./k8s/cilium/prometheus.yaml",
-                    opts=child_opts,
-                )
-
-        network_policy_argo_workflows = ConfigFile(
-            "network_policy_argo_workflows",
-            file="./k8s/cilium/argo_workflows.yaml",
-            opts=child_opts,
-        )
-
-        network_policy_argo_server = ConfigFile(
-            "network_policy_argo_server",
-            file="./k8s/cilium/argo_server.yaml",
-            opts=child_opts,
-        )
-
-        network_policy_cert_manager = ConfigFile(
-            "network_policy_cert_manager",
-            file="./k8s/cilium/cert_manager.yaml",
-            opts=child_opts,
-        )
-
-        network_policy_containerd_config = ConfigFile(
-            "network_policy_containerd_config",
-            file="./k8s/cilium/containerd_config.yaml",
-            opts=child_opts,
-        )
-
-        network_policy_harbor = ConfigFile(
-            "network_policy_harbor",
-            file="./k8s/cilium/harbor.yaml",
-            opts=child_opts,
-        )
-
-        network_policy_hubble = ConfigFile(
-            "network_policy_hubble",
-            file="./k8s/cilium/hubble.yaml",
-            opts=child_opts,
-        )
-
-        network_policy_ingress_nginx = ConfigFile(
-            "network_policy_ingress_nginx",
-            file="./k8s/cilium/ingress-nginx.yaml",
-            opts=child_opts,
-        )
-
-        network_policy_kube_node_lease = ConfigFile(
-            "network_policy_kube_node_lease",
-            file="./k8s/cilium/kube-node-lease.yaml",
-            opts=child_opts,
-        )
-
-        network_policy_kube_public = ConfigFile(
-            "network_policy_kube_public",
-            file="./k8s/cilium/kube-public.yaml",
-            opts=child_opts,
-        )
-
-        network_policy_kubernetes_system = ConfigFile(
-            "network_policy_kubernetes_system",
-            file="./k8s/cilium/kube-system.yaml",
-            opts=child_opts,
-        )
-
-        network_policy_longhorn = ConfigFile(
-            "network_policy_longhorn",
-            file="./k8s/cilium/longhorn.yaml",
-            opts=child_opts,
-        )
-
-        network_policy_minio_tenant = ConfigFile(
-            "network_policy_minio_tenant",
-            file="./k8s/cilium/minio-tenant.yaml",
-            opts=child_opts,
-        )
-
-        network_policy_minio_operator = ConfigFile(
-            "network_policy_minio_operator",
-            file="./k8s/cilium/minio-operator.yaml",
-            opts=child_opts,
-        )
-
-
-net_pols = NetworkPolicies(
-    name="test_component_resource",
+network_policies = NetworkPolicies(
+    name=f"{stack_name}-network-policies",
     k8s_environment=k8s_environment,
     opts=ResourceOptions(
         provider=k8s_provider,
