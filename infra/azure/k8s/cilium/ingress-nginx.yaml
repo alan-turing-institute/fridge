@@ -30,13 +30,6 @@ spec:
               protocol: TCP
             - port: "443"
               protocol: TCP
-    # Remote node traffic is required on Dawn
-    - fromEntities:
-        - remote-node
-      toPorts:
-        - ports:
-          - port: "8443"
-            protocol: TCP
     - fromEndpoints:
         - matchLabels:
             k8s:app.kubernetes.io/name: cert-manager
