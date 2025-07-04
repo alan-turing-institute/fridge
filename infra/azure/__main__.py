@@ -96,7 +96,20 @@ disk_encryption_key = keyvault.Key(
     properties=keyvault.KeyPropertiesArgs(
         key_size=2048,
         kty=keyvault.JsonWebKeyType.RSA,
-        ),
+    ),
+)
+
+disk_encryption_set = compute.DiskEncryptionSet(
+    "disk-encryption-set",
+    resource_group_name=resource_group.name,
+    disk_encryption_set_name="fridge-disk-encryption-set",
+    active_key=compute.KeyForDiskEncryptionSetArgs(
+        key_url=disk_encryption_key.key_uri_with_version,
+    ),
+    encryption_type=compute.DiskEncryptionSetType.ENCRYPTION_AT_REST_WITH_CUSTOMER_KEY,
+    identity=compute.EncryptionSetIdentityArgs(
+        type=compute.DiskEncryptionSetIdentityType.SYSTEM_ASSIGNED,
+    ),
 )
 
 access_policy = keyvault.AccessPolicy(
@@ -104,7 +117,7 @@ access_policy = keyvault.AccessPolicy(
     vault_name=keyvault.name,
     resource_group_name=resource_group.name,
     policy=keyvault.AccessPolicyEntryArgs(
-        object_id=disk_encryption_set.object_id,
+        object_id=disk_encryption_set.id,
         tenant_id=azure_config.require("tenantId"),
         permissions=keyvault.PermissionsArgs(
             keys=[
