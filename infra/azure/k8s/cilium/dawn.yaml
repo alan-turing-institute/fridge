@@ -29,3 +29,27 @@ spec:
   egress:
     - toEntities:
       - kube-apiserver
+      # Since this is on Dawn, we can be specific about the port
+      toPorts:
+        - ports:
+          - port: "6443"
+            protocol: ANY
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: webhook-ingress-nginx
+  namespace: ingress-nginx
+  # Allow traffic from the remote-node entity on port 8443. This is webhook related traffic
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s:app.kubernetes.io/name: ingress-nginx
+      k8s:app.kubernetes.io/component: controller
+  ingress:
+    - fromEntities:
+        - remote-node
+      toPorts:
+        - ports:
+            - port: "8443"
+              protocol: TCP
