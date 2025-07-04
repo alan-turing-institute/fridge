@@ -4,7 +4,13 @@ from string import Template
 
 import pulumi
 from pulumi import FileAsset, Output, ResourceOptions
-from pulumi_azure_native import containerservice, managedidentity, resources, keyvault
+from pulumi_azure_native import (
+    compute,
+    containerservice,
+    managedidentity,
+    resources,
+    keyvault,
+)
 import pulumi_tls as tls
 import pulumi_kubernetes as kubernetes
 from pulumi_kubernetes.core.v1 import (
@@ -80,6 +86,17 @@ keyvault = keyvault.Vault(
         soft_delete_retention_in_days=90,
     ),
     resource_group_name=resource_group.name,
+)
+
+disk_encryption_key = keyvault.Key(
+    "disk-encryption-key",
+    key_name="fridge-pvc-key",
+    resource_group_name=resource_group.name,
+    vault_name=keyvault.name,
+    properties=keyvault.KeyPropertiesArgs(
+        key_size=2048,
+        kty=keyvault.JsonWebKeyType.RSA,
+        ),
 )
 
 access_policy = keyvault.AccessPolicy(
