@@ -1,0 +1,79 @@
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-deny
+  namespace: kube-system
+spec:
+  endpointSelector: {}
+  ingress:
+    - {}
+  egress:
+    - {}
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: kube-dns
+  namespace: kube-system
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s-app: kube-dns
+  ingress:
+    # Allow kube-dns to receive DNS requests from any endpoint in the cluster
+    # Policies for those endpoints will determine if and how they can communicate with kube-dns
+    - fromEntities:
+        - cluster
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+  egress:
+    # Allow kube-dns to send DNS requests in the cluster
+    - toEntities:
+        - cluster
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+    # Allow kube-dns to communicate with the Kubernetes API server
+    - toEntities:
+        - kube-apiserver
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: metrics-server
+  namespace: kube-system
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s:app.kubernetes.io/name: metrics-server
+  # The metrics-server collects realtime metrics from kubelets
+  # and provides them to the Kubernetes API server for use in autoscaling
+  # https://kubernetes-sigs.github.io/metrics-server/
+  ingress:
+    - fromEntities:
+        - remote-node
+      toPorts:
+        - ports:
+          - port : "10250"
+            protocol: TCP
+  egress:
+    - toEntities:
+        - host
+        - remote-node
+      toPorts:
+        - ports:
+            - port: "10250"
+              protocol: TCP
+    - toEntities:
+        - kube-apiserver
+    - toEndpoints:
+        - matchLabels:
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY

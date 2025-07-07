@@ -30,25 +30,36 @@ spec:
               protocol: TCP
             - port: "443"
               protocol: TCP
-    # Allow access to the Ingress NGINX controller from the Konnectivity Agent,
-    # which mediates traffic from the Kubernetes API server resulting from
-    # webhooks
     - fromEndpoints:
         - matchLabels:
-            app: konnectivity-agent
-            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s:app.kubernetes.io/name: cert-manager
+            k8s:io.kubernetes.pod.namespace: cert-manager
       toPorts:
         - ports:
-            - port: "8443"
+          - port: "80"
+            protocol: TCP
+    - fromEndpoints:
+        - matchExpressions:
+          - key: k8s:io.kubernetes.pod.namespace
+            operator: In
+            values: ["harbor", "argo-server", "argo-artifacts"]
+          - key: acme.cert-manager.io/http01-solver
+            operator: Exists
+      toPorts:
+        - ports:
+            - port: "8089"
               protocol: TCP
   egress:
     # Allow egress to the Kubernetes API server for Ingress NGINX to manage
-    # resources
+    # resources. Remote-node is also required here for Dawn, as is port 6443.
     - toEntities:
         - kube-apiserver
+        - remote-node
       toPorts:
         - ports:
             - port: "443"
+              protocol: TCP
+            - port: "6443"
               protocol: TCP
     # Allow forwarding traffic to the Harbor Nginx component, which redirects
     # to the Harbor registry or web UI
@@ -78,4 +89,17 @@ spec:
       toPorts:
         - ports:
             - port: "9090"
+              protocol: TCP
+    # Allow traffic to the ACME http01-solver during ingress creation
+    # Port 8089 is necessary for the ACME solver using during TLS certificate issuance
+    - toEndpoints:
+        - matchExpressions:
+          - key: k8s:io.kubernetes.pod.namespace
+            operator: In
+            values: ["harbor", "argo-server", "argo-artifacts"]
+          - key: acme.cert-manager.io/http01-solver
+            operator: Exists
+      toPorts:
+        - ports:
+            - port: "8089"
               protocol: TCP

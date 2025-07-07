@@ -17,7 +17,11 @@ spec:
         - ports:
             - port: "53"
               protocol: ANY
-  ingress: []
+          rules:
+            dns:
+              - matchPattern: "*"
+  ingress:
+    - {}
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
@@ -29,7 +33,8 @@ spec:
   endpointSelector:
     matchLabels:
       app: webhook
-  egress: []
+  egress:
+    - {}
   ingress:
     # Allow inbound from kube API
     - fromEntities:
@@ -55,7 +60,8 @@ spec:
     # Allow outbound to kube API
     - toEntities:
         - kube-apiserver
-  ingress: []
+  ingress:
+    - {}
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
@@ -76,7 +82,36 @@ spec:
         - ports:
             - port: "53"
               protocol: ANY
-  ingress: []
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: "cert-manager-certificate-issuers"
+  namespace: "cert-manager"
+spec:
+  # Apply to controller
+  endpointSelector:
+    matchLabels:
+      app: cert-manager
+  egress:
+    # Allow outbound to LetsEncrypt servers, necessary to set up certificate issuers
+    - toFQDNs:
+        - matchName: acme-staging-v02.api.letsencrypt.org
+        - matchName: acme-v02.api.letsencrypt.org
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+    - toEndpoints:
+      - matchLabels:
+          k8s:app.kubernetes.io/name: ingress-nginx
+          k8s:io.kubernetes.pod.namespace: ingress-nginx
+      toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP
+  ingress:
+    - {}
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
@@ -95,4 +130,5 @@ spec:
       toPorts:
         - ports:
             - port: "80"
-  egress: []
+  egress:
+    - {}
