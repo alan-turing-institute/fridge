@@ -192,11 +192,11 @@ longhorn_ns = Namespace(
     ),
 )
 
-longhorn = Chart(
+longhorn = Release(
     "longhorn",
     namespace=longhorn_ns.metadata.name,
     chart="longhorn",
-    version="1.8.1",
+    version="1.9.0",
     repository_opts=RepositoryOptsArgs(
         repo="https://charts.longhorn.io",
     ),
