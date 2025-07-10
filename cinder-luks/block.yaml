@@ -1,0 +1,93 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: csi-cinder
+provisioner: cinder.csi.openstack.org
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: csi-pvc-cinderplugin
+spec:
+  accessModes:
+  - ReadWriteOnce
+  volumeMode: Block
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: csi-cinder
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-block
+spec:
+  initContainers:
+  - name: luks-init
+    image: alpine:3.19
+    securityContext:
+      privileged: true
+    command:
+      - sh
+      - -c
+      - |
+        set -eux
+        apk add --no-cache cryptsetup e2fsprogs util-linux
+        DEVICE=$(lsblk -d -n -o NAME,SIZE | grep "1G" | grep -v "^loop" | awk '{print $1}' | head -n 1)
+        DEVICE_PATH="/dev/$DEVICE"
+        echo $DEVICE_PATH
+        cryptsetup luksClose cryptdisk || true
+        cryptsetup luksFormat "$DEVICE_PATH" /mnt/key/luks.key --batch-mode --type luks2
+        cryptsetup luksOpen "$DEVICE_PATH" cryptdisk --key-file /mnt/key/luks.key
+        mkfs.ext4 /dev/mapper/cryptdisk
+        cryptsetup luksClose cryptdisk
+    volumeDevices:
+    - devicePath: /dev/vdd
+      name: csi-data-cinderplugin
+    volumeMounts:
+    - name: secure-mount
+      mountPath: /mnt/secure
+    - name: luks-key
+      mountPath: /mnt/key
+      readOnly: true
+  containers:
+  - name: nginx
+    image: alpine:3.19 
+    securityContext:
+      privileged: true
+    command:
+      - sh
+      - -c
+      - |
+        set -eux
+        apk add --no-cache cryptsetup e2fsprogs util-linux
+        DEVICE=$(lsblk -d -n -o NAME,SIZE | grep "1G" | grep -v "^loop" | awk '{print $1}' | head -n 1)
+        DEVICE_PATH="/dev/$DEVICE"
+        echo "Opening LUKS device"
+        cryptsetup luksOpen "$DEVICE_PATH" cryptdisk --key-file /mnt/key/luks.key
+        mkdir -p /mnt/securefolder
+        mount /dev/mapper/cryptdisk /mnt/securefolder
+        echo "Hello from main container" > /mnt/securefolder/hello.txt
+        ls -l /mnt/securefolder
+        echo $DEVICE_PATH
+        tail -f /dev/null
+    volumeDevices:
+    - devicePath: /dev/vdd
+      name: csi-data-cinderplugin
+    volumeMounts:
+    - name: secure-mount
+      mountPath: /mnt/securefolder
+    - name: luks-key
+      mountPath: /mnt/key
+      readOnly: true
+  volumes:
+  - name: csi-data-cinderplugin
+    persistentVolumeClaim:
+      claimName: csi-pvc-cinderplugin
+  - name: secure-mount
+    emptyDir: {}
+  - name: luks-key
+    secret:
+      secretName: luks-key-secret
