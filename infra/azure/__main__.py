@@ -112,6 +112,7 @@ disk_encryption_set = compute.DiskEncryptionSet(
     ),
 )
 
+# Grant disk encryption set permission to use keyvault keys
 access_policy = keyvault.AccessPolicy(
     "access-policy",
     vault_name=keyvault.name,
@@ -171,6 +172,7 @@ managed_cluster = containerservice.ManagedCluster(
             vm_size="Standard_B2als_v2",
         ),
     ],
+    disk_encryption_set_id=disk_encryption_set.id,
     dns_prefix="fridge",
     identity=containerservice.ManagedClusterIdentityArgs(
         type=containerservice.ResourceIdentityType.USER_ASSIGNED,
