@@ -74,7 +74,7 @@ identity = managedidentity.UserAssignedIdentity(
     resource_group_name=resource_group.name,
 )
 
-keyvault = keyvault.Vault(
+kv = keyvault.Vault(
     "keyvault",
     vault_name="fridge-kv",
     properties=keyvault.VaultPropertiesArgs(
@@ -97,7 +97,7 @@ disk_encryption_key = keyvault.Key(
     "disk-encryption-key",
     key_name="fridge-pvc-key",
     resource_group_name=resource_group.name,
-    vault_name=keyvault.name,
+    vault_name=kv.name,
     properties=keyvault.KeyPropertiesArgs(
         key_size=2048,
         kty=keyvault.JsonWebKeyType.RSA,
@@ -120,7 +120,7 @@ disk_encryption_set = compute.DiskEncryptionSet(
 # Grant disk encryption set permission to use keyvault keys
 access_policy = keyvault.AccessPolicy(
     "access-policy",
-    vault_name=keyvault.name,
+    vault_name=kv.name,
     resource_group_name=resource_group.name,
     policy=keyvault.AccessPolicyEntryArgs(
         object_id=disk_encryption_set.id,
