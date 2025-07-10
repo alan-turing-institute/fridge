@@ -4,12 +4,16 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from typing import Annotated
 
-
 app = FastAPI()
 
+# Load environment variables from .env file
 load_dotenv()
 ARGO_TOKEN = os.getenv("ARGO_TOKEN")
 ARGO_SERVER = os.getenv("ARGO_SERVER")
+if not ARGO_TOKEN or not ARGO_SERVER:
+    raise ValueError(
+        "ARGO_TOKEN and ARGO_SERVER must be set in the environment variables."
+    )
 
 
 @app.get("/workflows/{namespace}")
@@ -50,7 +54,6 @@ async def list_workflow_templates(namespace: str):
 
 
 @app.get("/workflowtemplates/{namespace}/{template_name}")
-# async def read_item(token: str):
 async def get_workflow_template(namespace: str, template_name: str):
     r = requests.get(
         f"https://argo.dawn.fridge.develop.turingsafehaven.ac.uk/api/v1/workflow-templates/{namespace}/{template_name}",
