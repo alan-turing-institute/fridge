@@ -83,7 +83,12 @@ keyvault = keyvault.Vault(
         enable_purge_protection=True,
         enable_rbac_authorization=False,
         enable_soft_delete=True,
+        sku=keyvault.SkuArgs(
+            family=keyvault.SkuFamily.A,
+            name=keyvault.SkuName.STANDARD,
+        ),
         soft_delete_retention_in_days=90,
+        tenant_id=azure_config.require("tenantId"),
     ),
     resource_group_name=resource_group.name,
 )
