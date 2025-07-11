@@ -1,7 +1,8 @@
 import base64
+
 import pulumi
-from pulumi_azure_native import containerservice, managedidentity, resources
 import pulumi_tls as tls
+from pulumi_azure_native import containerservice, managedidentity, resources
 
 
 def get_kubeconfig(
