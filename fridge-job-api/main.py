@@ -66,7 +66,7 @@ async def get_single_workflow(
 @app.get("/workflowtemplates/{namespace}")
 async def list_workflow_templates(namespace: str):
     r = requests.get(
-        f"https://argo.dawn.fridge.develop.turingsafehaven.ac.uk/api/v1/workflow-templates/{namespace}",
+        f"{ARGO_SERVER}/api/v1/workflow-templates/{namespace}",
         verify=False,
         headers={"Authorization": f"Bearer {ARGO_TOKEN}"},
     )
@@ -77,7 +77,7 @@ async def list_workflow_templates(namespace: str):
 @app.get("/workflowtemplates/{namespace}/{template_name}")
 async def get_workflow_template(namespace: str, template_name: str):
     r = requests.get(
-        f"https://argo.dawn.fridge.develop.turingsafehaven.ac.uk/api/v1/workflow-templates/{namespace}/{template_name}",
+        f"{ARGO_SERVER}/api/v1/workflow-templates/{namespace}/{template_name}",
         verify=False,
         headers={"Authorization": f"Bearer {ARGO_TOKEN}"},
     )
@@ -92,13 +92,8 @@ async def get_workflow_template(namespace: str, template_name: str):
 
 @app.post("/workflowevents/from_template/")
 async def submit_workflow_from_template(workflow_template: WorkflowTemplate):
-    print(
-        parse_parameters(workflow_template.parameters)
-        if workflow_template.parameters
-        else []
-    )
     r = requests.post(
-        f"https://argo.dawn.fridge.develop.turingsafehaven.ac.uk/api/v1/workflows/{workflow_template.namespace}/submit",
+        f"{ARGO_SERVER}/api/v1/workflows/{workflow_template.namespace}/submit",
         verify=False,
         headers={"Authorization": f"Bearer {ARGO_TOKEN}"},
         data=json.dumps(
