@@ -2,7 +2,7 @@ from enum import Enum, unique
 from string import Template
 
 import pulumi
-from pulumi import ComponentResource, FileAsset, Output, ResourceOptions
+from pulumi import FileAsset, Output, ResourceOptions
 import pulumi_kubernetes as kubernetes
 from pulumi_kubernetes.core.v1 import (
     Namespace,
