@@ -2,7 +2,7 @@ from enum import Enum, unique
 from string import Template
 
 import pulumi
-from pulumi import ComponentResource, FileAsset, Output, ResourceOptions
+from pulumi import FileAsset, Output, ResourceOptions
 import pulumi_kubernetes as kubernetes
 from pulumi_kubernetes.core.v1 import (
     Namespace,
@@ -11,6 +11,7 @@ from pulumi_kubernetes.core.v1 import (
     ServiceAccount,
 )
 from components.network_policies import NetworkPolicies
+from components.api_rbac import ApiRbac
 
 from pulumi_kubernetes.batch.v1 import CronJobPatch, CronJobSpecPatchArgs
 from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs
@@ -688,6 +689,15 @@ argo_workflows_default_sa_token = Secret(
     opts=ResourceOptions(
         provider=k8s_provider,
         depends_on=[argo_workflows_default_sa],
+    ),
+)
+
+api_rbac = ApiRbac(
+    name=f"{stack_name}-api-rbac",
+    argo_workflows_ns=argo_workflows_ns.metadata.name,
+    opts=ResourceOptions(
+        provider=k8s_provider,
+        depends_on=[argo_workflows_ns],
     ),
 )
 
