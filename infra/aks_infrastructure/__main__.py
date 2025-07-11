@@ -1,6 +1,12 @@
 import base64
 import pulumi
-from pulumi_azure_native import containerservice, managedidentity, resources
+from pulumi_azure_native import (
+    compute,
+    containerservice,
+    managedidentity,
+    resources,
+    keyvault,
+)
 import pulumi_tls as tls
 
 
@@ -13,6 +19,7 @@ def get_kubeconfig(
 
 
 config = pulumi.Config()
+azure_config = pulumi.Config("azure-native")
 
 resource_group = resources.ResourceGroup(
     "resource_group",
@@ -20,6 +27,67 @@ resource_group = resources.ResourceGroup(
 )
 
 ssh_key = tls.PrivateKey("ssh-key", algorithm="RSA", rsa_bits="3072")
+
+kv = keyvault.Vault(
+    "keyvault",
+    vault_name="fridge-kv",
+    properties=keyvault.VaultPropertiesArgs(
+        # To use this keyvault for BYOK, it requires vault authorisation (not RBAC),
+        # purge protection and soft delete
+        enable_purge_protection=True,
+        enable_rbac_authorization=False,
+        enable_soft_delete=True,
+        sku=keyvault.SkuArgs(
+            family=keyvault.SkuFamily.A,
+            name=keyvault.SkuName.STANDARD,
+        ),
+        soft_delete_retention_in_days=90,
+        tenant_id=azure_config.require("tenantId"),
+    ),
+    resource_group_name=resource_group.name,
+)
+
+disk_encryption_key = keyvault.Key(
+    "disk-encryption-key",
+    key_name="fridge-pvc-key",
+    resource_group_name=resource_group.name,
+    vault_name=kv.name,
+    properties=keyvault.KeyPropertiesArgs(
+        key_size=2048,
+        kty=keyvault.JsonWebKeyType.RSA,
+    ),
+)
+
+disk_encryption_set = compute.DiskEncryptionSet(
+    "disk-encryption-set",
+    resource_group_name=resource_group.name,
+    disk_encryption_set_name="fridge-disk-encryption-set",
+    active_key=compute.KeyForDiskEncryptionSetArgs(
+        key_url=disk_encryption_key.key_uri_with_version,
+    ),
+    encryption_type=compute.DiskEncryptionSetType.ENCRYPTION_AT_REST_WITH_CUSTOMER_KEY,
+    identity=compute.EncryptionSetIdentityArgs(
+        type=compute.DiskEncryptionSetIdentityType.SYSTEM_ASSIGNED,
+    ),
+)
+
+# Grant disk encryption set permission to use keyvault keys
+access_policy = keyvault.AccessPolicy(
+    "access-policy",
+    vault_name=kv.name,
+    resource_group_name=resource_group.name,
+    policy=keyvault.AccessPolicyEntryArgs(
+        object_id=disk_encryption_set.id,
+        tenant_id=azure_config.require("tenantId"),
+        permissions=keyvault.PermissionsArgs(
+            keys=[
+                keyvault.KeyPermissions.UNWRAP_KEY,
+                keyvault.KeyPermissions.WRAP_KEY,
+                keyvault.KeyPermissions.GET,
+            ],
+        ),
+    ),
+)
 
 # AKS cluster
 identity = managedidentity.UserAssignedIdentity(
@@ -68,6 +136,7 @@ managed_cluster = containerservice.ManagedCluster(
             vm_size="Standard_B2als_v2",
         ),
     ],
+    disk_encryption_set_id=disk_encryption_set.id,
     dns_prefix="fridge",
     identity=containerservice.ManagedClusterIdentityArgs(
         type=containerservice.ResourceIdentityType.USER_ASSIGNED,
