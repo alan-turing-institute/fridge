@@ -1,4 +1,4 @@
-name: fridge AKS
+name: fridge_AKS
 description: FRIDGE supporting AKS cluster
 runtime:
   name: python
