@@ -1,5 +1,5 @@
-name: fridge
-description: FRIDGE deployment on K8s
+name: fridge AKS
+description: FRIDGE supporting AKS cluster
 runtime:
   name: python
   options:
