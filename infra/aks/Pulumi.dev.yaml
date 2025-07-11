@@ -1,0 +1,8 @@
+config:
+  azure-native:location: uksouth
+  azure-native:subscriptionId: "36cfe11d-bfcd-4dce-9b70-c3905a4f3d01"
+  fridge_aks:cluster_name: cluster
+  fridge_aks:resource_group_name: fridge-one
+  pulumi:autonaming:
+    mode: verbatim
+encryptionsalt: v1:yogqzV1vvSc=:v1:SHNUgvMq/GBkHqxR:1VDgarTt9/kF3hGfzLg8/glUTOHcIA==
