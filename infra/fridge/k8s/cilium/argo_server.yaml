@@ -25,15 +25,12 @@ spec:
       toPorts:
         - ports:
             - port: "53"
-              protocol: UDP
-    # Allow access to login.microsoftonline.com for SSO
-    # Note that toFQDN does not work, as the requests are sent to specific IPs, not the FQDN
-    # IP addresses are taken from https://learn.microsoft.com/en-us/microsoft-365/enterprise/urls-and-ip-address-ranges?view=o365-worldwide
-    - toCIDRSet:
-        - cidr: 20.20.32.0/19
-        - cidr: 20.190.128.0/18
-        - cidr: 20.231.128.0/19
-        - cidr: 40.126.0.0/18
+              protocol: ANY
+          rules:
+            dns:
+              - matchPattern: "login.microsoftonline.com"
+    - toFQDNs:
+      - matchName: login.microsoftonline.com
       toPorts:
         - ports:
             - port: "443"
