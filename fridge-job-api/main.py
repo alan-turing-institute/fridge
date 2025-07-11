@@ -6,14 +6,22 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import Annotated
 
+# Load environment variables from .env file
+load_dotenv()
+ARGO_TOKEN = os.getenv("ARGO_TOKEN")
+ARGO_SERVER = os.getenv("ARGO_SERVER")
+if not ARGO_TOKEN or not ARGO_SERVER:
+    raise ValueError(
+        "ARGO_TOKEN and ARGO_SERVER must be set in the environment variables."
+    )
+
+app = FastAPI()
+
 
 class WorkflowTemplate(BaseModel):
     namespace: str
     template_name: str
     parameters: list[dict] | None = None
-
-
-app = FastAPI()
 
 
 def parse_parameters(parameters: list[dict]) -> list[str]:
@@ -25,16 +33,6 @@ def parse_parameters(parameters: list[dict]) -> list[str]:
         for param in parameters
         if "name" in param and "value" in param
     ]
-
-
-# Load environment variables from .env file
-load_dotenv()
-ARGO_TOKEN = os.getenv("ARGO_TOKEN")
-ARGO_SERVER = os.getenv("ARGO_SERVER")
-if not ARGO_TOKEN or not ARGO_SERVER:
-    raise ValueError(
-        "ARGO_TOKEN and ARGO_SERVER must be set in the environment variables."
-    )
 
 
 @app.get("/workflows/{namespace}")
@@ -81,6 +79,18 @@ async def get_workflow_template(namespace: str, template_name: str):
         verify=False,
         headers={"Authorization": f"Bearer {ARGO_TOKEN}"},
     )
+    if r.status_code == 403:
+        return {
+            "error": "Workflow namespace not found or not permitted",
+            "status_code": r.status_code,
+            "response": r.text,
+        }
+    elif r.status_code == 404:
+        return {
+            "error": "Workflow template not found",
+            "status_code": r.status_code,
+            "response": r.text,
+        }
     json_data = r.json()
     workflow_template = WorkflowTemplate(
         namespace=namespace,
@@ -108,6 +118,24 @@ async def submit_workflow_from_template(workflow_template: WorkflowTemplate):
             }
         ),
     )
+    if r.status_code == 403:
+        return {
+            "error": "Workflow namespace not found or not permitted",
+            "status": r.status_code,
+            "response": r.text,
+        }
+    elif r.status_code == 404:
+        return {
+            "error": "Workflow template not found",
+            "status": r.status_code,
+            "response": r.text,
+        }
+    elif r.status_code != 200:
+        return {
+            "error": "Failed to submit workflow",
+            "status": r.status_code,
+            "response": r.text,
+        }
     return {
         "workflow_submitted": workflow_template,
         "status": r.status_code,
