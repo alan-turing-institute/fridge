@@ -20,8 +20,6 @@ class ApiRbac(ComponentResource):
 
         # Define argo workflows service accounts and roles
         # See https://argo-workflows.readthedocs.io/en/latest/security/
-        # The admin service account gives users in the admin entra group
-        # permission to run workflows in the Argo Workflows namespace
         argo_workflows_api_role = Role(
             "argo-workflows-api-role",
             metadata=ObjectMetaArgs(
@@ -32,11 +30,22 @@ class ApiRbac(ComponentResource):
                 PolicyRuleArgs(
                     api_groups=["argoproj.io"],
                     resources=[
-                        "workflows",
                         "workflowtemplates",
-                        "workfloweventbindings",
                     ],
                     verbs=[
+                        "get",
+                        "list",
+                        "watch",
+                        "update",
+                    ],
+                ),
+                PolicyRuleArgs(
+                    api_groups=["argoproj.io"],
+                    resources=[
+                        "workflows",
+                    ],
+                    verbs=[
+                        "create",
                         "get",
                         "list",
                         "watch",
