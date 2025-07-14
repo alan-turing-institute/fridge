@@ -104,6 +104,9 @@ async def get_workflows(
 async def get_single_workflow(
     namespace: Annotated[str, "The namespace to list workflows from"],
     workflow_name: Annotated[str, "The name of the workflow to retrieve"],
+    verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
+        verify_request
+    ),
 ):
     r = requests.get(
         f"{ARGO_SERVER}/api/v1/workflows/{namespace}/{workflow_name}",
@@ -114,7 +117,12 @@ async def get_single_workflow(
 
 
 @app.get("/workflowtemplates/{namespace}")
-async def list_workflow_templates(namespace: str):
+async def list_workflow_templates(
+    namespace: str,
+    verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
+        verify_request
+    ),
+):
     r = requests.get(
         f"{ARGO_SERVER}/api/v1/workflow-templates/{namespace}",
         verify=False,
@@ -125,7 +133,13 @@ async def list_workflow_templates(namespace: str):
 
 
 @app.get("/workflowtemplates/{namespace}/{template_name}")
-async def get_workflow_template(namespace: str, template_name: str):
+async def get_workflow_template(
+    namespace: str,
+    template_name: str,
+    verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
+        verify_request
+    ),
+):
     r = requests.get(
         f"{ARGO_SERVER}/api/v1/workflow-templates/{namespace}/{template_name}",
         verify=False,
@@ -153,7 +167,12 @@ async def get_workflow_template(namespace: str, template_name: str):
 
 
 @app.post("/workflowevents/from_template/")
-async def submit_workflow_from_template(workflow_template: WorkflowTemplate):
+async def submit_workflow_from_template(
+    workflow_template: WorkflowTemplate,
+    verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
+        verify_request
+    ),
+):
     r = requests.post(
         f"{ARGO_SERVER}/api/v1/workflows/{workflow_template.namespace}/submit",
         verify=False,
