@@ -1,19 +1,38 @@
+import base64
 import json
 import os
 import requests
+from kubernetes import client, config
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import Annotated
 
+
 # Load environment variables from .env file
 load_dotenv()
-ARGO_TOKEN = os.getenv("ARGO_TOKEN")
 ARGO_SERVER = os.getenv("ARGO_SERVER")
-if not ARGO_TOKEN or not ARGO_SERVER:
-    raise ValueError(
-        "ARGO_TOKEN and ARGO_SERVER must be set in the environment variables."
+
+# Check if running in the Kubernetes cluster
+# If so, use the in-cluster configuration to retrieve the token
+# Note that this requires a service account with the necessary permissions
+# If not in the cluster, use the current kube config credentials to retrieve the token
+if os.getenv("KUBERNETES_SERVICE_HOST"):
+    config.load_incluster_config()
+    v1 = client.CoreV1Api()
+    secret = v1.read_namespaced_secret(
+        "argo-workflows-api-sa.service-account-token", "argo-workflows"
     )
+    ARGO_TOKEN = base64.b64decode(secret.data["token"]).decode("utf-8")
+    ARGO_SERVER = "argo-server.argo-server.svc.cluster.local:2746"
+else:
+    config.load_kube_config()
+    v1 = client.CoreV1Api()
+    secret = v1.read_namespaced_secret(
+        "argo-workflows-api-sa.service-account-token", "argo-workflows"
+    )
+    ARGO_TOKEN = base64.b64decode(secret.data["token"]).decode("utf-8")
+    ARGO_SERVER = os.getenv("ARGO_SERVER")
 
 app = FastAPI()
 
