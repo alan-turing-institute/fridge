@@ -4,7 +4,8 @@ import os
 import requests
 from kubernetes import client, config
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, HTTPException
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel
 from typing import Annotated
 
@@ -12,6 +13,8 @@ from typing import Annotated
 # Load environment variables from .env file
 load_dotenv()
 ARGO_SERVER = os.getenv("ARGO_SERVER")
+FRIDGE_API_ADMIN = os.getenv("FRIDGE_API_ADMIN")
+FRIDGE_API_PASSWORD = os.getenv("FRIDGE_API_PASSWORD")
 
 # Check if running in the Kubernetes cluster
 # If so, use the in-cluster configuration to retrieve the token
@@ -36,6 +39,8 @@ else:
 
 app = FastAPI()
 
+security = HTTPBasic()
+
 
 class WorkflowTemplate(BaseModel):
     namespace: str
@@ -54,17 +59,45 @@ def parse_parameters(parameters: list[dict]) -> list[str]:
     ]
 
 
+def verify_request(credentials: HTTPBasicCredentials = Depends(security)):
+    """
+    Verify the request using basic auth.
+    """
+    correct_username = FRIDGE_API_ADMIN
+    correct_password = FRIDGE_API_PASSWORD
+
+    if (
+        credentials.username != correct_username
+        or credentials.password != correct_password
+    ):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid credentials",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return True
+
+
 @app.get("/workflows/{namespace}")
 async def get_workflows(
-    namespace: Annotated[str, "The namespace to list workflows from"]
+    namespace: Annotated[str, "The namespace to list workflows from"],
+    verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
+        verify_request
+    ),
 ):
-    r = requests.get(
-        f"{ARGO_SERVER}/api/v1/workflows/{namespace}",
-        verify=False,
-        headers={"Authorization": f"Bearer {ARGO_TOKEN}"},
-    )
-
-    return r.json()
+    if verified:
+        r = requests.get(
+            f"{ARGO_SERVER}/api/v1/workflows/{namespace}",
+            verify=False,
+            headers={"Authorization": f"Bearer {ARGO_TOKEN}"},
+        )
+        return r.json()
+    else:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid credentials",
+            headers={"WWW-Authenticate": "Basic"},
+        )
 
 
 @app.get("/workflows/{namespace}/{workflow_name}")
