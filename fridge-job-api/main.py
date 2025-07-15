@@ -85,19 +85,12 @@ async def get_workflows(
         verify_request
     ),
 ):
-    if verified:
-        r = requests.get(
-            f"{ARGO_SERVER}/api/v1/workflows/{namespace}",
-            verify=False,
-            headers={"Authorization": f"Bearer {ARGO_TOKEN}"},
-        )
-        return r.json()
-    else:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid credentials",
-            headers={"WWW-Authenticate": "Basic"},
-        )
+    r = requests.get(
+        f"{ARGO_SERVER}/api/v1/workflows/{namespace}",
+        verify=False,
+        headers={"Authorization": f"Bearer {ARGO_TOKEN}"},
+    )
+    return r.json()
 
 
 @app.get("/workflows/{namespace}/{workflow_name}")
