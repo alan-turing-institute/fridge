@@ -31,9 +31,29 @@ else:
     ARGO_TOKEN = os.getenv("ARGO_TOKEN")
     ARGO_SERVER = os.getenv("ARGO_SERVER")
 
-app = FastAPI()
+description = """
+FRIDGE API allows you to interact with the FRIDGE cluster.
+
+## Argo Workflows
+You can manage workflows in Argo Workflows using this API.
+
+It provides endpoints to list workflows, get details of a specific workflow,
+list workflow templates, get details of a specific workflow template,
+and submit workflows based on templates.
+
+"""
+
+app = FastAPI(title="FRIDGE API", description=description, version="0.0.0.999")
+
 
 security = HTTPBasic()
+
+
+class Workflow(BaseModel):
+    name: str
+    namespace: str
+    status: str | None = None
+    created_at: str | None = None
 
 
 class WorkflowTemplate(BaseModel):
@@ -46,30 +66,52 @@ def validate_argo_responses(response: dict) -> dict | None:
     """
     Check for errors in the Argo Workflows response and return those errors if any.
     """
-    if "code" in response and response["code"] == 7:
-        return {
-            "error": "Namespace not found or not permitted.",
-            "argo_status_code": response["code"],
-            "response": response["message"],
-        }
-    return response
+    match response:
+        case {"code": 7}:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": "Namespace not found or not permitted.",
+                    "argo_status_code": response["code"],
+                    "response": response["message"],
+                },
+            )
+        case {"code": 5}:
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "error": "Workflow not found.",
+                    "argo_status_code": response["code"],
+                    "response": response["message"],
+                },
+            )
+        case _:
+            return response
 
 
-def parse_argo_responses(response: dict) -> list[dict]:
+def extract_argo_workflows(response: dict) -> list[Workflow] | Workflow:
     """
     Parse the Argo response to extract workflow information.
     """
     workflows = []
     if "items" in response:
         for item in response["items"]:
-            workflow = {
-                "name": item.get("metadata", {}).get("name"),
-                "namespace": item.get("metadata", {}).get("namespace"),
-                "status": item.get("status", {}).get("phase"),
-                "created_at": item.get("metadata", {}).get("creationTimestamp"),
-            }
+            workflow = Workflow(
+                name=item.get("metadata", {}).get("name"),
+                namespace=item.get("metadata", {}).get("namespace"),
+                status=item.get("status", {}).get("phase"),
+                created_at=item.get("metadata", {}).get("creationTimestamp"),
+            )
             workflows.append(workflow)
-    return workflows
+        return workflows
+    else:
+        workflow = Workflow(
+            name=response.get("metadata", {}).get("name"),
+            namespace=response.get("metadata", {}).get("namespace"),
+            status=response.get("status", {}).get("phase"),
+            created_at=response.get("metadata", {}).get("creationTimestamp"),
+        )
+        return workflow
 
 
 def parse_parameters(parameters: list[dict]) -> list[str]:
@@ -121,13 +163,16 @@ async def get_workflows(
     r = validate_argo_responses(r)
     if verbose:
         return r
-    return parse_argo_responses(r)
+    return extract_argo_workflows(r)
 
 
 @app.get("/workflows/{namespace}/{workflow_name}")
 async def get_single_workflow(
     namespace: Annotated[str, "The namespace to list workflows from"],
     workflow_name: Annotated[str, "The name of the workflow to retrieve"],
+    verbose: Annotated[
+        bool, "Return verbose output - full details of the workflow"
+    ] = False,
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
     ),
@@ -137,7 +182,10 @@ async def get_single_workflow(
         verify=False,
         headers={"Authorization": f"Bearer {ARGO_TOKEN}"},
     )
-    return r.json()
+    r = validate_argo_responses(r.json())
+    if verbose:
+        return r
+    return extract_argo_workflows(r)
 
 
 @app.get("/workflowtemplates/{namespace}")
