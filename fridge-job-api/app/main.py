@@ -75,8 +75,12 @@ def parse_argo_error(response: dict) -> dict:
                 "message": response["message"],
             }
         case {"code": 5}:
+            if "workflowtemplates" in response["message"]:
+                missing_resource = "Workflow template"
+            else:
+                missing_resource = "Workflow"
             return {
-                "error": "Workflow not found.",
+                "error": f"{missing_resource} not found.",
                 "argo_status_code": response["code"],
                 "response": response["message"],
             }
@@ -145,7 +149,7 @@ def verify_request(credentials: HTTPBasicCredentials = Depends(security)):
     return True
 
 
-@app.get("/workflows/{namespace}")
+@app.get("/workflows/{namespace}", tags=["Argo Workflows"])
 async def get_workflows(
     namespace: Annotated[str, "The namespace to list workflows from"],
     verbose: Annotated[
@@ -169,7 +173,7 @@ async def get_workflows(
     return extract_argo_workflows(r.json())
 
 
-@app.get("/workflows/{namespace}/{workflow_name}")
+@app.get("/workflows/{namespace}/{workflow_name}", tags=["Argo Workflows"])
 async def get_single_workflow(
     namespace: Annotated[str, "The namespace to list workflows from"],
     workflow_name: Annotated[str, "The name of the workflow to retrieve"],
@@ -194,7 +198,7 @@ async def get_single_workflow(
     return extract_argo_workflows(r.json())
 
 
-@app.get("/workflowtemplates/{namespace}")
+@app.get("/workflowtemplates/{namespace}", tags=["Argo Workflows"])
 async def list_workflow_templates(
     namespace: str,
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
@@ -214,7 +218,7 @@ async def list_workflow_templates(
     return json_data
 
 
-@app.get("/workflowtemplates/{namespace}/{template_name}")
+@app.get("/workflowtemplates/{namespace}/{template_name}", tags=["Argo Workflows"])
 async def get_workflow_template(
     namespace: str,
     template_name: str,
@@ -245,9 +249,12 @@ async def get_workflow_template(
     return workflow_template
 
 
-@app.post("/workflowevents/from_template/")
+@app.post("/workflowevents/from_template/", tags=["Argo Workflows"])
 async def submit_workflow_from_template(
     workflow_template: WorkflowTemplate,
+    verbose: Annotated[
+        bool, "Return verbose output - full details of the workflow"
+    ] = False,
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
     ),
@@ -268,26 +275,12 @@ async def submit_workflow_from_template(
             }
         ),
     )
-    if r.status_code == 403:
-        return {
-            "error": "Workflow namespace not found or not permitted",
-            "status": r.status_code,
-            "response": r.text,
-        }
-    elif r.status_code == 404:
-        return {
-            "error": "Workflow template not found",
-            "status": r.status_code,
-            "response": r.text,
-        }
-    elif r.status_code != 200:
-        return {
-            "error": "Failed to submit workflow",
-            "status": r.status_code,
-            "response": r.text,
-        }
+    if r.status_code != 200:
+        raise HTTPException(
+            status_code=r.status_code, detail=parse_argo_error(r.json())
+        )
     return {
         "workflow_submitted": workflow_template,
         "status": r.status_code,
-        "response": r.json(),
+        "response": r.json() if verbose else extract_argo_workflows(r.json()),
     }
