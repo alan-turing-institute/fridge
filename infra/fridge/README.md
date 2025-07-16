@@ -29,4 +29,17 @@ To set up the Azure backend, you will need to create a Storage Account and a Con
 
 Then follow the instructions in the [Pulumi documentation](https://www.pulumi.com/docs/iac/concepts/state-and-backends/#azure-blob-storage) to configure your Pulumi project to use the Azure Blob Storage backend.
 
+## Configuring FRIDGE
+
+FRIDGE is configured using a Pulumi configuration file.
+
 ## Deploying FRIDGE
+
+Currently, FRIDGE is configured to support deployment on Azure Kubernetes Service (AKS) and on DAWN AI.
+
+
+|   | AKS | DAWN |
+|---|---|---|
+| cert-manager.io | | [x] |
+| hubble | | [x] |
+| ingress-nginx | | [x] |
