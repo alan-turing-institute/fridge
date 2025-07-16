@@ -62,31 +62,32 @@ class WorkflowTemplate(BaseModel):
     parameters: list[dict] | None = None
 
 
-def validate_argo_responses(response: dict) -> dict | None:
+def parse_argo_error(response: dict) -> dict:
     """
     Check for errors in the Argo Workflows response and return those errors if any.
     """
+
     match response:
         case {"code": 7}:
-            raise HTTPException(
-                status_code=403,
-                detail={
-                    "error": "Namespace not found or not permitted.",
-                    "argo_status_code": response["code"],
-                    "response": response["message"],
-                },
-            )
+            return {
+                "error": "Namespace not found or not permitted.",
+                "argo_status_code": response["code"],
+                "message": response["message"],
+            }
         case {"code": 5}:
-            raise HTTPException(
-                status_code=404,
-                detail={
-                    "error": "Workflow not found.",
-                    "argo_status_code": response["code"],
-                    "response": response["message"],
-                },
-            )
+            return {
+                "error": "Workflow not found.",
+                "argo_status_code": response["code"],
+                "response": response["message"],
+            }
         case _:
-            return response
+            return {
+                "error": "An unknown error occurred.",
+                "argo_status_code": response.get("code", 500),
+                "message": response.get(
+                    "message", "No additional information provided."
+                ),
+            }
 
 
 def extract_argo_workflows(response: dict) -> list[Workflow] | Workflow:
@@ -159,11 +160,13 @@ async def get_workflows(
         verify=False,
         headers={"Authorization": f"Bearer {ARGO_TOKEN}"},
     )
-    r = r.json()
-    r = validate_argo_responses(r)
+    if r.status_code != 200:
+        raise HTTPException(
+            status_code=r.status_code, detail=parse_argo_error(r.json())
+        )
     if verbose:
-        return r
-    return extract_argo_workflows(r)
+        return r.json()
+    return extract_argo_workflows(r.json())
 
 
 @app.get("/workflows/{namespace}/{workflow_name}")
@@ -182,10 +185,13 @@ async def get_single_workflow(
         verify=False,
         headers={"Authorization": f"Bearer {ARGO_TOKEN}"},
     )
-    r = validate_argo_responses(r.json())
+    if r.status_code != 200:
+        raise HTTPException(
+            status_code=r.status_code, detail=parse_argo_error(r.json())
+        )
     if verbose:
-        return r
-    return extract_argo_workflows(r)
+        return r.json()
+    return extract_argo_workflows(r.json())
 
 
 @app.get("/workflowtemplates/{namespace}")
@@ -200,6 +206,10 @@ async def list_workflow_templates(
         verify=False,
         headers={"Authorization": f"Bearer {ARGO_TOKEN}"},
     )
+    if r.status_code != 200:
+        raise HTTPException(
+            status_code=r.status_code, detail=parse_argo_error(r.json())
+        )
     json_data = r.json()
     return json_data
 
@@ -208,6 +218,9 @@ async def list_workflow_templates(
 async def get_workflow_template(
     namespace: str,
     template_name: str,
+    verbose: Annotated[
+        bool, "Return verbose output - full details of the template"
+    ] = False,
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
     ),
@@ -217,25 +230,19 @@ async def get_workflow_template(
         verify=False,
         headers={"Authorization": f"Bearer {ARGO_TOKEN}"},
     )
-    if r.status_code == 403:
-        return {
-            "error": "Workflow namespace not found or not permitted",
-            "status_code": r.status_code,
-            "response": r.text,
-        }
-    elif r.status_code == 404:
-        return {
-            "error": "Workflow template not found",
-            "status_code": r.status_code,
-            "response": r.text,
-        }
+    if r.status_code != 200:
+        raise HTTPException(
+            status_code=r.status_code, detail=parse_argo_error(r.json())
+        )
     json_data = r.json()
     workflow_template = WorkflowTemplate(
         namespace=namespace,
         template_name=template_name,
         parameters=json_data["spec"]["arguments"]["parameters"],
     )
-    return [json_data, workflow_template]
+    if verbose:
+        return [json_data, workflow_template]
+    return workflow_template
 
 
 @app.post("/workflowevents/from_template/")
