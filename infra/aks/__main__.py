@@ -1,4 +1,5 @@
 import base64
+
 import pulumi
 from pulumi_azure_native import (
     compute,
@@ -8,6 +9,7 @@ from pulumi_azure_native import (
     keyvault,
 )
 import pulumi_tls as tls
+from pulumi_azure_native import containerservice, managedidentity, resources
 
 
 def get_kubeconfig(

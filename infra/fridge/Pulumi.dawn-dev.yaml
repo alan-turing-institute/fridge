@@ -5,7 +5,6 @@ config:
     - email
   fridge:argo_fqdn_prefix: argo
   fridge:base_fqdn: dawn.fridge.develop.turingsafehaven.ac.uk
-  fridge:cluster_name: argo-dev
   fridge:harbor_admin_password:
     secure: v1:OO40hgK/i5P1yod9:wBK/vEO+vd2zvcG3f2b3GzREgq4JrT8OUnwfgq8=
   fridge:harbor_ip: 172.24.50.50
@@ -23,10 +22,9 @@ config:
     secure: v1:BQ9TeQorbdj6Py1F:0lXMAHPy3SQrGwzBjIhpWSVJCVT9/kv3tPm78AAIZFzNn5b62hda8k+hc4IGMnTWn19TKWt1xqc=
   fridge:oidc_admin_group_id:
     secure: v1:EOKXFZU83bMLNAPC:smutUvDi3ZqdEzHQiw19a7UEpzEAlAzhWD0lPK9nldR13T345iOwn2YMkN0p8lgIAV/pQw==
-  fridge:resource_group_name: fridge-argo-dev
   fridge:sso_issuer_url:
     secure: v1:FshafUexWbGywBSO:fBtYvPb6VjV95/7icEHH7Wbhr1hhTV4oSVEyZMHgsANppMtHh8/Bvi8+E3HAtMD9mHPhoy45Onzmck61Z2tdfCMSdByLbaxsRyX2xBMb4m2id+x0UsE/hVY3cQ==
   fridge:tls_environment: staging
-  fridge:k8s_context: fridge-dev-admin@fridge-dev
   fridge:k8s_env: DAWN
+  kubernetes:context: fridge-dev-admin@fridge-dev
 encryptionsalt: v1:G6ur9VaHO7A=:v1:jUl389fo0qsREQS6:PcnLzwFpH1/D+BeK0ilCqyYjYf1gGg==
