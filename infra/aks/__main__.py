@@ -1,15 +1,15 @@
 import base64
 
 import pulumi
+import pulumi_random as random
+import pulumi_tls as tls
 from pulumi_azure_native import (
     compute,
     containerservice,
+    keyvault,
     managedidentity,
     resources,
-    keyvault,
 )
-import pulumi_tls as tls
-from pulumi_azure_native import containerservice, managedidentity, resources
 
 
 def get_kubeconfig(
@@ -30,9 +30,13 @@ resource_group = resources.ResourceGroup(
 
 ssh_key = tls.PrivateKey("ssh-key", algorithm="RSA", rsa_bits="3072")
 
+suffix = random.RandomString(
+    "suffix", length=8, lower=True, numeric=True, special=False
+)
+
 kv = keyvault.Vault(
     "keyvault",
-    vault_name="fridge-kv",
+    vault_name=pulumi.Output.concat("fridge-kv-", suffix.result),
     properties=keyvault.VaultPropertiesArgs(
         # To use this keyvault for BYOK, it requires vault authorisation (not RBAC),
         # purge protection and soft delete
