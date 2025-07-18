@@ -25,6 +25,6 @@ config:
   fridge:sso_issuer_url:
     secure: v1:FshafUexWbGywBSO:fBtYvPb6VjV95/7icEHH7Wbhr1hhTV4oSVEyZMHgsANppMtHh8/Bvi8+E3HAtMD9mHPhoy45Onzmck61Z2tdfCMSdByLbaxsRyX2xBMb4m2id+x0UsE/hVY3cQ==
   fridge:tls_environment: staging
-  fridge:k8s_context: fridge-dev-admin@fridge-dev
   fridge:k8s_env: DAWN
+  kubernetes:context: fridge-dev-admin@fridge-dev
 encryptionsalt: v1:G6ur9VaHO7A=:v1:jUl389fo0qsREQS6:PcnLzwFpH1/D+BeK0ilCqyYjYf1gGg==
