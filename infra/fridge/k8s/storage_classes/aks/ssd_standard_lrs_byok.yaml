@@ -1,7 +1,7 @@
 kind: StorageClass
 apiVersion: storage.k8s.io/v1
 metadata:
-  name: ssd-standard-lrs-byok
+  name: fridge
 provisioner: disk.csi.azure.com  # replace with "kubernetes.io/azure-disk" if aks version is less than 1.21
 parameters:
   skuname: StandardSSD_LRS
