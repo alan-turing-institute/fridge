@@ -1,4 +1,3 @@
-from enum import Enum, unique
 from string import Template
 
 import pulumi
@@ -20,27 +19,7 @@ from pulumi_kubernetes.rbac.v1 import (
 from pulumi_kubernetes.storage.v1 import StorageClass
 from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
 
-
-@unique
-class TlsEnvironment(Enum):
-    STAGING = "staging"
-    PRODUCTION = "production"
-
-
-@unique
-class PodSecurityStandard(Enum):
-    RESTRICTED = {"pod-security.kubernetes.io/enforce": "restricted"}
-    PRIVILEGED = {"pod-security.kubernetes.io/enforce": "privileged"}
-
-
-config = pulumi.Config()
-stack_name = pulumi.get_stack()
-
-tls_environment = TlsEnvironment(config.require("tls_environment"))
-tls_issuer_names = {
-    TlsEnvironment.STAGING: "letsencrypt-staging",
-    TlsEnvironment.PRODUCTION: "letsencrypt-prod",
-}
+from enums import K8sEnvironment, PodSecurityStandard, TlsEnvironment, tls_issuer_names
 
 
 def patch_namespace(name: str, pss: PodSecurityStandard) -> NamespacePatch:
@@ -53,15 +32,21 @@ def patch_namespace(name: str, pss: PodSecurityStandard) -> NamespacePatch:
     )
 
 
-k8s_environment = config.get("k8s_env")
-if k8s_environment not in ["AKS", "DAWN"]:
+config = pulumi.Config()
+tls_environment = TlsEnvironment(config.require("tls_environment"))
+stack_name = pulumi.get_stack()
+
+
+try:
+    k8s_environment = K8sEnvironment(config.get("k8s_env"))
+except ValueError:
     raise ValueError(
         f"Invalid k8s environment: {k8s_environment}. "
-        "Supported values are 'AKS' and 'DAWN'."
+        "Supported values are 'AKS' and 'Dawn'."
     )
 
 match k8s_environment:
-    case "AKS":
+    case K8sEnvironment.AKS:
         # Hubble UI
         # Interface for Cilium
         hubble_ui = ConfigFile(
@@ -127,7 +112,7 @@ match k8s_environment:
             ].spec.ports.apply(lambda ports: [item.port for item in ports]),
         )
 
-    case "DAWN":
+    case K8sEnvironment.DAWN:
         dawn_managed_namespaces = ["cert-manager", "ingress-nginx"]
         cert_manager_ns = Namespace.get("cert-manager-ns", "cert-manager")
         ingress_nginx_ns = Namespace.get("ingress-nginx-ns", "ingress-nginx")
