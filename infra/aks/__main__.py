@@ -4,6 +4,7 @@ import pulumi
 import pulumi_random as random
 import pulumi_tls as tls
 from pulumi_azure_native import (
+    authorization,
     compute,
     containerservice,
     keyvault,
@@ -99,6 +100,14 @@ access_policy = keyvault.AccessPolicy(
 identity = managedidentity.UserAssignedIdentity(
     "cluster_managed_identity",
     resource_group_name=resource_group.name,
+)
+
+authorization.RoleAssignment(
+    "cluster_role_assignment_disk_encryption_set",
+    principal_id=identity.principal_id,
+    # Contributor: https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles
+    role_definition_id=f"/subscriptions/{azure_config.require('subscriptionId')}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c",
+    scope=resource_group.id,
 )
 
 managed_cluster = containerservice.ManagedCluster(
