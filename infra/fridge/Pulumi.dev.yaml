@@ -25,8 +25,8 @@ config:
   fridge:sso_issuer_url:
     secure: v1:lbFxDPjErRO5+22Q:aI7VhtPL19j3D69iPbiCk6O4FatPBVR1ICpL+w47o+S3ul8jaM6BC8bfWkKgXHUunvloz8wBuaZ/vQLUDB4nbu0cO+EZEFoG9xBbz9CWMjpuNXhQZDXRBYrMgQ==
   fridge:tls_environment: staging
-  fridge:k8s_context: cluster
   fridge:k8s_env: AKS
   pulumi:autonaming:
     mode: verbatim
+  kubernetes:context: cluster
 encryptionsalt: v1:UMTR46NTSCc=:v1:dRO4tTAutzORsIcQ:BEEfHoJF1QYioY1S3mfhAsEth2I7AA==
