@@ -729,7 +729,7 @@ harbor = Release(
     ReleaseArgs(
         chart="harbor",
         namespace="harbor",
-        version="1.16.2",
+        version="1.17.1",
         repository_opts=RepositoryOptsArgs(
             repo="https://helm.goharbor.io",
         ),
