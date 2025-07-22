@@ -105,6 +105,7 @@ identity = managedidentity.UserAssignedIdentity(
 authorization.RoleAssignment(
     "cluster_role_assignment_disk_encryption_set",
     principal_id=identity.principal_id,
+    principal_type=authorization.PrincipalType.SERVICE_PRINCIPAL,
     # Contributor: https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles
     role_definition_id=f"/subscriptions/{azure_config.require('subscriptionId')}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c",
     scope=resource_group.id,
