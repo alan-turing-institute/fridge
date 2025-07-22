@@ -13,7 +13,12 @@ It is designed to interact with the Argo Workflows API.
 ## Configuration
 
 The API uses environment variables for configuration. You can set the following variables in a `.env` file:
+
 - `ARGO_SERVER`: The URL of the Argo Workflows server
 - `ARGO_TOKEN`: The access token for authenticating with the Argo Workflows server
+- `FRIDGE_API_ADMIN`: The username of the admin user for the FRIDGE API
+- `FRIDGE_API_ADMIN_PASSWORD`: The password for the admin user for the FRIDGE API
 
 The access token can be generated and obtained following the instructions in the [Argo Workflows documentation](https://argo-workflows.readthedocs.io/en/latest/access-token/)
+
+In a future version, when deployed on a Kubernetes cluster, the API will automatically retrieve the access token.
