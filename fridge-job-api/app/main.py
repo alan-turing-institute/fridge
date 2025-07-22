@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel
+from secrets import compare_digest
 from typing import Annotated
 
 
@@ -130,12 +131,16 @@ def verify_request(credentials: HTTPBasicCredentials = Depends(security)):
     """
     Verify the request using basic auth.
     """
-    correct_username = FRIDGE_API_ADMIN
-    correct_password = FRIDGE_API_PASSWORD
+    correct_username = bytes(FRIDGE_API_ADMIN, "utf-8")
+    correct_password = bytes(FRIDGE_API_PASSWORD, "utf-8")
+    current_username = credentials.username.encode("utf-8")
+    current_password = credentials.password.encode("utf-8")
 
-    if (
-        credentials.username != correct_username
-        or credentials.password != correct_password
+    if not (
+        compare_digest(current_username, correct_username)
+        and compare_digest(current_password, correct_password)
+        # credentials.username != correct_username
+        # or credentials.password != correct_password
     ):
         raise HTTPException(
             status_code=401,
