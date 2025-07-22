@@ -1,7 +1,6 @@
 from string import Template
 
 import pulumi
-from components.network_policies import NetworkPolicies
 from pulumi import FileAsset, Output, ResourceOptions
 from pulumi_kubernetes.batch.v1 import CronJobPatch, CronJobSpecPatchArgs
 from pulumi_kubernetes.core.v1 import Namespace, NamespacePatch, Secret, ServiceAccount
@@ -16,9 +15,9 @@ from pulumi_kubernetes.rbac.v1 import (
     RoleRefArgs,
     SubjectArgs,
 )
-from pulumi_kubernetes.storage.v1 import StorageClass
 from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
 
+import components
 from enums import K8sEnvironment, PodSecurityStandard, TlsEnvironment, tls_issuer_names
 
 
@@ -137,66 +136,34 @@ match k8s_environment:
         )
 
 # Storage classes
+storage_classes = components.StorageClasses(
+    "storage_classes",
+    components.StorageClassesArgs(
+        k8s_environment=k8s_environment,
+        azure_disk_encryption_set=(
+            config.require("azure_disk_encryption_set")
+            if k8s_environment is K8sEnvironment.AKS
+            else None
+        ),
+        azure_resource_group=(
+            config.require("azure_resource_group")
+            if k8s_environment is K8sEnvironment.AKS
+            else None
+        ),
+        azure_subscription_id=(
+            config.require("azure_subscription_id")
+            if k8s_environment is K8sEnvironment.AKS
+            else None
+        ),
+    ),
+)
+fridge_storage_class = storage_classes.fridge_storage_class
 
 
 # Use patches for standard namespaces rather then trying to create them, so Pulumi does not try to delete them on teardown
 standard_namespaces = ["default", "kube-node-lease", "kube-public"]
 for namespace in standard_namespaces:
     patch_namespace(namespace, PodSecurityStandard.RESTRICTED)
-
-# Longhorn
-longhorn_ns = Namespace(
-    "longhorn-system",
-    metadata=ObjectMetaArgs(
-        name="longhorn-system",
-        labels={} | PodSecurityStandard.PRIVILEGED.value,
-    ),
-)
-
-longhorn = Release(
-    "longhorn",
-    namespace=longhorn_ns.metadata.name,
-    chart="longhorn",
-    version="1.9.0",
-    repository_opts=RepositoryOptsArgs(
-        repo="https://charts.longhorn.io",
-    ),
-    # Add a toleration for the GPU node, to allow Longhorn to schedule pods/create volumes there
-    values={
-        "global": {
-            "tolerations": [
-                {
-                    "key": "gpu.intel.com/i915",
-                    "operator": "Exists",
-                    "effect": "NoSchedule",
-                }
-            ]
-        },
-        "defaultSettings": {"taintToleration": "gpu.intel.com/i915:NoSchedule"},
-        "persistence": {"defaultClassReplicaCount": 2},
-    },
-    opts=ResourceOptions(
-        depends_on=[longhorn_ns],
-    ),
-)
-
-longhorn_storage_class = StorageClass(
-    "longhorn-storage",
-    allow_volume_expansion=True,
-    metadata=ObjectMetaArgs(
-        name="longhorn-storage",
-    ),
-    parameters={
-        "dataLocality": "best-effort",
-        "fsType": "ext4",
-        "numberOfReplicas": "2",
-        "staleReplicaTimeout": "2880",
-    },
-    provisioner="driver.longhorn.io",
-    opts=ResourceOptions(
-        depends_on=[longhorn],
-    ),
-)
 
 
 cluster_issuer_config = Template(
@@ -322,7 +289,7 @@ minio_tenant = Chart(
                     "name": "argo-artifacts-pool-0",
                     "size": config.require("minio_pool_size"),
                     "volumesPerServer": 1,
-                    "storageClassName": longhorn_storage_class.metadata.name,
+                    "storageClassName": fridge_storage_class.metadata.name,
                     "containerSecurityContext": {
                         "runAsUser": 1000,
                         "runAsGroup": 1000,
@@ -338,7 +305,7 @@ minio_tenant = Chart(
         },
     },
     opts=ResourceOptions(
-        depends_on=[longhorn, minio_env_secret, minio_operator, minio_tenant_ns],
+        depends_on=[storage_classes, minio_env_secret, minio_operator, minio_tenant_ns],
     ),
 )
 
@@ -658,14 +625,36 @@ harbor = Release(
             "expose": {
                 "clusterIP": {
                     "staticClusterIP": config.require("harbor_ip"),
-                }
+                },
+                "type": "clusterIP",
+                "tls": {
+                    "enabled": "false",
+                    "certSource": "none",
+                },
+                "secret": {
+                    "secretName": "harbor-ingress-tls",
+                },
             },
             "externalURL": harbor_external_url,
             "harborAdminPassword": config.require_secret("harbor_admin_password"),
+            "persistence": {
+                "persistentVolumeClaim": {
+                    "registry": {
+                        "storageClass": "azurefile",
+                        "accessMode": "ReadWriteMany",
+                    },
+                    "jobservice": {
+                        "jobLog": {
+                            "storageClass": "azurefile",
+                            "accessMode": "ReadWriteMany",
+                        }
+                    },
+                },
+            },
         },
     ),
     opts=ResourceOptions(
-        depends_on=[harbor_ns, longhorn, longhorn_storage_class],
+        depends_on=[harbor_ns, storage_classes],
     ),
 )
 
@@ -759,13 +748,13 @@ resources = [
     configure_containerd_daemonset,
     harbor,
     ingress_nginx,
-    longhorn,
     minio_ingress,
     minio_operator,
     minio_tenant,
+    storage_classes,
 ]
 
-network_policies = NetworkPolicies(
+network_policies = components.NetworkPolicies(
     name=f"{stack_name}-network-policies",
     k8s_environment=k8s_environment,
     opts=ResourceOptions(

@@ -1,9 +1,0 @@
-kind: StorageClass
-apiVersion: storage.k8s.io/v1
-metadata:
-  name: fridge
-provisioner: disk.csi.azure.com  # replace with "kubernetes.io/azure-disk" if aks version is less than 1.21
-parameters:
-  skuname: StandardSSD_LRS
-  kind: managed
-  diskEncryptionSetID: "/subscriptions/$subscription_id/resourceGroups/$resource_group/providers/Microsoft.Compute/diskEncryptionSets/$disk_encryption_set"
