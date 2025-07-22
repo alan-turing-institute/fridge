@@ -139,8 +139,6 @@ def verify_request(credentials: HTTPBasicCredentials = Depends(security)):
     if not (
         compare_digest(current_username, correct_username)
         and compare_digest(current_password, correct_password)
-        # credentials.username != correct_username
-        # or credentials.password != correct_password
     ):
         raise HTTPException(
             status_code=401,
