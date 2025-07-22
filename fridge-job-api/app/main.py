@@ -62,19 +62,19 @@ class WorkflowTemplate(BaseModel):
     parameters: list[dict] | None = None
 
 
-def parse_argo_error(response: dict) -> dict:
+def parse_argo_error(response: dict) -> dict | None:
     """
     Check for errors in the Argo Workflows response and return those errors if any.
     """
 
-    match response:
-        case {"code": 7}:
+    match response.get("code"):
+        case 7:
             return {
                 "error": "Namespace not found or not permitted.",
                 "argo_status_code": response["code"],
                 "message": response["message"],
             }
-        case {"code": 5}:
+        case 5:
             if "workflowtemplates" in response["message"]:
                 missing_resource = "Workflow template"
             else:
@@ -84,14 +84,8 @@ def parse_argo_error(response: dict) -> dict:
                 "argo_status_code": response["code"],
                 "response": response["message"],
             }
-        case _:
-            return {
-                "error": "An unknown error occurred.",
-                "argo_status_code": response.get("code", 500),
-                "message": response.get(
-                    "message", "No additional information provided."
-                ),
-            }
+        case None:
+            pass
 
 
 def extract_argo_workflows(response: dict) -> list[Workflow] | Workflow | dict:
