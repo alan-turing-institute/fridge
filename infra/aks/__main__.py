@@ -108,7 +108,11 @@ authorization.RoleAssignment(
     principal_type=authorization.PrincipalType.SERVICE_PRINCIPAL,
     # Contributor: https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles
     role_definition_id=f"/subscriptions/{azure_config.require('subscriptionId')}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c",
-    scope=resource_group.id,
+    # The docs suggest using the scope of the resource group where the disk encryption
+    # set is located. However, the scope of the disk encryption set seems sufficient.
+    # Disks are created in the AKS managed resource group
+    # https://learn.microsoft.com/en-us/azure/aks/azure-disk-customer-managed-keys#encrypt-your-aks-cluster-data-disk
+    scope=disk_encryption_set.id,
 )
 
 managed_cluster = containerservice.ManagedCluster(
