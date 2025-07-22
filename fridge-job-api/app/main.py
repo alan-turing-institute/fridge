@@ -43,7 +43,7 @@ and submit workflows based on templates.
 
 """
 
-app = FastAPI(title="FRIDGE API", description=description, version="0.0.0.999")
+app = FastAPI(title="FRIDGE API", description=description, version="0.1.0")
 
 
 security = HTTPBasic()
@@ -94,12 +94,14 @@ def parse_argo_error(response: dict) -> dict:
             }
 
 
-def extract_argo_workflows(response: dict) -> list[Workflow] | Workflow:
+def extract_argo_workflows(response: dict) -> list[Workflow] | Workflow | dict:
     """
     Parse the Argo response to extract workflow information.
     """
     workflows = []
     if "items" in response:
+        if not response["items"]:
+            return {"message": "No workflows found in the specified namespace."}
         for item in response["items"]:
             workflow = Workflow(
                 name=item.get("metadata", {}).get("name"),
