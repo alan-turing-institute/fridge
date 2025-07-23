@@ -3,6 +3,7 @@ from string import Template
 import pulumi
 
 from components.api_rbac import ApiRbac
+from components.api_server import ApiServer
 from components.network_policies import NetworkPolicies
 from pulumi import FileAsset, Output, ResourceOptions
 from pulumi_kubernetes.batch.v1 import CronJobPatch, CronJobSpecPatchArgs
@@ -629,6 +630,12 @@ api_rbac = ApiRbac(
     opts=ResourceOptions(
         depends_on=[argo_workflows_ns],
     ),
+)
+
+api_server = ApiServer(
+    name=f"{stack_name}-api-server",
+    argo_workflows_ns=argo_workflows_ns.metadata.name,
+    opts=ResourceOptions(depends_on=[api_rbac, argo_workflows]),
 )
 
 # Harbor
