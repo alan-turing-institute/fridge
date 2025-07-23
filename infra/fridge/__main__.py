@@ -624,8 +624,17 @@ argo_workflows_default_sa_token = Secret(
     ),
 )
 
+api_server_ns = Namespace(
+    name="api-server-ns",
+    metadata=ObjectMetaArgs(
+        name="frige-api",
+        labels={} | PodSecurityStandard.RESTRICTED.value,
+    ),
+)
+
 api_rbac = ApiRbac(
     name=f"{stack_name}-api-rbac",
+    api_server_ns=api_server_ns.metadata.name,
     argo_workflows_ns=argo_workflows_ns.metadata.name,
     opts=ResourceOptions(
         depends_on=[argo_workflows_ns],
@@ -634,6 +643,7 @@ api_rbac = ApiRbac(
 
 api_server = ApiServer(
     name=f"{stack_name}-api-server",
+    api_server_ns=api_server_ns.metadata.name,
     argo_workflows_ns=argo_workflows_ns.metadata.name,
     opts=ResourceOptions(depends_on=[api_rbac, argo_workflows]),
 )
