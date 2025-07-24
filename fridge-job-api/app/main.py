@@ -22,6 +22,7 @@ FRIDGE_API_PASSWORD = os.getenv("FRIDGE_API_PASSWORD")
 # If not in the cluster, use the current kube config credentials to retrieve the token
 if os.getenv("KUBERNETES_SERVICE_HOST"):
     config.load_incluster_config()
+    ARGO_TOKEN = os.getenv("ARGO_TOKEN")
     v1 = client.CoreV1Api()
     secret = v1.read_namespaced_secret(
         "argo-workflows-api-sa.service-account-token", "argo-workflows"
