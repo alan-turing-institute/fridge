@@ -14,7 +14,13 @@ from pulumi_kubernetes.rbac.v1 import (
 
 
 class ApiRbac(ComponentResource):
-    def __init__(self, name: str, argo_workflows_ns: str, opts=ResourceOptions) -> None:
+    def __init__(
+        self,
+        name: str,
+        api_server_ns: str,
+        argo_workflows_ns: str,
+        opts=ResourceOptions,
+    ) -> None:
         super().__init__("fridge:k8s:ApiRbac", name, {}, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
@@ -56,27 +62,26 @@ class ApiRbac(ComponentResource):
             opts=child_opts,
         )
 
-        argo_workflows_api_sa = ServiceAccount(
-            "argo-workflows-api-sa",
+        fridge_api_sa = ServiceAccount(
+            "fridge-api-sa",
             metadata=ObjectMetaArgs(
-                name="argo-workflows-api-sa",
-                namespace=argo_workflows_ns,
+                name="fridge-api-sa",
+                namespace=api_server_ns,
             ),
             opts=child_opts,
         )
-
-        argo_workflows_api_sa_token = Secret(
-            "argo-workflows-api-sa-token",
-            metadata=ObjectMetaArgs(
-                name="argo-workflows-api-sa.service-account-token",
-                namespace=argo_workflows_ns,
-                annotations={
-                    "kubernetes.io/service-account.name": argo_workflows_api_sa.metadata.name,
-                },
-            ),
-            type="kubernetes.io/service-account-token",
-            opts=child_opts,
-        )
+        # argo_workflows_api_sa_token = Secret(
+        #     "argo-workflows-api-sa-token",
+        #     metadata=ObjectMetaArgs(
+        #         name="argo-workflows-api-sa.service-account-token",
+        #         namespace=argo_workflows_ns,
+        #         annotations={
+        #             "kubernetes.io/service-account.name": argo_workflows_api_sa.metadata.name,
+        #         },
+        #     ),
+        #     type="kubernetes.io/service-account-token",
+        #     opts=child_opts,
+        # )
 
         argo_workflows_api_role_binding = RoleBinding(
             "argo-workflows-api-role-binding",
@@ -92,16 +97,14 @@ class ApiRbac(ComponentResource):
             subjects=[
                 SubjectArgs(
                     kind="ServiceAccount",
-                    name=argo_workflows_api_sa.metadata.name,
-                    namespace=argo_workflows_ns,
+                    name=fridge_api_sa.metadata.name,
+                    namespace=api_server_ns,
                 )
             ],
             opts=ResourceOptions.merge(
                 child_opts,
-                ResourceOptions(
-                    depends_on=[argo_workflows_api_role, argo_workflows_api_sa]
-                ),
+                ResourceOptions(depends_on=[argo_workflows_api_role, fridge_api_sa]),
             ),
         )
 
-        self.register_outputs({"api-token": argo_workflows_api_sa_token})
+        # self.register_outputs({"api-token": argo_workflows_api_sa_token})
