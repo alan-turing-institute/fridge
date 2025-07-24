@@ -16,9 +16,6 @@ concurrency:
 
 jobs:
   build:
-    defaults:
-      run:
-        working-directory: fridge-job-api
     runs-on: ubuntu-latest
 
     permissions:
@@ -58,6 +55,7 @@ jobs:
       - name: Build and push image to registry
         uses: docker/build-push-action@v6
         with:
+          context: ./fridge-job-api
           # Don't push builds to ghcr on pull requests
           # However, build will be always tested
           push: ${{ github.event_name != 'pull_request' }}
