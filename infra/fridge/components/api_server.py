@@ -5,19 +5,19 @@ from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 
 
 class ApiServer(ComponentResource):
-    def __init__(self, name: str, argo_workflows_ns: str, opts=ResourceOptions) -> None:
+    def __init__(
+        self,
+        name: str,
+        api_server_ns: str,
+        argo_workflows_ns: str,
+        opts=ResourceOptions,
+    ) -> None:
         super().__init__("fridge:k8s:ApiServer", name, {}, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
-        api_ns = Namespace(
-            "fridge-api-namespace",
-            metadata=ObjectMetaArgs(name="fridge-api"),
-            opts=child_opts,
-        )
-
         api_sa = ServiceAccount(
             "fridge-api-serviceaccount",
-            metadata=ObjectMetaArgs(name="fridge-api-sa"),
+            metadata=ObjectMetaArgs(name="fridge-api-sa", namespace=api_server_ns),
             opts=child_opts,
         )
 
@@ -25,7 +25,7 @@ class ApiServer(ComponentResource):
             "fridge-api-server",
             metadata=ObjectMetaArgs(
                 name="fridge-api-server",
-                namespace=api_ns.metadata.name,
+                namespace=api_server_ns,
             ),
             spec=DeploymentSpecArgs(
                 replicas=1,
