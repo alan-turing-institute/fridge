@@ -1,5 +1,6 @@
 from string import Template
 
+import base64
 import pulumi
 
 from components.api_rbac import ApiRbac
@@ -624,30 +625,6 @@ argo_workflows_default_sa_token = Secret(
     ),
 )
 
-# API Server
-api_server_ns = Namespace(
-    "api-server-ns",
-    metadata=ObjectMetaArgs(
-        name="fridge-api",
-        labels={} | PodSecurityStandard.RESTRICTED.value,
-    ),
-)
-
-api_rbac = ApiRbac(
-    name=f"{stack_name}-api-rbac",
-    api_server_ns=api_server_ns.metadata.name,
-    argo_workflows_ns=argo_workflows_ns.metadata.name,
-    opts=ResourceOptions(
-        depends_on=[api_server_ns, argo_workflows_ns],
-    ),
-)
-
-api_server = ApiServer(
-    name=f"{stack_name}-api-server",
-    api_server_ns=api_server_ns.metadata.name,
-    opts=ResourceOptions(depends_on=[api_rbac, api_server_ns, argo_workflows]),
-)
-
 # Harbor
 harbor_ns = Namespace(
     "harbor-ns",
@@ -773,6 +750,57 @@ configure_containerd_daemonset = ConfigGroup(
         depends_on=[harbor],
     ),
 )
+
+# API Server
+api_server_ns = Namespace(
+    "api-server-ns",
+    metadata=ObjectMetaArgs(
+        name="fridge-api",
+        labels={} | PodSecurityStandard.RESTRICTED.value,
+    ),
+)
+
+api_rbac = ApiRbac(
+    name=f"{stack_name}-api-rbac",
+    api_server_ns=api_server_ns.metadata.name,
+    argo_workflows_ns=argo_workflows_ns.metadata.name,
+    opts=ResourceOptions(
+        depends_on=[api_server_ns, argo_workflows_ns],
+    ),
+)
+
+api_docker_credentials = Output.json_dumps(
+    {
+        "auths": {
+            harbor_external_url: {
+                "username": "admin",
+                "password": config.require_secret("harbor_admin_password"),
+                "auth": base64.b64encode(
+                    Output.format(
+                        "admin:{0}", config.require_secret("harbor_admin_password")
+                    ).encode()
+                ).decode(),
+            }
+        }
+    }
+)
+
+api_pull_creds = Secret(
+    "harbor-pull-creds",
+    metadata=ObjectMetaArgs(
+        name="internalpull",
+        namespace=api_server_ns.metadata.name,
+    ),
+    string_data={".dockerconfigjson": api_docker_credentials},
+    type="kubernetes.io/dockerconfigjson",
+)
+
+api_server = ApiServer(
+    name=f"{stack_name}-api-server",
+    api_server_ns=api_server_ns.metadata.name,
+    opts=ResourceOptions(depends_on=[api_rbac, api_server_ns, argo_workflows]),
+)
+
 
 # Network policy (through Cilium)
 
