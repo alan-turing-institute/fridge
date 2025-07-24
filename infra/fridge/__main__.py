@@ -645,7 +645,6 @@ api_rbac = ApiRbac(
 api_server = ApiServer(
     name=f"{stack_name}-api-server",
     api_server_ns=api_server_ns.metadata.name,
-    argo_workflows_ns=argo_workflows_ns.metadata.name,
     opts=ResourceOptions(depends_on=[api_rbac, api_server_ns, argo_workflows]),
 )
 

@@ -9,8 +9,7 @@ class ApiServer(ComponentResource):
         self,
         name: str,
         api_server_ns: str,
-        argo_workflows_ns: str,
-        opts=ResourceOptions,
+        opts: ResourceOptions,
     ) -> None:
         super().__init__("fridge:k8s:ApiServer", name, {}, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
