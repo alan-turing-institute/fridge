@@ -28,7 +28,7 @@ class StorageClasses(ComponentResource):
     def __init__(
         self, name: str, args: StorageClassesArgs, opts: ResourceOptions | None = None
     ) -> None:
-        super().__init__("fridge:NetworkPolicies", name, None, opts)
+        super().__init__("fridge:StorageClasses", name, None, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
         match args.k8s_environment:
