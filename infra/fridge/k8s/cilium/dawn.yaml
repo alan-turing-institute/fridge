@@ -53,3 +53,40 @@ spec:
         - ports:
             - port: "8443"
               protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: metrics-server
+  namespace: kube-system
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s:app.kubernetes.io/name: metrics-server
+  # The metrics-server collects realtime metrics from kubelets
+  # and provides them to the Kubernetes API server for use in autoscaling
+  # https://kubernetes-sigs.github.io/metrics-server/
+  ingress:
+    - fromEntities:
+        - remote-node
+      toPorts:
+        - ports:
+          - port : "10250"
+            protocol: TCP
+  egress:
+    - toEntities:
+        - host
+        - remote-node
+      toPorts:
+        - ports:
+            - port: "10250"
+              protocol: TCP
+    - toEntities:
+        - kube-apiserver
+    - toEndpoints:
+        - matchLabels:
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
