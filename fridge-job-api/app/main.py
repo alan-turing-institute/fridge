@@ -21,14 +21,18 @@ FRIDGE_API_PASSWORD = os.getenv("FRIDGE_API_PASSWORD")
 # Note that this requires a service account with the necessary permissions
 # If not in the cluster, use the current kube config credentials to retrieve the token
 if os.getenv("KUBERNETES_SERVICE_HOST"):
-    config.load_incluster_config()
-    ARGO_TOKEN = os.getenv("ARGO_TOKEN")
-    v1 = client.CoreV1Api()
-    secret = v1.read_namespaced_secret(
-        "argo-workflows-api-sa.service-account-token", "argo-workflows"
-    )
-    ARGO_TOKEN = base64.b64decode(secret.data["token"]).decode("utf-8")
-    ARGO_SERVER = "argo-server.argo-server.svc.cluster.local:2746"
+    # config.load_incluster_config()
+    # ARGO_TOKEN = os.getenv("ARGO_TOKEN")
+    # v1 = client.CoreV1Api()
+    # secret = v1.read_namespaced_secret(
+    #    "argo-workflows-api-sa.service-account-token", "argo-workflows"
+    # )
+    # ARGO_TOKEN = base64.b64decode(secret.data["token"]).decode("utf-8")
+    f = open("/service-account/token", "r")
+    ARGO_TOKEN = f.read().strip()
+    f.close()
+    print(ARGO_TOKEN)
+    ARGO_SERVER = "https://argo-workflows-server.argo-server.svc.cluster.local:2746"
 else:
     ARGO_TOKEN = os.getenv("ARGO_TOKEN")
     ARGO_SERVER = os.getenv("ARGO_SERVER")
@@ -164,6 +168,8 @@ async def get_workflows(
         verify=False,
         headers={"Authorization": f"Bearer {ARGO_TOKEN}"},
     )
+    print(f"Bearer {ARGO_TOKEN}")
+    print(f"{ARGO_SERVER}/api/v1/workflows/{namespace}")
     if r.status_code != 200:
         raise HTTPException(
             status_code=r.status_code, detail=parse_argo_error(r.json())
