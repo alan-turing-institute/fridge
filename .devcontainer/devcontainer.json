@@ -1,0 +1,54 @@
+{
+    "name": "FRIDGE Development Environment",
+    "dockerComposeFile": [
+        "docker-compose.yml"
+    ],
+    "workspaceFolder": "/workspace",
+    "service": "devcontainer",
+    "features": {
+        "ghcr.io/devcontainers-extra/features/kubectl-asdf": {
+            "version": "latest",
+            "installAsdfPlugin": true
+        },
+        "ghcr.io/devcontainers/features/docker-in-docker": {
+            "dockerComposeVersion": "latest",
+            "dockerVersion": "latest",
+            "dockerComposeFile": "docker-compose.yml"
+        }
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-kubernetes-tools.vscode-kubernetes-tools",
+                "redhat.vscode-yaml",
+                "ms-azuretools.vscode-docker",
+                "GitHub.copilot",
+                "ms-vscode-remote.remote-containers",
+                "pulumi.pulumi-vscode-tools",
+                "ms-python.python"
+            ],
+            "settings": {
+                "terminal.integrated.defaultProfile.linux": "zsh",
+                "terminal.integrated.profiles.linux": {
+                    "zsh": {
+                        "path": "/bin/zsh"
+                    }
+                },
+                "python.defaultInterpreterPath": "/usr/local/bin/python",
+                "yaml.schemas": {
+                    "kubernetes": "*.yaml"
+                },
+                "vscode-kubernetes.kubectl-path-linux": "/home/vscode/.asdf/shims/kubectl",
+                "vscode-kubernetes.helm-path-linux": "/usr/local/bin/helm"
+            }
+        }
+    },
+    "forwardPorts": [
+        2746 // Argo-workflows UI
+    ],
+    "postCreateCommand": "bash .devcontainer/post-create.sh",
+    "remoteUser": "vscode",
+    "mounts": [
+        "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+    ]
+}
