@@ -1,0 +1,31 @@
+config:
+  fridge:argo_scopes:
+    - https://graph.microsoft.com/User.Read
+    - https://graph.microsoft.com/Group.Read.All
+    - email
+  fridge:argo_fqdn_prefix: argooooo
+  fridge:base_fqdn: fridge.develop.turingsafehaven.ac.uk
+  fridge:harbor_admin_password:
+    secure: v1:3+jAcVhe/3xj57pG:EEgytR6DgCOZqJrJsoHyLNEwWPOLxW5/
+  fridge:harbor_ip: 10.0.50.50
+  fridge:harbor_fqdn_prefix: harbor
+  fridge:lets_encrypt_email: safehavendevs@turing.ac.uk
+  fridge:minio_root_user:
+    secure: v1:7RTVpai0RPBKdOcU:ZxD8eVRGaNec9SrCyfSWx1JP91zz55PL
+  fridge:minio_root_password:
+    secure: v1:Cre1kldv85pjorE8:RBF5XK/QC+b4yRe9Kben7uOqz5OwV+d/MvBE
+  fridge:minio_fqdn_prefix: minio
+  fridge:minio_pool_size: 20Gi
+  fridge:oidc_client_id:
+    secure: v1:GAUMCYCHoIpLIjSk:vmmzXnLfC0fuXDqrIXca4SYN9QHgBrIGC1EN/0ObKy4qn56IkpjrtzAB+qQvtiOVYyRmxQ==
+  fridge:oidc_client_secret:
+    secure: v1:sMrD/I1mf+aUwlLO:kpssg4hL1MWTgHoJu6vcuwKb1XmKXVfHHU2F2XqzK/sUQWOiVjPvIkxsjEcExsf9c0Ix4F4+dAg=
+  fridge:oidc_admin_group_id:
+    secure: v1:jZ3++peYabHWzHjN:GinxUPOYgb8BVl7I/e7NkaTtnMaQhv5T50QbVfR8MrNodMYfIrXBsISEYnlJjCeXMjyhtA==
+  fridge:sso_issuer_url:
+    secure: v1:lbFxDPjErRO5+22Q:aI7VhtPL19j3D69iPbiCk6O4FatPBVR1ICpL+w47o+S3ul8jaM6BC8bfWkKgXHUunvloz8wBuaZ/vQLUDB4nbu0cO+EZEFoG9xBbz9CWMjpuNXhQZDXRBYrMgQ==
+  fridge:tls_environment: staging
+  fridge:k8s_context: cluster
+  fridge:k8s_env: AKS
+  pulumi:autonaming:
+    mode: verbatim
