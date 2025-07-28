@@ -37,3 +37,16 @@ spec:
         - ports:
           - port: "2746"
             protocol: TCP
+    - toEndpoints:
+      - matchLabels:
+          k8s-app: kube-dns
+          k8s:io.kubernetes.pod.namespace: kube-system
+      toPorts:
+        - ports:
+          - port: "53"
+            protocol: ANY
+          rules:
+            dns:
+              - matchName: "argo-workflows-server.argo-server.svc.cluster.local"
+    - toFQDNs:
+      - matchName: "argo-workflows-server.argo-server.svc.cluster.local"
