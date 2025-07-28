@@ -37,9 +37,32 @@ class ApiServer(ComponentResource):
                                 "name": "fridge-api-server",
                                 "image": "harbor.aks.fridge.develop.turingsafehaven.ac.uk/internal/fridge-api:latest",
                                 "ports": [{"container_port": 8000}],
-                                "service_account_name": "fridge-api-sa",
+                                "volumeMounts": [
+                                    {
+                                        "name": "token-vol",
+                                        "mountPath": "/service-account",
+                                        "readOnly": True,
+                                    }
+                                ],
                             }
-                        ]
+                        ],
+                        "service_account_name": "fridge-api-sa",
+                        "volumes": [
+                            {
+                                "name": "token-vol",
+                                "projected": {
+                                    "sources": [
+                                        {
+                                            "serviceAccountToken": {
+                                                "audience": "api",
+                                                "expirationSeconds": 3600,
+                                                "path": "token",
+                                            }
+                                        }
+                                    ]
+                                },
+                            }
+                        ],
                     },
                 },
             ),
