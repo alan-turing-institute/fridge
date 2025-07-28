@@ -764,6 +764,7 @@ api_rbac = ApiRbac(
     name=f"{stack_name}-api-rbac",
     api_server_ns=api_server_ns.metadata.name,
     argo_workflows_ns=argo_workflows_ns.metadata.name,
+    harbor_fqdn=harbor_fqdn,
     opts=ResourceOptions(
         depends_on=[api_server_ns, argo_workflows_ns],
     ),
@@ -775,11 +776,9 @@ api_docker_credentials = Output.json_dumps(
             harbor_external_url: {
                 "username": "admin",
                 "password": config.require_secret("harbor_admin_password"),
-                "auth": base64.b64encode(
-                    Output.format(
-                        "admin:{0}", config.require_secret("harbor_admin_password")
-                    ).encode()
-                ).decode(),
+                "auth": Output.format(
+                    "admin:{0}", config.require_secret("harbor_admin_password")
+                ).apply(lambda s: base64.b64encode(s.encode()).decode()),
             }
         }
     }
@@ -795,11 +794,11 @@ api_pull_creds = Secret(
     type="kubernetes.io/dockerconfigjson",
 )
 
-api_server = ApiServer(
-    name=f"{stack_name}-api-server",
-    api_server_ns=api_server_ns.metadata.name,
-    opts=ResourceOptions(depends_on=[api_rbac, api_server_ns, argo_workflows]),
-)
+# api_server = ApiServer(
+#     name=f"{stack_name}-api-server",
+#     api_server_ns=api_server_ns.metadata.name,
+#     opts=ResourceOptions(depends_on=[api_rbac, api_server_ns, argo_workflows]),
+# )
 
 
 # Network policy (through Cilium)
