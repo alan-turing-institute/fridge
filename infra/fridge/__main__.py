@@ -3,10 +3,15 @@ from string import Template
 import pulumi
 
 from components.api_rbac import ApiRbac
+from components.monitoring import Monitoring, MonitoringArgs
 from components.network_policies import NetworkPolicies
 from pulumi import FileAsset, Output, ResourceOptions
 from pulumi_kubernetes.batch.v1 import CronJobPatch, CronJobSpecPatchArgs
-from pulumi_kubernetes.core.v1 import Namespace, NamespacePatch, Secret, ServiceAccount
+from pulumi_kubernetes.core.v1 import (
+    Namespace,
+    NamespacePatch,
+    Secret,
+)
 from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs, ObjectMetaPatchArgs
@@ -622,6 +627,30 @@ argo_workflows_default_sa_token = Secret(
         depends_on=[argo_workflows_default_sa],
     ),
 )
+
+# Set up monitoring
+
+monitoring_system = Monitoring(
+    name=f"{stack_name}-monitoring-system",
+    args=MonitoringArgs(
+        k8s_environment=k8s_environment,
+        argo_server_ns=argo_server_ns.metadata.name,
+    ),
+    opts=ResourceOptions(
+        depends_on=[
+            ingress_nginx,
+            cert_manager,
+            cert_manager_issuers,
+            longhorn,
+            longhorn_storage_class,
+            minio_operator,
+            minio_tenant,
+            minio_ingress,
+            argo_workflows,
+        ],
+    ),
+)
+
 
 api_rbac = ApiRbac(
     name=f"{stack_name}-api-rbac",
