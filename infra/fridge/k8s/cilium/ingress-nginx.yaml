@@ -30,13 +30,6 @@ spec:
               protocol: TCP
             - port: "443"
               protocol: TCP
-    # Remote node traffic is required on Dawn
-    - fromEntities:
-        - remote-node
-      toPorts:
-        - ports:
-          - port: "8443"
-            protocol: TCP
     - fromEndpoints:
         - matchLabels:
             k8s:app.kubernetes.io/name: cert-manager
@@ -58,16 +51,9 @@ spec:
               protocol: TCP
   egress:
     # Allow egress to the Kubernetes API server for Ingress NGINX to manage
-    # resources. Remote-node is also required here for Dawn, as is port 6443.
+    # resources.
     - toEntities:
         - kube-apiserver
-        - remote-node
-      toPorts:
-        - ports:
-            - port: "443"
-              protocol: TCP
-            - port: "6443"
-              protocol: TCP
     # Allow forwarding traffic to the Harbor Nginx component, which redirects
     # to the Harbor registry or web UI
     - toEndpoints:

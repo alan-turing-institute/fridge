@@ -1,7 +1,8 @@
 import base64
+
 import pulumi
-from pulumi_azure_native import containerservice, managedidentity, resources
 import pulumi_tls as tls
+from pulumi_azure_native import containerservice, managedidentity, resources
 
 
 def get_kubeconfig(
@@ -61,6 +62,11 @@ managed_cluster = containerservice.ManagedCluster(
                 "size": "B2als_v2",
                 "arch": "x86_64",
             },
+            node_taints=[
+                # allow only system pods
+                # https://learn.microsoft.com/en-us/azure/aks/use-system-pools?tabs=azure-cli#system-and-user-node-pools
+                "CriticalAddonsOnly=true:NoSchedule",
+            ],
             os_disk_size_gb=0,  # when == 0 sets default size
             os_type="Linux",
             os_sku="Ubuntu",

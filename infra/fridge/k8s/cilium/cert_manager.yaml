@@ -37,10 +37,8 @@ spec:
     - {}
   ingress:
     # Allow inbound from kube API
-    # On Dawn, this may appear as `remote-node`
     - fromEntities:
         - kube-apiserver
-        - remote-node
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy

@@ -160,6 +160,7 @@ spec:
   egress:
     # Trivy needs to be able to talk to the below IP address to be able to conduct scans.
     # This seems to be a Google-owned IP address - not clear what Trivy is doing.
+    # It tries to contact another IP address if this fails, and also tries on port 80
     - toCIDR:
       - 64.233.167.82/32
       toPorts:

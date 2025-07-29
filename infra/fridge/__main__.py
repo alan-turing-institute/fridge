@@ -1,9 +1,11 @@
-from enum import Enum, unique
 from string import Template
 
 import pulumi
+
+from components.api_rbac import ApiRbac
+from components.network_policies import NetworkPolicies
 from pulumi import FileAsset, Output, ResourceOptions
-import pulumi_kubernetes as kubernetes
+from pulumi_kubernetes.batch.v1 import CronJobPatch, CronJobSpecPatchArgs
 from pulumi_kubernetes.core.v1 import (
     Namespace,
     NamespacePatch,
@@ -13,14 +15,10 @@ from pulumi_kubernetes.core.v1 import (
     ServiceSpecArgs,
     ServiceAccount,
 )
-
-from pulumi_kubernetes.batch.v1 import CronJobPatch, CronJobSpecPatchArgs
 from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs, ObjectMetaPatchArgs
 from pulumi_kubernetes.networking.v1 import Ingress
-from pulumi_kubernetes.storage.v1 import StorageClass
-from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
 from pulumi_kubernetes.rbac.v1 import (
     PolicyRuleArgs,
     Role,
@@ -28,156 +26,130 @@ from pulumi_kubernetes.rbac.v1 import (
     RoleRefArgs,
     SubjectArgs,
 )
+from pulumi_kubernetes.storage.v1 import StorageClass
+from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
+
+from enums import K8sEnvironment, PodSecurityStandard, TlsEnvironment, tls_issuer_names
 
 
-@unique
-class TlsEnvironment(Enum):
-    STAGING = "staging"
-    PRODUCTION = "production"
-
-
-@unique
-class PodSecurityStandard(Enum):
-    RESTRICTED = {"pod-security.kubernetes.io/enforce": "restricted"}
-    PRIVILEGED = {"pod-security.kubernetes.io/enforce": "privileged"}
-
-
-config = pulumi.Config()
-
-tls_environment = TlsEnvironment(config.require("tls_environment"))
-tls_issuer_names = {
-    TlsEnvironment.STAGING: "letsencrypt-staging",
-    TlsEnvironment.PRODUCTION: "letsencrypt-prod",
-}
-
-
-def patch_namespace(name: str, pss: PodSecurityStandard) -> None:
+def patch_namespace(name: str, pss: PodSecurityStandard) -> NamespacePatch:
     """
     Apply a PodSecurityStandard label to a namespace
     """
-    NamespacePatch(
+    return NamespacePatch(
         f"{name}-ns-pod-security",
         metadata=ObjectMetaPatchArgs(name=name, labels={} | pss.value),
     )
 
 
-k8s_environment = config.get("k8s_env")
-if k8s_environment not in ["AKS", "DAWN"]:
+config = pulumi.Config()
+tls_environment = TlsEnvironment(config.require("tls_environment"))
+stack_name = pulumi.get_stack()
+
+
+try:
+    k8s_environment = K8sEnvironment(config.get("k8s_env"))
+except ValueError:
     raise ValueError(
         f"Invalid k8s environment: {k8s_environment}. "
-        "Supported values are 'AKS' and 'DAWN'."
+        "Supported values are 'AKS' and 'Dawn'."
     )
 
-# Kubernetes configuration
-k8s_provider = kubernetes.Provider(
-    "k8s_provider",
-    context=config.require("k8s_context"),
-)
+match k8s_environment:
+    case K8sEnvironment.AKS:
+        # Hubble UI
+        # Interface for Cilium
+        hubble_ui = ConfigFile(
+            "hubble-ui",
+            file="./k8s/hubble/hubble_ui.yaml",
+        )
 
-if k8s_environment == "AKS":
-    # Hubble UI
-    # Interface for Cilium
-    hubble_ui = ConfigFile(
-        "hubble-ui",
-        file="./k8s/hubble/hubble_ui.yaml",
-        opts=ResourceOptions(
-            provider=k8s_provider,
-        ),
-    )
+        # Ingress NGINX (ingress provider)
+        ingress_nginx_ns = Namespace(
+            "ingress-nginx-ns",
+            metadata=ObjectMetaArgs(
+                name="ingress-nginx",
+                labels={} | PodSecurityStandard.RESTRICTED.value,
+            ),
+        )
 
-    # Ingress NGINX (ingress provider)
-    ingress_nginx_ns = Namespace(
-        "ingress-nginx-ns",
-        metadata=ObjectMetaArgs(
-            name="ingress-nginx",
-            labels={} | PodSecurityStandard.RESTRICTED.value,
-        ),
-        opts=ResourceOptions(
-            provider=k8s_provider,
-        ),
-    )
+        ingress_nginx = ConfigFile(
+            "ingress-nginx",
+            file="https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.1/deploy/static/provider/cloud/deploy.yaml",
+            opts=ResourceOptions(
+                depends_on=[ingress_nginx_ns],
+            ),
+        )
 
-    ingress_nginx = ConfigFile(
-        "ingress-nginx",
-        file="https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.1/deploy/static/provider/cloud/deploy.yaml",
-        opts=ResourceOptions(
-            provider=k8s_provider,
-            depends_on=[ingress_nginx_ns],
-        ),
-    )
+        # CertManager (TLS automation)
+        cert_manager_ns = Namespace(
+            "cert-manager-ns",
+            metadata=ObjectMetaArgs(
+                name="cert-manager",
+                labels={} | PodSecurityStandard.RESTRICTED.value,
+            ),
+        )
 
-    # CertManager (TLS automation)
-    cert_manager_ns = Namespace(
-        "cert-manager-ns",
-        metadata=ObjectMetaArgs(
-            name="cert-manager",
-            labels={} | PodSecurityStandard.RESTRICTED.value,
-        ),
-        opts=ResourceOptions(
-            provider=k8s_provider,
-        ),
-    )
+        cert_manager = Chart(
+            "cert-manager",
+            namespace=cert_manager_ns.metadata.name,
+            chart="cert-manager",
+            version="1.17.1",
+            repository_opts=RepositoryOptsArgs(
+                repo="https://charts.jetstack.io",
+            ),
+            values={
+                "crds": {"enabled": True},
+                "extraArgs": ["--acme-http01-solver-nameservers=8.8.8.8:53,1.1.1.1:53"],
+            },
+            opts=ResourceOptions(
+                depends_on=[cert_manager_ns],
+            ),
+        )
+        # Get public IP address and ports of Ingress Nginx loadbalancer service
+        # Note that this relies on Ingress-Nginx being installed as for AKS
+        # On Dawn it is installed using a Helm chart and has different properties.
+        pulumi.export(
+            "ingress_ip",
+            ingress_nginx.resources["v1/Service:ingress-nginx/ingress-nginx-controller"]
+            .status.load_balancer.ingress[0]
+            .ip,
+        )
+        pulumi.export(
+            "ingress_ports",
+            ingress_nginx.resources[
+                "v1/Service:ingress-nginx/ingress-nginx-controller"
+            ].spec.ports.apply(lambda ports: [item.port for item in ports]),
+        )
 
-    cert_manager = Chart(
-        "cert-manager",
-        namespace=cert_manager_ns.metadata.name,
-        chart="cert-manager",
-        version="1.17.1",
-        repository_opts=RepositoryOptsArgs(
-            repo="https://charts.jetstack.io",
-        ),
-        values={
-            "crds": {"enabled": True},
-            "extraArgs": ["--acme-http01-solver-nameservers=8.8.8.8:53,1.1.1.1:53"],
-        },
-        opts=ResourceOptions(
-            provider=k8s_provider,
-            depends_on=[cert_manager_ns],
-        ),
-    )
-    # Get public IP address and ports of Ingress Nginx loadbalancer service
-    # Note that this relies on Ingress-Nginx being installed as for AKS
-    # On Dawn it is installed using a Helm chart and has different properties.
-    pulumi.export(
-        "ingress_ip",
-        ingress_nginx.resources["v1/Service:ingress-nginx/ingress-nginx-controller"]
-        .status.load_balancer.ingress[0]
-        .ip,
-    )
-    pulumi.export(
-        "ingress_ports",
-        ingress_nginx.resources[
-            "v1/Service:ingress-nginx/ingress-nginx-controller"
-        ].spec.ports.apply(lambda ports: [item.port for item in ports]),
-    )
+    case K8sEnvironment.DAWN:
+        dawn_managed_namespaces = ["cert-manager", "ingress-nginx"]
+        cert_manager_ns = Namespace.get("cert-manager-ns", "cert-manager")
+        ingress_nginx_ns = Namespace.get("ingress-nginx-ns", "ingress-nginx")
+        for namespace in dawn_managed_namespaces:
+            patch_namespace(namespace, PodSecurityStandard.RESTRICTED)
+        cert_manager = Release.get("cert-manager", "cert-manager")
+        ingress_nginx = Release.get("ingress-nginx", "ingress-nginx")
 
-else:
-    dawn_managed_resources = ["cert-manager", "ingress-nginx"]
-    cert_manager_ns = Namespace.get("cert-manager-ns", "cert-manager")
-    ingress_nginx_ns = Namespace.get("ingress-nginx-ns", "ingress-nginx")
-    [patch_namespace(x, PodSecurityStandard.RESTRICTED) for x in dawn_managed_resources]
-    cert_manager = Release.get("cert-manager", "cert-manager")
-    ingress_nginx = Release.get("ingress-nginx", "ingress-nginx")
-
-    # Add label to etcd-defrag jobs to allow Cilium to permit them to communicate with the API server
-    # These jobs are installed automatically on DAWN using Helm, and do not otherwise have a consistent label
-    # so cannot be selected by Cilium.
-    CronJobPatch(
-        "etcd-defrag-cronjob-label",
-        metadata=ObjectMetaPatchArgs(name="etcd-defrag", namespace="kube-system"),
-        spec=CronJobSpecPatchArgs(
-            job_template={
-                "spec": {"template": {"metadata": {"labels": {"etcd-defrag": "true"}}}}
-            }
-        ),
-    )
+        # Add label to etcd-defrag jobs to allow Cilium to permit them to communicate with the API server
+        # These jobs are installed automatically on DAWN using Helm, and do not otherwise have a consistent label
+        # so cannot be selected by Cilium.
+        CronJobPatch(
+            "etcd-defrag-cronjob-label",
+            metadata=ObjectMetaPatchArgs(name="etcd-defrag", namespace="kube-system"),
+            spec=CronJobSpecPatchArgs(
+                job_template={
+                    "spec": {
+                        "template": {"metadata": {"labels": {"etcd-defrag": "true"}}}
+                    }
+                }
+            ),
+        )
 
 # Use patches for standard namespaces rather then trying to create them, so Pulumi does not try to delete them on teardown
 standard_namespaces = ["default", "kube-node-lease", "kube-public"]
-[
+for namespace in standard_namespaces:
     patch_namespace(namespace, PodSecurityStandard.RESTRICTED)
-    for namespace in standard_namespaces
-]
 
 # Longhorn
 longhorn_ns = Namespace(
@@ -186,16 +158,13 @@ longhorn_ns = Namespace(
         name="longhorn-system",
         labels={} | PodSecurityStandard.PRIVILEGED.value,
     ),
-    opts=ResourceOptions(
-        provider=k8s_provider,
-    ),
 )
 
-longhorn = Chart(
+longhorn = Release(
     "longhorn",
     namespace=longhorn_ns.metadata.name,
     chart="longhorn",
-    version="1.8.1",
+    version="1.9.0",
     repository_opts=RepositoryOptsArgs(
         repo="https://charts.longhorn.io",
     ),
@@ -214,7 +183,6 @@ longhorn = Chart(
         "persistence": {"defaultClassReplicaCount": 2},
     },
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[longhorn_ns],
     ),
 )
@@ -233,7 +201,6 @@ longhorn_storage_class = StorageClass(
     },
     provisioner="driver.longhorn.io",
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[longhorn],
     ),
 )
@@ -251,7 +218,6 @@ cert_manager_issuers = ConfigGroup(
     "cert-manager-issuers",
     yaml=[cluster_issuer_config],
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[cert_manager, cert_manager_ns],
     ),
 )
@@ -262,9 +228,6 @@ minio_operator_ns = Namespace(
     metadata=ObjectMetaArgs(
         name="minio-operator",
         labels={} | PodSecurityStandard.RESTRICTED.value,
-    ),
-    opts=ResourceOptions(
-        provider=k8s_provider,
     ),
 )
 
@@ -277,7 +240,6 @@ minio_operator = Chart(
     ),
     version="7.1.1",
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[minio_operator_ns],
     ),
 )
@@ -287,9 +249,6 @@ minio_tenant_ns = Namespace(
     metadata=ObjectMetaArgs(
         name="argo-artifacts",
         labels={} | PodSecurityStandard.RESTRICTED.value,
-    ),
-    opts=ResourceOptions(
-        provider=k8s_provider,
     ),
 )
 
@@ -324,7 +283,6 @@ minio_env_secret = Secret(
         "config.env": minio_config_env,
     },
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[minio_tenant_ns],
     ),
 )
@@ -387,7 +345,6 @@ minio_tenant = Chart(
         },
     },
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[longhorn, minio_env_secret, minio_operator, minio_tenant_ns],
     ),
 )
@@ -436,7 +393,6 @@ minio_ingress = Ingress(
         ],
     },
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[minio_tenant],
     ),
 )
@@ -448,9 +404,6 @@ argo_server_ns = Namespace(
         name="argo-server",
         labels={} | PodSecurityStandard.RESTRICTED.value,
     ),
-    opts=ResourceOptions(
-        provider=k8s_provider,
-    ),
 )
 
 argo_workflows_ns = Namespace(
@@ -458,9 +411,6 @@ argo_workflows_ns = Namespace(
     metadata=ObjectMetaArgs(
         name="argo-workflows",
         labels={} | PodSecurityStandard.RESTRICTED.value,
-    ),
-    opts=ResourceOptions(
-        provider=k8s_provider,
     ),
 )
 
@@ -484,7 +434,6 @@ argo_sso_secret = Secret(
         "client-secret": config.require_secret("oidc_client_secret"),
     },
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[argo_server_ns],
     ),
 )
@@ -501,7 +450,6 @@ argo_minio_secret = Secret(
         "secretkey": config.require_secret("minio_root_password"),
     },
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[argo_server_ns],
     ),
 )
@@ -541,7 +489,6 @@ argo_workflows = Chart(
         },
     },
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[
             argo_minio_secret,
             argo_sso_secret,
@@ -592,7 +539,6 @@ argo_workflows_admin_role = Role(
         ),
     ],
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[argo_workflows],
     ),
 )
@@ -610,7 +556,6 @@ argo_workflows_admin_sa = ServiceAccount(
         },
     ),
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[argo_workflows],
     ),
 )
@@ -626,7 +571,6 @@ argo_workflows_admin_sa_token = Secret(
     ),
     type="kubernetes.io/service-account-token",
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[argo_workflows_admin_sa],
     ),
 )
@@ -650,7 +594,6 @@ argo_workflows_admin_role_binding = RoleBinding(
         )
     ],
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[argo_workflows_admin_role],
     ),
 )
@@ -669,7 +612,6 @@ argo_workflows_default_sa = ServiceAccount(
         },
     ),
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[argo_workflows],
     ),
 )
@@ -685,7 +627,6 @@ argo_workflows_default_sa_token = Secret(
     ),
     type="kubernetes.io/service-account-token",
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[argo_workflows_default_sa],
     ),
 )
@@ -721,9 +662,19 @@ argo_workflows_metrics_svc = Service(
 argo_workflows_service_monitor = ConfigFile(
     "argo-workflows-service-monitor",
     file="./k8s/argo_workflows/prometheus.yaml",
-    opts=ResourceOptions(provider=k8s_provider),
+    opts=ResourceOptions(
+        depends_on=[argo_workflows_metrics_svc],
+    ),
 )
 
+
+api_rbac = ApiRbac(
+    name=f"{stack_name}-api-rbac",
+    argo_workflows_ns=argo_workflows_ns.metadata.name,
+    opts=ResourceOptions(
+        depends_on=[argo_workflows_ns],
+    ),
+)
 
 # Harbor
 harbor_ns = Namespace(
@@ -731,9 +682,6 @@ harbor_ns = Namespace(
     metadata=ObjectMetaArgs(
         name="harbor",
         labels={} | PodSecurityStandard.RESTRICTED.value,
-    ),
-    opts=ResourceOptions(
-        provider=k8s_provider,
     ),
 )
 
@@ -753,7 +701,7 @@ harbor = Release(
     ReleaseArgs(
         chart="harbor",
         namespace="harbor",
-        version="1.16.2",
+        version="1.17.1",
         repository_opts=RepositoryOptsArgs(
             repo="https://helm.goharbor.io",
         ),
@@ -769,7 +717,6 @@ harbor = Release(
         },
     ),
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[harbor_ns, longhorn, longhorn_storage_class],
     ),
 )
@@ -818,14 +765,13 @@ harbor_ingress = Ingress(
         ],
     },
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[harbor],
     ),
 )
 
-# # Create a daemonset to skip TLS verification for the harbor registry
-# # This is needed while using staging/self-signed certificates for Harbor
-# # A daemonset is used to run the configuration on all nodes in the cluster
+# Create a daemonset to skip TLS verification for the harbor registry
+# This is needed while using staging/self-signed certificates for Harbor
+# A daemonset is used to run the configuration on all nodes in the cluster
 
 containerd_config_ns = Namespace(
     "containerd-config-ns",
@@ -834,7 +780,6 @@ containerd_config_ns = Namespace(
         labels={} | PodSecurityStandard.PRIVILEGED.value,
     ),
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[harbor],
     ),
 )
@@ -853,151 +798,29 @@ configure_containerd_daemonset = ConfigGroup(
     "configure-containerd-daemon",
     yaml=[skip_harbor_tls],
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[harbor],
     ),
 )
 
-## Network policy (through Cilium)
+# Network policy (through Cilium)
 
-if k8s_environment == "AKS":
-    network_policy_aks = ConfigFile(
-        "network_policy_aks",
-        file="./k8s/cilium/aks.yaml",
-        opts=ResourceOptions(
-            provider=k8s_provider,
-        ),
-    )
-elif k8s_environment == "DAWN":
-    network_policy_dawn = ConfigFile(
-        "network_policy_dawn",
-        file="./k8s/cilium/dawn.yaml",
-        opts=ResourceOptions(
-            provider=k8s_provider,
-        ),
-    )
-    ## Add network policy to allow Prometheus monitoring
-    ## On Dawn, Prometheus is already deployed
-    network_policy_prometheus = ConfigFile(
-        "network_policy_prometheus",
-        file="./k8s/cilium/prometheus.yaml",
-        opts=ResourceOptions(
-            provider=k8s_provider,
-        ),
-    )
+# Network policies should be deployed last to ensure that none of them interfere with the deployment process
 
-network_policy_argo_workflows = ConfigFile(
-    "network_policy_argo_workflows",
-    file="./k8s/cilium/argo_workflows.yaml",
+resources = [
+    argo_workflows,
+    configure_containerd_daemonset,
+    harbor,
+    ingress_nginx,
+    longhorn,
+    minio_ingress,
+    minio_operator,
+    minio_tenant,
+]
+
+network_policies = NetworkPolicies(
+    name=f"{stack_name}-network-policies",
+    k8s_environment=k8s_environment,
     opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[minio_tenant, argo_workflows],
-    ),
-)
-
-network_policy_argo_server = ConfigFile(
-    "network_policy_argo_server",
-    file="./k8s/cilium/argo_server.yaml",
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[argo_workflows],
-    ),
-)
-
-network_policy_cert_manager = ConfigFile(
-    "network_policy_cert_manager",
-    file="./k8s/cilium/cert_manager.yaml",
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[cert_manager],
-    ),
-)
-
-network_policy_containerd_config = ConfigFile(
-    "network_policy_containerd_config",
-    file="./k8s/cilium/containerd_config.yaml",
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[containerd_config_ns],
-    ),
-)
-
-network_policy_harbor = ConfigFile(
-    "network_policy_harbor",
-    file="./k8s/cilium/harbor.yaml",
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[harbor],
-    ),
-)
-
-network_policy_hubble = ConfigFile(
-    "network_policy_hubble",
-    file="./k8s/cilium/hubble.yaml",
-    opts=ResourceOptions(
-        provider=k8s_provider,
-    ),
-)
-
-network_policy_ingress_nginx = ConfigFile(
-    "network_policy_ingress_nginx",
-    file="./k8s/cilium/ingress-nginx.yaml",
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[ingress_nginx_ns],
-    ),
-)
-
-
-network_policy_kube_node_lease = ConfigFile(
-    "network_policy_kube_node_lease",
-    file="./k8s/cilium/kube-node-lease.yaml",
-    opts=ResourceOptions(
-        provider=k8s_provider,
-    ),
-)
-
-
-network_policy_kube_public = ConfigFile(
-    "network_policy_kube_public",
-    file="./k8s/cilium/kube-public.yaml",
-    opts=ResourceOptions(
-        provider=k8s_provider,
-    ),
-)
-
-network_policy_kubernetes_system = ConfigFile(
-    "network_policy_kubernetes_system",
-    file="./k8s/cilium/kube-system.yaml",
-    opts=ResourceOptions(
-        provider=k8s_provider,
-    ),
-)
-
-
-network_policy_longhorn = ConfigFile(
-    "network_policy_longhorn",
-    file="./k8s/cilium/longhorn.yaml",
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[longhorn],
-    ),
-)
-
-network_policy_minio_tenant = ConfigFile(
-    "network_policy_minio_tenant",
-    file="./k8s/cilium/minio-tenant.yaml",
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[minio_tenant, minio_ingress],
-    ),
-)
-
-network_policy_minio_operator = ConfigFile(
-    "network_policy_minio_operator",
-    file="./k8s/cilium/minio-operator.yaml",
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[minio_operator],
+        depends_on=resources,
     ),
 )

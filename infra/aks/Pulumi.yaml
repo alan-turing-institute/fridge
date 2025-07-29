@@ -1,0 +1,7 @@
+name: fridge_aks
+description: FRIDGE supporting AKS cluster
+runtime:
+  name: python
+  options:
+    toolchain: pip
+    virtualenv: venv

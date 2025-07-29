@@ -1,0 +1,7 @@
+name: fridge
+description: FRIDGE deployment on K8s
+runtime:
+  name: python
+  options:
+    toolchain: pip
+    virtualenv: venv

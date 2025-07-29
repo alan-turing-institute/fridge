@@ -44,6 +44,7 @@ server:
   secure: true
   authModes:
     - sso
+    - client
   ingress:
     enabled: true
     annotations:

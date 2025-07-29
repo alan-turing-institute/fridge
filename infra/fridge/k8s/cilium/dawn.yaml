@@ -1,45 +1,58 @@
----
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
 metadata:
-  name: default-deny
-  namespace: kube-system
-spec:
-  endpointSelector: {}
-  ingress:
-    - {}
-  egress:
-    - {}
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
-  name: kube-dns
+  name: kube-dns-dawn
   namespace: kube-system
 spec:
   endpointSelector:
     matchLabels:
       k8s-app: kube-dns
-  ingress:
-    # Allow kube-dns to receive DNS requests from any endpoint in the cluster
-    # Policies for those endpoints will determine if and how they can communicate with kube-dns
-    - fromEntities:
-        - cluster
-      toPorts:
-        - ports:
-            - port: "53"
-              protocol: ANY
   egress:
-    # Allow kube-dns to send DNS requests in the cluster
-    - toEntities:
-        - cluster
+    # Allow kube-dns to communicate with the local DAWN DNS servers
+    - toCIDR:
+        - 192.168.3.2/32
+        - 192.168.3.3/32
       toPorts:
         - ports:
             - port: "53"
               protocol: ANY
-    # Allow kube-dns to communicate with the Kubernetes API server
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-etcd-jobs
+  namespace: kube-system
+spec:
+  endpointSelector:
+    matchLabels:
+      etcd-defrag: "true"
+  egress:
     - toEntities:
-        - kube-apiserver
+      - kube-apiserver
+      # Since this is on Dawn, we can be specific about the port
+      toPorts:
+        - ports:
+          - port: "6443"
+            protocol: ANY
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: webhook-ingress-nginx
+  namespace: ingress-nginx
+  # Allow traffic from the remote-node entity on port 8443. This is webhook related traffic
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s:app.kubernetes.io/name: ingress-nginx
+      k8s:app.kubernetes.io/component: controller
+  ingress:
+    - fromEntities:
+        - remote-node
+      toPorts:
+        - ports:
+            - port: "8443"
+              protocol: TCP
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
