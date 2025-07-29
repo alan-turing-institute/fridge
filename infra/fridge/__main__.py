@@ -3,6 +3,7 @@ from string import Template
 import pulumi
 
 from components.api_rbac import ApiRbac
+from components.monitoring import Monitoring, MonitoringArgs
 from components.network_policies import NetworkPolicies
 from pulumi import FileAsset, Output, ResourceOptions
 from pulumi_kubernetes.batch.v1 import CronJobPatch, CronJobSpecPatchArgs
@@ -10,10 +11,6 @@ from pulumi_kubernetes.core.v1 import (
     Namespace,
     NamespacePatch,
     Secret,
-    Service,
-    ServicePortArgs,
-    ServiceSpecArgs,
-    ServiceAccount,
 )
 from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
@@ -631,39 +628,26 @@ argo_workflows_default_sa_token = Secret(
     ),
 )
 
-# Add service for metrics endpoint for Argo Workflows
-argo_workflows_metrics_svc = Service(
-    "argo-workflows-metrics-svc",
-    metadata=ObjectMetaArgs(
-        name="workflow-controller-metrics",
-        namespace=argo_server_ns.metadata.name,
-        labels={"app": "workflow-controller"},
-    ),
-    spec=ServiceSpecArgs(
-        cluster_ip=None,
-        ports=[
-            ServicePortArgs(
-                name="metrics",
-                port=9090,
-                protocol="TCP",
-                target_port=9090,
-            )
-        ],
-        selector={"app": "workflow-controller"},
-    ),
-    opts=ResourceOptions(
-        depends_on=[argo_workflows],
-    ),
-)
+# Set up monitoring
 
-# Add service monitor to allow Prometheus to scrape the metrics
-# Note: Pulumi has no native support for ServiceMonitor,
-# so using ConfigFile
-argo_workflows_service_monitor = ConfigFile(
-    "argo-workflows-service-monitor",
-    file="./k8s/argo_workflows/prometheus.yaml",
+monitoring_system = Monitoring(
+    name=f"{stack_name}-monitoring-system",
+    args=MonitoringArgs(
+        k8s_environment=k8s_environment,
+        argo_server_ns=argo_server_ns.metadata.name,
+    ),
     opts=ResourceOptions(
-        depends_on=[argo_workflows_metrics_svc],
+        depends_on=[
+            ingress_nginx,
+            cert_manager,
+            cert_manager_issuers,
+            longhorn,
+            longhorn_storage_class,
+            minio_operator,
+            minio_tenant,
+            minio_ingress,
+            argo_workflows,
+        ],
     ),
 )
 
