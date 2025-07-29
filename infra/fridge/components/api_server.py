@@ -4,9 +4,12 @@ from pulumi_kubernetes.core.v1 import (
     CapabilitiesArgs,
     ContainerArgs,
     ContainerPortArgs,
+    EnvFromSourceArgs,
     PodSpecArgs,
     PodTemplateSpecArgs,
     SeccompProfileArgs,
+    Secret,
+    SecretEnvSourceArgs,
     SecurityContextArgs,
     ServiceAccount,
 )
@@ -20,16 +23,30 @@ from pulumi_kubernetes.rbac.v1 import (
 )
 
 
-class ApiRbac(ComponentResource):
+class ApiServerArgs:
+    def __init__(
+        self,
+        api_server_ns: str,
+        argo_workflows_ns: str,
+        fridge_api_admin: str,
+        fridge_api_password: str,
+        harbor_fqdn: str,
+    ) -> None:
+        self.api_server_ns = api_server_ns
+        self.argo_workflows_ns = argo_workflows_ns
+        self.fridge_api_admin = fridge_api_admin
+        self.fridge_api_password = fridge_api_password
+        self.harbor_fqdn = harbor_fqdn
+
+
+class ApiServer(ComponentResource):
     def __init__(
         self,
         name: str,
-        api_server_ns: str,
-        argo_workflows_ns: str,
-        harbor_fqdn: str,
+        args: ApiServerArgs,
         opts=ResourceOptions,
     ) -> None:
-        super().__init__("fridge:k8s:ApiRbac", name, {}, opts)
+        super().__init__("fridge:k8s:ApiServer", name, {}, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
         # Define argo workflows service accounts and roles
@@ -38,7 +55,7 @@ class ApiRbac(ComponentResource):
             "argo-workflows-api-role",
             metadata=ObjectMetaArgs(
                 name="argo-workflows-api-role",
-                namespace=argo_workflows_ns,
+                namespace=args.argo_workflows_ns,
             ),
             rules=[
                 PolicyRuleArgs(
@@ -74,16 +91,29 @@ class ApiRbac(ComponentResource):
             "fridge-api-sa",
             metadata=ObjectMetaArgs(
                 name="fridge-api-sa",
-                namespace=api_server_ns,
+                namespace=args.api_server_ns,
             ),
             opts=child_opts,
         )
 
-        argo_workflows_api_role_binding = RoleBinding(
+        fridge_api_config = Secret(
+            "fridge-api-config",
+            metadata=ObjectMetaArgs(
+                name="fridge-api-config",
+                namespace=args.api_server_ns,
+            ),
+            string_data={
+                "FRIDGE_API_ADMIN": args.fridge_api_admin,
+                "FRIDGE_API_PASSWORD": args.fridge_api_password,
+            },
+            opts=child_opts,
+        )
+
+        RoleBinding(
             "argo-workflows-api-role-binding",
             metadata=ObjectMetaArgs(
                 name="argo-workflows-api-role-binding",
-                namespace=argo_workflows_ns,
+                namespace=args.argo_workflows_ns,
             ),
             role_ref=RoleRefArgs(
                 api_group="rbac.authorization.k8s.io",
@@ -94,7 +124,7 @@ class ApiRbac(ComponentResource):
                 SubjectArgs(
                     kind="ServiceAccount",
                     name=fridge_api_sa.metadata.name,
-                    namespace=api_server_ns,
+                    namespace=args.api_server_ns,
                 )
             ],
             opts=ResourceOptions.merge(
@@ -103,11 +133,11 @@ class ApiRbac(ComponentResource):
             ),
         )
 
-        api_server = Deployment(
+        Deployment(
             "fridge-api-server",
             metadata=ObjectMetaArgs(
                 name="fridge-api-server",
-                namespace=api_server_ns,
+                namespace=args.api_server_ns,
             ),
             spec=DeploymentSpecArgs(
                 replicas=1,
@@ -119,6 +149,13 @@ class ApiRbac(ComponentResource):
                         containers=[
                             ContainerArgs(
                                 name="fridge-api-server",
+                                env_from=[
+                                    EnvFromSourceArgs(
+                                        secret_ref=SecretEnvSourceArgs(
+                                            name=fridge_api_config.metadata.name
+                                        )
+                                    )
+                                ],
                                 image="harbor.aks.fridge.develop.turingsafehaven.ac.uk/internal/fridge-api:latest",
                                 ports=[ContainerPortArgs(container_port=8000)],
                                 security_context=SecurityContextArgs(
