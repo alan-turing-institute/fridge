@@ -1,8 +1,6 @@
-import base64
 import json
 import os
 import requests
-from kubernetes import client, config
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -10,31 +8,19 @@ from pydantic import BaseModel
 from secrets import compare_digest
 from typing import Annotated
 
-
-# Load environment variables from .env file
-load_dotenv()
-FRIDGE_API_ADMIN = os.getenv("FRIDGE_API_ADMIN")
-FRIDGE_API_PASSWORD = os.getenv("FRIDGE_API_PASSWORD")
-
 # Check if running in the Kubernetes cluster
 # If so, use the in-cluster configuration to retrieve the token
 # Note that this requires a service account with the necessary permissions
 # If not in the cluster, use the current kube config credentials to retrieve the token
 if os.getenv("KUBERNETES_SERVICE_HOST"):
-    # config.load_incluster_config()
-    # ARGO_TOKEN = os.getenv("ARGO_TOKEN")
-    # v1 = client.CoreV1Api()
-    # secret = v1.read_namespaced_secret(
-    #    "argo-workflows-api-sa.service-account-token", "argo-workflows"
-    # )
-    # ARGO_TOKEN = base64.b64decode(secret.data["token"]).decode("utf-8")
-    f = open("/service-account/token", "r")
-    ARGO_TOKEN = f.read().strip()
-    f.close()
-    print(ARGO_TOKEN)
+    FRIDGE_API_ADMIN = os.getenv("FRIDGE_API_ADMIN")
+    FRIDGE_API_PASSWORD = os.getenv("FRIDGE_API_PASSWORD")
     ARGO_SERVER = "https://argo-workflows-server.argo-server.svc.cluster.local:2746"
 else:
-    ARGO_TOKEN = os.getenv("ARGO_TOKEN")
+    # Load environment variables from .env file
+    load_dotenv()
+    FRIDGE_API_ADMIN = os.getenv("FRIDGE_API_ADMIN")
+    FRIDGE_API_PASSWORD = os.getenv("FRIDGE_API_PASSWORD")
     ARGO_SERVER = os.getenv("ARGO_SERVER")
 
 description = """
@@ -51,6 +37,20 @@ and submit workflows based on templates.
 
 app = FastAPI(title="FRIDGE API", description=description, version="0.1.0")
 
+
+def load_token():
+    """
+    Load the ARGO token on request from the environment variable or from the service account token file if running in a Kubernetes cluster.
+    """
+    if os.getenv("KUBERNETES_SERVICE_HOST"):
+        with open("/service-account/token", "r") as f:
+            ARGO_TOKEN = f.read().strip()
+    else:
+        ARGO_TOKEN = os.getenv("ARGO_TOKEN")
+    return ARGO_TOKEN
+
+
+ARGO_TOKEN = load_token()
 
 security = HTTPBasic()
 
