@@ -3,7 +3,7 @@ from string import Template
 import base64
 import pulumi
 
-from components.api_rbac import ApiRbac
+from components.api_server import ApiServer, ApiServerArgs
 from components.network_policies import NetworkPolicies
 from pulumi import FileAsset, Output, ResourceOptions
 from pulumi_kubernetes.batch.v1 import CronJobPatch, CronJobSpecPatchArgs
@@ -759,15 +759,21 @@ api_server_ns = Namespace(
     ),
 )
 
-api_rbac = ApiRbac(
-    name=f"{stack_name}-api-rbac",
-    api_server_ns=api_server_ns.metadata.name,
-    argo_workflows_ns=argo_workflows_ns.metadata.name,
-    harbor_fqdn=harbor_fqdn,
+api_server = ApiServer(
+    name=f"{stack_name}-api-server",
+    args=ApiServerArgs(
+        api_server_ns=api_server_ns.metadata.name,
+        argo_workflows_ns=argo_workflows_ns.metadata.name,
+        harbor_fqdn=harbor_fqdn,
+        fridge_api_admin=config.require_secret("fridge_api_admin"),
+        fridge_api_password=config.require_secret("fridge_api_password"),
+    ),
     opts=ResourceOptions(
         depends_on=[api_server_ns, argo_workflows_ns],
     ),
 )
+
+# Create a secret to allow k8s to pull images from a private Harbor registry
 
 api_docker_credentials = Output.json_dumps(
     {
