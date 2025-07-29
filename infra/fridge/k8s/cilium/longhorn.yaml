@@ -309,3 +309,10 @@ spec:
         - ports:
             - port: "53"
               protocol: ANY
+    - toEndpoints:
+        - matchLabels:
+            app: longhorn-manager
+      toPorts:
+        - ports:
+            - port: "9500"
+              protocol: TCP
