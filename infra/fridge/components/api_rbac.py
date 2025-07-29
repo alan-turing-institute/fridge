@@ -1,10 +1,16 @@
 from pulumi import ComponentResource, ResourceOptions
 from pulumi_kubernetes.apps.v1 import Deployment, DeploymentSpecArgs
 from pulumi_kubernetes.core.v1 import (
-    Secret,
+    CapabilitiesArgs,
+    ContainerArgs,
+    ContainerPortArgs,
+    PodSpecArgs,
+    PodTemplateSpecArgs,
+    SeccompProfileArgs,
+    SecurityContextArgs,
     ServiceAccount,
 )
-from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
+from pulumi_kubernetes.meta.v1 import LabelSelectorArgs, ObjectMetaArgs
 from pulumi_kubernetes.rbac.v1 import (
     PolicyRuleArgs,
     Role,
@@ -73,54 +79,6 @@ class ApiRbac(ComponentResource):
             opts=child_opts,
         )
 
-        argo_workflows_api_sa = ServiceAccount(
-            "argo-workflows-api-sa",
-            metadata=ObjectMetaArgs(
-                name="argo-workflows-api-sa",
-                namespace=argo_workflows_ns,
-            ),
-            opts=child_opts,
-        )
-
-        argo_workflows_api_sa_token = Secret(
-            "argo-workflows-api-sa-token",
-            metadata=ObjectMetaArgs(
-                name="argo-workflows-api-sa.service-account-token",
-                namespace=argo_workflows_ns,
-                annotations={
-                    "kubernetes.io/service-account.name": argo_workflows_api_sa.metadata.name,
-                },
-            ),
-            type="kubernetes.io/service-account-token",
-            opts=child_opts,
-        )
-
-        argo_workflows_ns_api_role_binding = RoleBinding(
-            "argo-workflows-ns-api-role-binding",
-            metadata=ObjectMetaArgs(
-                name="argo-workflows-ns-api-role-binding",
-                namespace=argo_workflows_ns,
-            ),
-            role_ref=RoleRefArgs(
-                api_group="rbac.authorization.k8s.io",
-                kind="Role",
-                name=argo_workflows_api_role.metadata.name,
-            ),
-            subjects=[
-                SubjectArgs(
-                    kind="ServiceAccount",
-                    name=argo_workflows_api_sa.metadata.name,
-                    namespace=argo_workflows_ns,
-                )
-            ],
-            opts=ResourceOptions.merge(
-                child_opts,
-                ResourceOptions(
-                    depends_on=[argo_workflows_api_role, argo_workflows_api_sa]
-                ),
-            ),
-        )
-
         argo_workflows_api_role_binding = RoleBinding(
             "argo-workflows-api-role-binding",
             metadata=ObjectMetaArgs(
@@ -153,45 +111,45 @@ class ApiRbac(ComponentResource):
             ),
             spec=DeploymentSpecArgs(
                 replicas=1,
-                selector={"match_labels": {"app": "fridge-api-server"}},
-                template={
-                    "metadata": {"labels": {"app": "fridge-api-server"}},
-                    "spec": {
-                        "automountServiceAccountToken": False,
-                        "containers": [
-                            {
-                                "name": "fridge-api-server",
-                                "image": "harbor.aks.fridge.develop.turingsafehaven.ac.uk/internal/fridge-api:latest",
-                                "ports": [{"container_port": 8000}],
-                                "securityContext": {
-                                    "runAsUser": 1001,
-                                    "runAsGroup": 3000,
-                                    "fsGroup": 2000,
-                                    "runAsNonRoot": True,
-                                    "allowPrivilegeEscalation": False,
-                                    "capabilities": {
-                                        "drop": ["ALL"],
-                                    },
-                                    "seccompProfile": {"type": "RuntimeDefault"},
-                                },
-                                "volumeMounts": [
+                selector=LabelSelectorArgs(match_labels={"app": "fridge-api-server"}),
+                template=PodTemplateSpecArgs(
+                    metadata=ObjectMetaArgs(labels={"app": "fridge-api-server"}),
+                    spec=PodSpecArgs(
+                        automount_service_account_token=False,
+                        containers=[
+                            ContainerArgs(
+                                name="fridge-api-server",
+                                image="harbor.aks.fridge.develop.turingsafehaven.ac.uk/internal/fridge-api:latest",
+                                ports=[ContainerPortArgs(container_port=8000)],
+                                security_context=SecurityContextArgs(
+                                    allow_privilege_escalation=False,
+                                    capabilities=CapabilitiesArgs(
+                                        drop=["ALL"],
+                                    ),
+                                    run_as_user=1001,
+                                    run_as_group=3000,
+                                    run_as_non_root=True,
+                                    seccomp_profile=SeccompProfileArgs(
+                                        type="RuntimeDefault"
+                                    ),
+                                ),
+                                volume_mounts=[
                                     {
                                         "name": "token-vol",
                                         "mountPath": "/service-account",
                                         "readOnly": True,
                                     }
                                 ],
-                            }
+                            )
                         ],
-                        "service_account_name": fridge_api_sa.metadata.name,
-                        "volumes": [
+                        service_account_name=fridge_api_sa.metadata.name,
+                        volumes=[
                             {
                                 "name": "token-vol",
                                 "projected": {
                                     "sources": [
                                         {
                                             "serviceAccountToken": {
-                                                "audience": "api",
                                                 "expirationSeconds": 3600,
                                                 "path": "token",
                                             }
@@ -200,9 +158,8 @@ class ApiRbac(ComponentResource):
                                 },
                             }
                         ],
-                    },
-                },
+                    ),
+                ),
             ),
             opts=child_opts,
         )
-        # self.register_outputs({"api-token": argo_workflows_api_sa_token})
