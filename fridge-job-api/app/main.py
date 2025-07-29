@@ -35,7 +35,7 @@ and submit workflows based on templates.
 
 """
 
-app = FastAPI(title="FRIDGE API", description=description, version="0.1.0")
+app = FastAPI(title="FRIDGE API", description=description, version="0.2.0")
 
 
 def load_token():
