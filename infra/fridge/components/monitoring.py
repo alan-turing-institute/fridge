@@ -26,7 +26,7 @@ class Monitoring(ComponentResource):
         match args.k8s_environment:
             case K8sEnvironment.AKS:
 
-                monitoring_namespace = Namespace(
+                monitoring_ns = Namespace(
                     "monitoring-system",
                     metadata=ObjectMetaArgs(
                         name="monitoring-system",
@@ -45,12 +45,15 @@ class Monitoring(ComponentResource):
                         repository_opts={
                             "repo": "https://prometheus-community.github.io/helm-charts"
                         },
-                        namespace=monitoring_namespace.metadata.name,  # Compatibility with Dawn
+                        namespace=monitoring_ns.metadata.name,  # Compatibility with Dawn
                         create_namespace=False,
                     ),
                     opts=child_opts,
                 )
             case K8sEnvironment.DAWN:
+                # The namespace is already created on Dawn
+                monitoring_ns = Namespace.get("monitoring-ns", "monitoring-system")
+
                 # Add service for metrics endpoint for Argo Workflows
                 argo_workflows_metrics_svc = Service(
                     "argo-workflows-metrics-svc",
@@ -77,7 +80,7 @@ class Monitoring(ComponentResource):
                 # Add service monitor to allow Prometheus to scrape the metrics
                 # Note: Pulumi has no native support for ServiceMonitor,
                 # so using ConfigFile to deploy
-                argo_workflows_service_monitor = ConfigFile(
+                ConfigFile(
                     "argo-workflows-service-monitor",
                     file="./k8s/argo_workflows/prometheus.yaml",
                     opts=ResourceOptions(
