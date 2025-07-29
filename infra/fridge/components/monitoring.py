@@ -1,5 +1,10 @@
 from pulumi import ComponentResource, ResourceOptions
-from pulumi_kubernetes.core.v1 import Service, ServicePortArgs, ServiceSpecArgs
+from pulumi_kubernetes.core.v1 import (
+    Namespace,
+    Service,
+    ServicePortArgs,
+    ServiceSpecArgs,
+)
 from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.yaml import ConfigFile
@@ -20,6 +25,15 @@ class Monitoring(ComponentResource):
 
         match args.k8s_environment:
             case K8sEnvironment.AKS:
+
+                monitoring_namespace = Namespace(
+                    "monitoring-system",
+                    metadata=ObjectMetaArgs(
+                        name="monitoring-system",
+                        labels={"name": "monitoring-system"},
+                    ),
+                    opts=child_opts,
+                )
                 # Start by deploying the monitoring stack for AKS
                 # 1. Prometheus Operator
                 # 2. Grafana
@@ -31,8 +45,8 @@ class Monitoring(ComponentResource):
                         repository_opts={
                             "repo": "https://prometheus-community.github.io/helm-charts"
                         },
-                        namespace="monitoring-system",  # Compatibility with Dawn
-                        create_namespace=True,
+                        namespace=monitoring_namespace.metadata.name,  # Compatibility with Dawn
+                        create_namespace=False,
                     ),
                     opts=child_opts,
                 )
