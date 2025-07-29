@@ -20,5 +20,4 @@ ENTRYPOINT []
 
 RUN chown -R appuser:appuser /app
 USER appuser
-# CMD ["uv", "run", "fastapi", "run", "app/main.py"]
 CMD ["fastapi", "run", "--host", "0.0.0.0", "app/main.py"]
