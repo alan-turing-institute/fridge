@@ -4,7 +4,6 @@ import base64
 import pulumi
 
 from components.api_rbac import ApiRbac
-from components.api_server import ApiServer
 from components.network_policies import NetworkPolicies
 from pulumi import FileAsset, Output, ResourceOptions
 from pulumi_kubernetes.batch.v1 import CronJobPatch, CronJobSpecPatchArgs
@@ -793,12 +792,6 @@ api_pull_creds = Secret(
     string_data={".dockerconfigjson": api_docker_credentials},
     type="kubernetes.io/dockerconfigjson",
 )
-
-# api_server = ApiServer(
-#     name=f"{stack_name}-api-server",
-#     api_server_ns=api_server_ns.metadata.name,
-#     opts=ResourceOptions(depends_on=[api_rbac, api_server_ns, argo_workflows]),
-# )
 
 
 # Network policy (through Cilium)
