@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - api/**
     tags:
       - "v*"
     paths:
@@ -47,7 +48,7 @@ jobs:
           images: |
             ghcr.io/${{ github.repository }}
           tags: |
-            # Branch name for main branch
+            # Branch name for all branches
             type=ref,event=branch
             # Full version v1.2.3
             type=semver,pattern=v{{version}}
@@ -55,8 +56,6 @@ jobs:
             type=semver,pattern=v{{major}}.{{minor}}
             # Major version v1
             type=semver,pattern=v{{major}}
-            # commit hash
-            type=sha
       - name: Build and push image to registry
         uses: docker/build-push-action@v6
         with:
