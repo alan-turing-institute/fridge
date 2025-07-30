@@ -9,12 +9,6 @@ print_message() {
 }
 
 
-# Setup K3s configuration for development
-print_message "Setting up K3s development configuration"
-mkdir -p /home/vscode/.kube
-cp /kubeconfig/kubeconfig.yaml /home/vscode/.kube/config
-sed -i 's/127\.0\.0\.1/kubernetes.default.svc.cluster.local/g' /home/vscode/.kube/config
-
 # Set up environment variables
 print_message "Setting up environment variables"
 echo "export KUBECONFIG=/home/vscode/.kube/config" >> /home/vscode/.zshrc
