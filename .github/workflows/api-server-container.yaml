@@ -6,9 +6,13 @@ on:
       - main
     tags:
       - "v*"
+    paths:
+      - "fridge-job-api/**"
   pull_request:
     branches:
       - main
+    paths:
+      - "fridge-job-api/**"
 
 concurrency:
   group: "build"
