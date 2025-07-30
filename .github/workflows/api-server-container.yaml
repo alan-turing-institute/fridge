@@ -1,5 +1,9 @@
 name: Build Container
 
+# Build container for the fridge-job-api service
+# This builds for every push to the main branch and every push to the api/** branches
+# but only when changes have been made to the fridge-job-api directory
+# It also builds on pull requests to the main branch when those PR make changes to the fridge-job-api directory
 on:
   push:
     branches:
@@ -56,6 +60,8 @@ jobs:
             type=semver,pattern=v{{major}}.{{minor}}
             # Major version v1
             type=semver,pattern=v{{major}}
+            # latest tag
+            type=raw,value=latest,enable={{is_default_branch}}
       - name: Build and push image to registry
         uses: docker/build-push-action@v6
         with:
