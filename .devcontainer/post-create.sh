@@ -14,7 +14,6 @@ print_message "Setting up environment variables"
 echo "export KUBECONFIG=/home/vscode/.kube/config" >> /home/vscode/.zshrc
 echo "export PATH=\$PATH:/home/vscode/.local/bin" >> /home/vscode/.zshrc
 
-just --completions zsh > /home/vscode/.config/just-completions.zsh
 cilium completion zsh > /home/vscode/.config/cilium-completions.zsh
 /home/vscode/.pulumi/bin/pulumi gen-completion zsh > /home/vscode/.config/pulumi-completions.zsh
 
@@ -37,12 +36,9 @@ alias kpods='kubectl get pods'
 alias kdep='kubectl get deployments'
 alias ksvc='kubectl get services'
 export PATH=\$PATH:~/.pulumi/bin
+export PATH=\$PATH:/workspace/scripts
 source /home/vscode/.config/*-completions.zsh
 EOF
-
-# set shell to zsh
-print_message "Setting default shell to zsh"
-sudo chsh -s $(which zsh) vscode
 
 # set up Docker socket permissions for KInD
 sudo chown $(whoami) /var/run/docker.sock
@@ -59,3 +55,4 @@ elif [ -d "/workspace/infra/fridge/venv" ]; then
 fi
 
 print_message "DevContainer setup complete! 🎉"
+echo "run '/workspace/scripts/kind-rebuild-cluster.sh' (also in PATH) to create a new cluster"
