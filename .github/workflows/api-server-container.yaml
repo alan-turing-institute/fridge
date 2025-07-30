@@ -64,5 +64,5 @@ jobs:
           # Don't push builds to ghcr on pull requests
           # However, build will be always tested
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.output.tags }}
+          tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
