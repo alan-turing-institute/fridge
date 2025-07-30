@@ -8,7 +8,6 @@ USER root
 # Application versions
 
 ARG ARGO_VERSION='3.0.0'
-ARG GUM_VERSION='0.16.2'
 
 RUN apt-get update \
     && apt-get install -y \
@@ -29,18 +28,6 @@ RUN apt-get update \
 # install yq
 RUN wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq &&\
     chmod +x /usr/local/bin/yq
-
-# install gum
-RUN ARCH=$(uname -m) && \
-    if [ "$ARCH" = "x86_64" ]; then \
-        wget "https://github.com/charmbracelet/gum/releases/download/v0.16.2/gum_0.16.2_Linux_x86_64.tar.gz"; \
-    elif [ "$ARCH" = "aarch64" ]; then \
-        wget "https://github.com/charmbracelet/gum/releases/download/v0.16.2/gum_0.16.2_Linux_arm64.tar.gz"; \
-    fi && \
-    tar -xzf ./gum_0.16.2_Linux_*.tar.gz && \
-    mv ./gum_0.16.2_Linux_*/gum /usr/local/bin/gum && \
-    rm -rf ./gum_0.16.2_Linux_*
-    
 
 # install pulumi
 RUN curl -fsSL https://get.pulumi.com | sh
@@ -66,17 +53,9 @@ RUN CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium
 
 # Install ArgoCD CLI
 ARG ARGO_OS="linux"
-
-# Download the binary
 RUN curl -sLO "https://github.com/argoproj/argo-workflows/releases/download/v3.7.0/argo-$ARGO_OS-amd64.gz"
-
-# Unzip
 RUN gunzip "argo-$ARGO_OS-amd64.gz"
-
-# Make binary executable
 RUN chmod +x "argo-$ARGO_OS-amd64"
-
-# Move binary to path
 RUN mv "./argo-$ARGO_OS-amd64" /usr/local/bin/argo
 
 # Install Carapace for shell completions
