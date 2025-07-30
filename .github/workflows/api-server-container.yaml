@@ -65,3 +65,22 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  # Remove untagged images from the registry
+  # Note that this leaves behind the most recent image from the development branch
+  cleanup-dev-images:
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && inputs.cleanup_images == true)
+    needs: build
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Delete API development images
+        uses: vlaurin/action-ghcr-prune@v0.6.0
+        with:
+          container: ${{ github.event.repository.name }}
+          prune-untagged: true
+          token: ${{ secrets.GITHUB_TOKEN }}
