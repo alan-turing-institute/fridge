@@ -1,0 +1,91 @@
+name: Build Container
+
+# Build container for the fridge-job-api service
+# This builds for every push to the main branch and every push to the api/** branches
+# but only when changes have been made to the fridge-job-api directory
+# It also builds on pull requests to the main branch when those PR make changes to the fridge-job-api directory
+on:
+  push:
+    branches:
+      - main
+      - api/**
+    tags:
+      - "v*"
+    paths:
+      - "fridge-job-api/**"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "fridge-job-api/**"
+
+concurrency:
+  group: "build"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        if: github.event_name != 'pull_request'
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ghcr.io/${{ github.repository }}
+          tags: |
+            # Branch name for all branches
+            type=ref,event=branch
+            # Full version v1.2.3
+            type=semver,pattern=v{{version}}
+            # Major.minor version v1.2
+            type=semver,pattern=v{{major}}.{{minor}}
+            # Major version v1
+            type=semver,pattern=v{{major}}
+            # latest tag
+            type=raw,value=latest,enable={{is_default_branch}}
+      - name: Build and push image to registry
+        uses: docker/build-push-action@v6
+        with:
+          context: ./fridge-job-api
+          # Don't push builds to ghcr on pull requests
+          # However, build will be always tested
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  # Remove untagged images from the registry
+  # Note that this leaves behind the most recent image from the development branch
+  cleanup-dev-images:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Delete API development images
+        uses: vlaurin/action-ghcr-prune@v0.6.0
+        with:
+          container: ${{ github.event.repository.name }}
+          prune-untagged: true
+          token: ${{ secrets.GITHUB_TOKEN }}

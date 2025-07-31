@@ -18,6 +18,8 @@ from pulumi_kubernetes.rbac.v1 import (
 from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
 
 import components
+from components.api_rbac import ApiRbac
+from components.network_policies import NetworkPolicies
 from enums import K8sEnvironment, PodSecurityStandard, TlsEnvironment, tls_issuer_names
 
 
@@ -589,6 +591,14 @@ argo_workflows_default_sa_token = Secret(
     ),
 )
 
+api_rbac = ApiRbac(
+    name=f"{stack_name}-api-rbac",
+    argo_workflows_ns=argo_workflows_ns.metadata.name,
+    opts=ResourceOptions(
+        depends_on=[argo_workflows_ns],
+    ),
+)
+
 # Harbor
 harbor_ns = Namespace(
     "harbor-ns",
@@ -614,7 +624,7 @@ harbor = Release(
     ReleaseArgs(
         chart="harbor",
         namespace="harbor",
-        version="1.16.2",
+        version="1.17.1",
         repository_opts=RepositoryOptsArgs(
             repo="https://helm.goharbor.io",
         ),
