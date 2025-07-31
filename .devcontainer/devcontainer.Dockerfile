@@ -43,6 +43,16 @@ RUN if [ "$(uname -m)" = "x86_64" ]; then \
     chmod +x ./kind && \
     mv ./kind /usr/local/bin/kind
 
+# Istall k9s
+RUN if [ "$(uname -m)" = "x86_64" ]; then \
+        wget https://github.com/derailed/k9s/releases/download/v0.50.9/k9s_linux_amd64.deb && \
+        dpkg -i k9s_linux_amd64.deb; \
+    elif [ "$(uname -m)" = "aarch64" ]; then \
+        wget https://github.com/derailed/k9s/releases/download/v0.50.9/k9s_linux_arm64.deb && \
+        dpkg -i k9s_linux_arm64.deb; \
+    fi && \
+    rm k9s_linux_*.deb
+
 # Install Cilium CLI
 RUN CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt) && \
     CLI_ARCH=amd64 && \
@@ -50,6 +60,15 @@ RUN CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium
     curl -L --fail --remote-name-all https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum} && \
     sha256sum --check cilium-linux-${CLI_ARCH}.tar.gz.sha256sum && \
     tar xzvf cilium-linux-${CLI_ARCH}.tar.gz -C /usr/local/bin
+
+# Install Hubble CLI
+RUN HUBBLE_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/hubble/master/stable.txt) && \
+    HUBBLE_ARCH=amd64 && \
+    if [ "$(uname -m)" = "aarch64" ]; then HUBBLE_ARCH=arm64; fi && \
+    curl -L --fail --remote-name-all https://github.com/cilium/hubble/releases/download/${HUBBLE_VERSION}/hubble-linux-${HUBBLE_ARCH}.tar.gz{,.sha256sum} && \
+    sha256sum --check hubble-linux-${HUBBLE_ARCH}.tar.gz.sha256sum && \
+    tar xzvf hubble-linux-${HUBBLE_ARCH}.tar.gz -C /usr/local/bin && \
+    rm hubble-linux-*.tar.gz hubble-linux-*.tar.gz.sha256sum
 
 # Install ArgoCD CLI
 ARG ARGO_OS="linux"
