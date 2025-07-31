@@ -21,3 +21,11 @@ if [ $(docker inspect -f '{{json .NetworkSettings.Networks}}' fridge-devcontaine
 else
   echo "fridge-devcontainer is already connected to kind network."
 fi
+
+# install cilium
+if ! kubectl get pods -n kube-system | grep -q cilium; then
+  echo "Installing Cilium..."
+  /workspace/scripts/Install-Cillium.sh
+else
+  echo "Cilium is already installed."
+fi
