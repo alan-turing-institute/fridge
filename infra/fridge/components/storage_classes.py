@@ -50,7 +50,7 @@ class StorageClasses(ComponentResource):
             )
 
             rwm_class_name = "azurefile"
-        elif k8s_environment == K8sEnvironment.AKS:
+        elif k8s_environment == K8sEnvironment.DAWN:
             longhorn_ns = Namespace(
                 "longhorn-system",
                 metadata=ObjectMetaArgs(
