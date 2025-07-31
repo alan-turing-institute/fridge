@@ -773,33 +773,6 @@ api_server = ApiServer(
     ),
 )
 
-# Create a secret to allow k8s to pull images from a private Harbor registry
-
-api_docker_credentials = Output.json_dumps(
-    {
-        "auths": {
-            harbor_external_url: {
-                "username": "admin",
-                "password": config.require_secret("harbor_admin_password"),
-                "auth": Output.format(
-                    "admin:{0}", config.require_secret("harbor_admin_password")
-                ).apply(lambda s: base64.b64encode(s.encode()).decode()),
-            }
-        }
-    }
-)
-
-api_pull_creds = Secret(
-    "harbor-pull-creds",
-    metadata=ObjectMetaArgs(
-        name="internalpull",
-        namespace=api_server_ns.metadata.name,
-    ),
-    string_data={".dockerconfigjson": api_docker_credentials},
-    type="kubernetes.io/dockerconfigjson",
-)
-
-
 # Network policy (through Cilium)
 
 # Network policies should be deployed last to ensure that none of them interfere with the deployment process
