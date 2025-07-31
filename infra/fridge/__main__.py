@@ -640,12 +640,12 @@ harbor = Release(
             "persistence": {
                 "persistentVolumeClaim": {
                     "registry": {
-                        "storageClass": "azurefile",
+                        "storageClass": storage_classes.rwm_class_name,
                         "accessMode": "ReadWriteMany",
                     },
                     "jobservice": {
                         "jobLog": {
-                            "storageClass": "azurefile",
+                            "storageClass": storage_classes.rwm_class_name,
                             "accessMode": "ReadWriteMany",
                         }
                     },
