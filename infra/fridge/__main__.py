@@ -157,8 +157,6 @@ storage_classes = components.StorageClasses(
         ),
     ),
 )
-fridge_storage_class = storage_classes.fridge_storage_class
-
 
 # Use patches for standard namespaces rather then trying to create them, so Pulumi does not try to delete them on teardown
 standard_namespaces = ["default", "kube-node-lease", "kube-public"]
@@ -289,7 +287,7 @@ minio_tenant = Chart(
                     "name": "argo-artifacts-pool-0",
                     "size": config.require("minio_pool_size"),
                     "volumesPerServer": 1,
-                    "storageClassName": fridge_storage_class.metadata.name,
+                    "storageClassName": storage_classes.encrypted_storage_class.metadata.name,
                     "containerSecurityContext": {
                         "runAsUser": 1000,
                         "runAsGroup": 1000,

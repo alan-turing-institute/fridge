@@ -111,5 +111,5 @@ class StorageClasses(ComponentResource):
 
             rwm_class_name = storage_class.metadata.name
 
-        self.fridge_storage_class = storage_class
-        self.fridge_rwm_class_name = rwm_class_name
+        self.encrypted_storage_class = storage_class
+        self.rwm_class_name = rwm_class_name
