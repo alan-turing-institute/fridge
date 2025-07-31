@@ -7,11 +7,16 @@ from pulumi_kubernetes.core.v1 import (
     EnvFromSourceArgs,
     PodSpecArgs,
     PodTemplateSpecArgs,
+    ProjectedVolumeSourceArgs,
     SeccompProfileArgs,
     Secret,
     SecretEnvSourceArgs,
     SecurityContextArgs,
     ServiceAccount,
+    ServiceAccountTokenProjectionArgs,
+    VolumeArgs,
+    VolumeMountArgs,
+    VolumeProjectionArgs,
 )
 from pulumi_kubernetes.meta.v1 import LabelSelectorArgs, ObjectMetaArgs
 from pulumi_kubernetes.rbac.v1 import (
@@ -156,7 +161,8 @@ class ApiServer(ComponentResource):
                                         )
                                     )
                                 ],
-                                image="harbor.aks.fridge.develop.turingsafehaven.ac.uk/internal/fridge-api:latest",
+                                image="ghcr.io/alan-turing-institute/fridge:main",
+                                image_pull_policy="Always",
                                 ports=[ContainerPortArgs(container_port=8000)],
                                 security_context=SecurityContextArgs(
                                     allow_privilege_escalation=False,
@@ -171,29 +177,29 @@ class ApiServer(ComponentResource):
                                     ),
                                 ),
                                 volume_mounts=[
-                                    {
-                                        "name": "token-vol",
-                                        "mountPath": "/service-account",
-                                        "readOnly": True,
-                                    }
+                                    VolumeMountArgs(
+                                        name="token-vol",
+                                        mount_path="/service-account",
+                                        read_only=True,
+                                    )
                                 ],
                             )
                         ],
                         service_account_name=fridge_api_sa.metadata.name,
                         volumes=[
-                            {
-                                "name": "token-vol",
-                                "projected": {
-                                    "sources": [
-                                        {
-                                            "serviceAccountToken": {
-                                                "expirationSeconds": 3600,
-                                                "path": "token",
-                                            }
-                                        }
+                            VolumeArgs(
+                                name="token-vol",
+                                projected=ProjectedVolumeSourceArgs(
+                                    sources=[
+                                        VolumeProjectionArgs(
+                                            service_account_token=ServiceAccountTokenProjectionArgs(
+                                                expiration_seconds=3600,
+                                                path="token",
+                                            )
+                                        )
                                     ]
-                                },
-                            }
+                                ),
+                            ),
                         ],
                     ),
                 ),
