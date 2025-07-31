@@ -81,6 +81,7 @@ security = HTTPBasic()
 # Init minio client (insecure enabled for dev)
 minio_client = MinioClient(os.getenv("MINIO_URL"), MINIO_ACCESS_KEY, MINIO_SECRET_KEY)
 
+
 class Workflow(BaseModel):
     name: str
     namespace: str
@@ -335,9 +336,11 @@ async def submit_workflow_from_template(
                 "resourceKind": "WorkflowTemplate",
                 "resourceName": workflow_template.template_name,
                 "submitOptions": {
-                    "parameters": parse_parameters(workflow_template.parameters)
-                    if workflow_template.parameters
-                    else []
+                    "parameters": (
+                        parse_parameters(workflow_template.parameters)
+                        if workflow_template.parameters
+                        else []
+                    )
                 },
             }
         ),
@@ -352,6 +355,7 @@ async def submit_workflow_from_template(
         "response": r.json() if verbose else extract_argo_workflows(r.json()),
     }
 
+
 @app.post("/object/{bucket}/upload", tags=["s3"])
 async def object_upload(
     bucket: str,
@@ -362,33 +366,36 @@ async def object_upload(
 ):
     return await minio_client.put_object(bucket, file)
 
+
 @app.get("/object/{bucket}/{file_name}", tags=["s3"])
 def object_get(
     bucket: str,
     file_name: str,
     target_file: str,
-    version: str=None,
+    version: str = None,
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
     ),
 ):
     return minio_client.get_object(bucket, file_name, target_file, version)
 
+
 @app.post("/object/bucket", tags=["s3"])
 async def create_bucket(
     bucket_name: str,
-    versioning: bool=False,
+    versioning: bool = False,
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
     ),
 ):
     return minio_client.create_bucket(bucket_name, versioning)
 
+
 @app.delete("/object/{bucket}/{file_name}", tags=["s3"])
 async def create_bucket(
     bucket: str,
     file_name: str,
-    version: str=None,
+    version: str = None,
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
     ),
