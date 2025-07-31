@@ -8,7 +8,6 @@ from pydantic import BaseModel
 from secrets import compare_digest
 from typing import Annotated, Any, Union
 from app.minio_client import MinioClient
-from minio.error import S3Error
 
 
 # Load environment variables from .env file
@@ -368,17 +367,30 @@ def object_get(
     bucket: str,
     file_name: str,
     target_file: str,
+    version: str=None,
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
     ),
 ):
-    return minio_client.get_object(bucket, file_name, target_file)
+    return minio_client.get_object(bucket, file_name, target_file, version)
 
 @app.post("/object/bucket", tags=["s3"])
 async def create_bucket(
     bucket_name: str,
+    versioning: bool=False,
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
     ),
 ):
-    return minio_client.create_bucket(bucket_name)
+    return minio_client.create_bucket(bucket_name, versioning)
+
+@app.delete("/object/{bucket}/{file_name}", tags=["s3"])
+async def create_bucket(
+    bucket: str,
+    file_name: str,
+    version: str=None,
+    verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
+        verify_request
+    ),
+):
+    return minio_client.delete_object(bucket, file_name, version)
