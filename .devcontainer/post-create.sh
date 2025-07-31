@@ -15,6 +15,7 @@ echo "export KUBECONFIG=/home/vscode/.kube/config" >> /home/vscode/.zshrc
 echo "export PATH=\$PATH:/home/vscode/.local/bin" >> /home/vscode/.zshrc
 
 cilium completion zsh > /home/vscode/.config/cilium-completions.zsh
+argo completion zsh > /home/vscode/.config/argo-completions.zsh
 /home/vscode/.pulumi/bin/pulumi gen-completion zsh > /home/vscode/.config/pulumi-completions.zsh
 
 [ -d ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/fzf-tab ] || git clone --depth 1 https://github.com/Aloxaf/fzf-tab ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/fzf-tab
