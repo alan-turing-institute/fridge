@@ -8,4 +8,4 @@ print_message() {
 }
 
 cilium version
-cilium install --version 1.17.6 --set=ipam.operator.clusterPoolIPv4PodCIDRList="10.42.0.0/16"
+cilium install --version 1.17.6 --set=ipam.operator.clusterPoolIPv4PodCIDRList="10.42.0.0/16" --set=hubble.relay.enabled=true
