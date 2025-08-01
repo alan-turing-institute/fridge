@@ -1,8 +1,6 @@
-import base64
 import json
 import os
 import requests
-from kubernetes import client, config
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -10,26 +8,19 @@ from pydantic import BaseModel
 from secrets import compare_digest
 from typing import Annotated
 
-
-# Load environment variables from .env file
-load_dotenv()
-FRIDGE_API_ADMIN = os.getenv("FRIDGE_API_ADMIN")
-FRIDGE_API_PASSWORD = os.getenv("FRIDGE_API_PASSWORD")
-
 # Check if running in the Kubernetes cluster
 # If so, use the in-cluster configuration to retrieve the token
 # Note that this requires a service account with the necessary permissions
 # If not in the cluster, use the current kube config credentials to retrieve the token
 if os.getenv("KUBERNETES_SERVICE_HOST"):
-    config.load_incluster_config()
-    v1 = client.CoreV1Api()
-    secret = v1.read_namespaced_secret(
-        "argo-workflows-api-sa.service-account-token", "argo-workflows"
-    )
-    ARGO_TOKEN = base64.b64decode(secret.data["token"]).decode("utf-8")
-    ARGO_SERVER = "argo-server.argo-server.svc.cluster.local:2746"
+    FRIDGE_API_ADMIN = os.getenv("FRIDGE_API_ADMIN")
+    FRIDGE_API_PASSWORD = os.getenv("FRIDGE_API_PASSWORD")
+    ARGO_SERVER = "https://argo-workflows-server.argo-server.svc.cluster.local:2746"
 else:
-    ARGO_TOKEN = os.getenv("ARGO_TOKEN")
+    # Load environment variables from .env file
+    load_dotenv()
+    FRIDGE_API_ADMIN = os.getenv("FRIDGE_API_ADMIN")
+    FRIDGE_API_PASSWORD = os.getenv("FRIDGE_API_PASSWORD")
     ARGO_SERVER = os.getenv("ARGO_SERVER")
 
 description = """
@@ -44,7 +35,19 @@ and submit workflows based on templates.
 
 """
 
-app = FastAPI(title="FRIDGE API", description=description, version="0.1.0")
+app = FastAPI(title="FRIDGE API", description=description, version="0.2.0")
+
+
+def argo_token():
+    """
+    Load the ARGO token on request from the environment variable or from the service account token file if running in a Kubernetes cluster.
+    """
+    if os.getenv("KUBERNETES_SERVICE_HOST"):
+        with open("/service-account/token", "r") as f:
+            ARGO_TOKEN = f.read().strip()
+    else:
+        ARGO_TOKEN = os.getenv("ARGO_TOKEN")
+    return ARGO_TOKEN
 
 
 security = HTTPBasic()
@@ -116,6 +119,37 @@ def extract_argo_workflows(response: dict) -> list[Workflow] | Workflow | dict:
         return workflow
 
 
+def extract_argo_workflow_templates(
+    response: dict,
+) -> list[WorkflowTemplate] | WorkflowTemplate | dict:
+    """
+    Parse the Argo response to extract workflow information.
+    """
+    workflows = []
+    if "items" in response:
+        if not response["items"]:
+            return {"message": "No workflows found in the specified namespace."}
+        for item in response["items"]:
+            workflow = WorkflowTemplate(
+                template_name=item.get("metadata", {}).get("name"),
+                namespace=item.get("metadata", {}).get("namespace"),
+                parameters=item.get("spec", {})
+                .get("arguments", {})
+                .get("parameters", []),
+            )
+            workflows.append(workflow)
+        return workflows
+    else:
+        workflow = WorkflowTemplate(
+            template_name=response.get("metadata", {}).get("name"),
+            namespace=response.get("metadata", {}).get("namespace"),
+            parameters=response.get("spec", {})
+            .get("arguments", {})
+            .get("parameters", []),
+        )
+        return workflow
+
+
 def parse_parameters(parameters: list[dict]) -> list[str]:
     """
     Parse the parameters from the workflow template into a list of strings.
@@ -161,8 +195,10 @@ async def get_workflows(
     r = requests.get(
         f"{ARGO_SERVER}/api/v1/workflows/{namespace}",
         verify=False,
-        headers={"Authorization": f"Bearer {ARGO_TOKEN}"},
+        headers={"Authorization": f"Bearer {argo_token()}"},
     )
+    print(f"Bearer {argo_token()}")
+    print(f"{ARGO_SERVER}/api/v1/workflows/{namespace}")
     if r.status_code != 200:
         raise HTTPException(
             status_code=r.status_code, detail=parse_argo_error(r.json())
@@ -186,7 +222,7 @@ async def get_single_workflow(
     r = requests.get(
         f"{ARGO_SERVER}/api/v1/workflows/{namespace}/{workflow_name}",
         verify=False,
-        headers={"Authorization": f"Bearer {ARGO_TOKEN}"},
+        headers={"Authorization": f"Bearer {argo_token()}"},
     )
     if r.status_code != 200:
         raise HTTPException(
@@ -200,6 +236,9 @@ async def get_single_workflow(
 @app.get("/workflowtemplates/{namespace}", tags=["Argo Workflows"])
 async def list_workflow_templates(
     namespace: str,
+    verbose: Annotated[
+        bool, "Return verbose output - full details of the templates"
+    ] = False,
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
     ),
@@ -207,14 +246,17 @@ async def list_workflow_templates(
     r = requests.get(
         f"{ARGO_SERVER}/api/v1/workflow-templates/{namespace}",
         verify=False,
-        headers={"Authorization": f"Bearer {ARGO_TOKEN}"},
+        headers={"Authorization": f"Bearer {argo_token()}"},
     )
     if r.status_code != 200:
         raise HTTPException(
             status_code=r.status_code, detail=parse_argo_error(r.json())
         )
     json_data = r.json()
-    return json_data
+    workflow_templates = extract_argo_workflow_templates(json_data)
+    if verbose:
+        return [json_data, workflow_templates]
+    return workflow_templates
 
 
 @app.get("/workflowtemplates/{namespace}/{template_name}", tags=["Argo Workflows"])
@@ -231,7 +273,7 @@ async def get_workflow_template(
     r = requests.get(
         f"{ARGO_SERVER}/api/v1/workflow-templates/{namespace}/{template_name}",
         verify=False,
-        headers={"Authorization": f"Bearer {ARGO_TOKEN}"},
+        headers={"Authorization": f"Bearer {argo_token()}"},
     )
     if r.status_code != 200:
         raise HTTPException(
@@ -261,7 +303,7 @@ async def submit_workflow_from_template(
     r = requests.post(
         f"{ARGO_SERVER}/api/v1/workflows/{workflow_template.namespace}/submit",
         verify=False,
-        headers={"Authorization": f"Bearer {ARGO_TOKEN}"},
+        headers={"Authorization": f"Bearer {argo_token()}"},
         data=json.dumps(
             {
                 "resourceKind": "WorkflowTemplate",
