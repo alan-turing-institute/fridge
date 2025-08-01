@@ -1,6 +1,5 @@
 from string import Template
 
-import base64
 import pulumi
 
 from pulumi import FileAsset, Output, ResourceOptions
@@ -20,8 +19,6 @@ from pulumi_kubernetes.rbac.v1 import (
 from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
 
 import components
-from components.api_server import ApiServer, ApiServerArgs
-from components.network_policies import NetworkPolicies
 from enums import K8sEnvironment, PodSecurityStandard, TlsEnvironment, tls_issuer_names
 
 
@@ -622,7 +619,6 @@ harbor = Release(
         repository_opts=RepositoryOptsArgs(
             repo="https://helm.goharbor.io",
         ),
-        value_yaml_files=[FileAsset("./k8s/harbor/values.yaml")],
         values={
             "expose": {
                 "clusterIP": {
@@ -750,9 +746,9 @@ api_server_ns = Namespace(
     ),
 )
 
-api_server = ApiServer(
+api_server = components.ApiServer(
     name=f"{stack_name}-api-server",
-    args=ApiServerArgs(
+    args=components.ApiServerArgs(
         api_server_ns=api_server_ns.metadata.name,
         argo_workflows_ns=argo_workflows_ns.metadata.name,
         harbor_fqdn=harbor_fqdn,
@@ -779,7 +775,7 @@ resources = [
     storage_classes,
 ]
 
-network_policies = component.NetworkPolicies(
+network_policies = components.NetworkPolicies(
     name=f"{stack_name}-network-policies",
     k8s_environment=k8s_environment,
     opts=ResourceOptions(
