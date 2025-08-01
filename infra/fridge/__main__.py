@@ -751,7 +751,6 @@ api_server = components.ApiServer(
     args=components.ApiServerArgs(
         api_server_ns=api_server_ns.metadata.name,
         argo_workflows_ns=argo_workflows_ns.metadata.name,
-        harbor_fqdn=harbor_fqdn,
         fridge_api_admin=config.require_secret("fridge_api_admin"),
         fridge_api_password=config.require_secret("fridge_api_password"),
     ),

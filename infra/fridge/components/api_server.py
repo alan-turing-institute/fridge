@@ -35,13 +35,11 @@ class ApiServerArgs:
         argo_workflows_ns: str,
         fridge_api_admin: str,
         fridge_api_password: str,
-        harbor_fqdn: str,
     ) -> None:
         self.api_server_ns = api_server_ns
         self.argo_workflows_ns = argo_workflows_ns
         self.fridge_api_admin = fridge_api_admin
         self.fridge_api_password = fridge_api_password
-        self.harbor_fqdn = harbor_fqdn
 
 
 class ApiServer(ComponentResource):
