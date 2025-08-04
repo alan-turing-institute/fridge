@@ -1,0 +1,87 @@
+
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: minio-tenant-deny-all
+  namespace: argo-artifacts
+spec:
+  endpointSelector: {}
+  # Deny all ingress and egress traffic by default
+  ingress:
+    - {}
+  egress:
+    - {}
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: minio-tenant
+  namespace: argo-artifacts
+spec:
+  # Apply to Tenant pods in this namespace
+  endpointSelector:
+    matchLabels:
+      v1.min.io/tenant: argo-artifacts
+  ingress:
+    # Allow ingress to web UI
+    # May want to adapt later to expose API
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: ingress-nginx
+            k8s:io.kubernetes.pod.namespace: ingress-nginx
+      toPorts:
+        - ports:
+            - port: "9090"
+              protocol: TCP
+    # Allow ingress from MinIO operator namespaces
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: operator
+            k8s:io.kubernetes.pod.namespace: minio-operator
+      toPorts:
+        - ports:
+            - port: "9000"
+              protocol: TCP
+    # Allows Argo Workflows pods to connect to the MinIO tenant for download and upload to/from S3 storage
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: argo-workflows
+      toPorts:
+        - ports:
+            - port: "9000"
+              protocol: TCP
+  egress:
+    # Outbound to k8s DNS to look up IPs
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+    # Allows the MinIO tenant to make API calls
+    # For exact permissions, check the permissions
+    # granted by the `argo-artifacts-sa` service account
+    # after deployment
+    - toEntities:
+        - kube-apiserver
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: acme-http-solver
+  namespace: argo-artifacts
+spec:
+  endpointSelector:
+    matchLabels:
+      acme.cert-manager.io/http01-solver: "true"
+  ingress:
+    - fromEndpoints:
+      - matchLabels:
+          k8s:app.kubernetes.io/name: ingress-nginx
+          k8s:io.kubernetes.pod.namespace: ingress-nginx
+      toPorts:
+        - ports:
+          - port: "8089"
+            protocol: TCP
