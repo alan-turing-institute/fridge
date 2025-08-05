@@ -46,94 +46,123 @@ class MinioConfigJob(ComponentResource):
         policies = {
             "read_only_ingress": """
             {
-              "version": "2012-10-17",
-              "statement": [
-                {
-                  "Effect": "Allow",
-                  "action": [
-                    "s3:GetBucketLocation",
-                    "s3:GetObject",
-                    "s3:ListBucket"
-                  ],
-                  "resource": [
-                    "arn:aws:s3:::ingress",
-                    "arn:aws:s3:::ingress/*"
-                  ]
-                }
-              ]
+                "version": "2012-10-17",
+                "statement": [
+                    {
+                        "Effect": "Allow",
+                        "action": [
+                            "s3:GetBucketLocation",
+                            "s3:GetObject",
+                            "s3:ListBucket"
+                        ],
+                        "resource": [
+                            "arn:aws:s3:::ingress",
+                            "arn:aws:s3:::ingress/*"
+                        ]
+                    }
+                ]
             }
             """,
             "read_only_sensitive_ingress": """
             {
-              "version": "2012-10-17",
-              "statement": [
-                {
-                  "Effect": "Allow",
-                  "action": [
-                    "s3:GetBucketLocation",
-                    "s3:GetObject",
-                    "s3:ListBucket"
-                  ],
-                  "resource": [
-                    "arn:aws:s3:::sensitive-ingress",
-                    "arn:aws:s3:::sensitive-ingress/*"
-                  ]
-                }
-              ]
+                "version": "2012-10-17",
+                "statement": [
+                    {
+                        "Effect": "Allow",
+                        "action": [
+                            "s3:GetBucketLocation",
+                            "s3:GetObject",
+                            "s3:ListBucket"
+                        ],
+                        "resource": [
+                            "arn:aws:s3:::sensitive-ingress",
+                            "arn:aws:s3:::sensitive-ingress/*"
+                        ]
+                    }
+                ]
             }
-        """,
+            """,
             "write_only_ready_for_review": """
-        {
-          "version": "2012-10-17",
-          "statement": [
             {
-              "Effect": "Allow",
-              "action": [
-                "s3:PutObject"
-              ],
-              "resource": [
-                "arn:aws:s3:::ready-for-review",
-                "arn:aws:s3:::ready-for-review/*"
-              ]
+                "version": "2012-10-17",
+                "statement": [
+                    {
+                        "Effect": "Allow",
+                        "action": [
+                            "s3:PutObject"
+                        ],
+                        "resource": [
+                            "arn:aws:s3:::ready-for-review",
+                            "arn:aws:s3:::ready-for-review/*"
+                        ]
+                    }
+                ]
             }
-          ]
-        }
-        """,
+            """,
             "read_only_ready_for_review": """
-        {
-          "version": "2012-10-17",
-          "statement": [
             {
-              "Effect": "Allow",
-              "action": [
-                "s3:GetBucketLocation",
-                "s3:GetObject",
-                "s3:ListBucket"
-              ],
-              "resource": [
-                "arn:aws:s3:::ready-for-review",
-                "arn:aws:s3:::ready-for-review/*"
-              ]
+                "version": "2012-10-17",
+                "statement": [
+                    {
+                        "Effect": "Allow",
+                        "action": [
+                            "s3:GetBucketLocation",
+                            "s3:GetObject",
+                            "s3:ListBucket"
+                        ],
+                        "resource": [
+                            "arn:aws:s3:::ready-for-review",
+                            "arn:aws:s3:::ready-for-review/*"
+                        ]
+                    }
+                ]
             }
-          ]
-        }
-        """,
+            """,
             "write_only_ready_for_egress": """
-        {
-          "version": "2012-10-17",
-          "statement": [
             {
-              "Effect": "Allow",
-              "action": [
-                "s3:PutObject"
-              ],
-              "resource": [
-                "arn:aws:s3:::ready-for-egress",
-                "arn:aws:s3:::ready-for-egress/*"
-              ]
+                "version": "2012-10-17",
+                "statement": [
+                    {
+                        "Effect": "Allow",
+                        "action": [
+                            "s3:PutObject"
+                        ],
+                        "resource": [
+                            "arn:aws:s3:::ready-for-egress",
+                            "arn:aws:s3:::ready-for-egress/*"
+                        ]
+                    }
+                ]
             }
-          ]
-        }
+            """,
+            "argo-workflows-pod-policy": """
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "s3:PutObject"
+                        ],
+                        "Resource": [
+                            "arn:aws:s3:::ready-for-egress",
+                            "arn:aws:s3:::ready-for-egress/*"
+                        ]
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "s3:GetBucketLocation",
+                            "s3:GetObject",
+                            "s3:ListBucket"
+                        ],
+                        "Resource": [
+                            "arn:aws:s3:::ingress",
+                            "arn:aws:s3:::ingress/*"
+                        ]
+                    }
+                ]
+            }
         """,
         }
 
