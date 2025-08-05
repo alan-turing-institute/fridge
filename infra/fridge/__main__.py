@@ -889,6 +889,7 @@ resources = [
     configure_containerd_daemonset,
     harbor,
     ingress_nginx,
+    minio_config,
     minio_ingress,
     minio_operator,
     minio_tenant,
