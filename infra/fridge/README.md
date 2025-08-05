@@ -2,6 +2,14 @@
 
 FRIDGE is deployed on Kubernetes using [Pulumi](https://www.pulumi.com/)
 
+This folder contains the Pulumi code for deploying the FRIDGE application on Kubernetes.
+
+It includes configurations for various components such as Argo Workflows, MinIO, network policies, and other infrastructure settings.
+
+It does not deploy the Kubernetes cluster itself; instead, it assumes that a Kubernetes cluster is already available.
+
+For an example of deploying a Kubernetes cluster on Azure Kubernetes Service using Pulumi, see the `infra/aks` directory.
+
 ## Prerequisites
 
 You will need the following tools installed on your local machine to deploy FRIDGE:
@@ -15,31 +23,85 @@ You will need the following tools installed on your local machine to deploy FRID
 
 You can use any backend you like for Pulumi.
 
-The development team use an Azure Storage Account as a backend for Pulumi, and this guide assumes you will do the same.
-
-Begin by a creating a new Pulumi project in a new directory using the `azure-python` template:
+For local development and testing, you can use the local backend:
 
 ```console
-pulumi new azure-python
+pulumi login --local
 ```
 
-Follow the examples in the [Pulumi documentation](https://www.pulumi.com/docs/iac/get-started/azure/create-project/).
-
-To set up the Azure backend, you will need to create a Storage Account and a Container within it.
-
+Alternatively, the development team at the Turing use an Azure Storage Account as a backend.
+To set up an Azure backend, you will need to create a Storage Account and a Container within it.
 Then follow the instructions in the [Pulumi documentation](https://www.pulumi.com/docs/iac/concepts/state-and-backends/#azure-blob-storage) to configure your Pulumi project to use the Azure Blob Storage backend.
 
-## Configuring FRIDGE
+## Setting Up the Project
 
-FRIDGE is configured using a Pulumi configuration file.
+First, set up a virtual environment for this project. You can use the following commands:
 
-## Deploying FRIDGE
+```console
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+The `infra/fridge/` folder already contains a Pulumi project configuration file (`Pulumi.yaml`), so you do not need to run `pulumi new` to create a new project.
+
+The `Pulumi.yaml` file defines the project name and a schema for the configurations for individual stacks.
+
+To create a new stack, you can use the following command:
+
+```console
+pulumi stack init <stack-name>
+```
+
+Note: you will be asked to provide a passphrase for the stack, which is used to encrypt secrets within the stack's configuration settings.
+
+Each stack has its own configuration settings, defined in the `Pulumi.<stack-name>.yaml` files.
+
+The configuration can be manually edited, or you can use the Pulumi CLI to set configuration values.
+
+You can set individual configuration values for the stack using the following command:
+
+```console
+pulumi config set <key> <value>
+```
+
+Some of the configuration keys must be set as secrets, such as the MinIO access key and secret key. Those *must* be set using the Pulumi CLI using the `--secret` flag:
+
+```console
+pulumi config set --secret minio_root_password <your-minio-secret-key>
+```
+
+For a complete list of configuration keys, see the `Pulumi.yaml` file.
+
+Pulumi requires that the Kubernetes context is set for the stack. For example, to set the Kubernetes context for the `dawn` stack, you can use:
+
+```console
+pulumi config set kubernetes:context dawn
+```
+
+This must match one of the contexts in your local `kubeconfig`. You can check the available contexts with `kubectl`:
+
+```console
+kubectl config get-contexts
+```
+
+Once you have set up the stack and its configuration, you can deploy the stack using the following command:
+
+```console
+pulumi up
+```
+
+## FRIDGE deployment targets
 
 Currently, FRIDGE is configured to support deployment on Azure Kubernetes Service (AKS) and on DAWN AI.
 
+FRIDGE uses Cilium for networking, and thus requires a Kubernetes cluster with Cilium installed.
 
-|   | AKS | DAWN |
+| Component | AKS | DAWN |
 |---|---|---|
 | cert-manager.io | | [x] |
 | hubble | | [x] |
 | ingress-nginx | | [x] |
+| minio | [x] | [x] |
+| argo-workflows | [x] | [x] |
+| longhorn |  | [x] |
