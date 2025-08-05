@@ -191,6 +191,7 @@ class MinioConfigJob(ComponentResource):
                 "write-only-ready-for-egress.json": policies[
                     "write_only_ready_for_egress"
                 ],
+                "argo-workflows-pod-policy.json": policies["argo-workflows-pod-policy"],
             },
             opts=child_opts,
         )
@@ -201,6 +202,7 @@ class MinioConfigJob(ComponentResource):
             metadata=ObjectMetaArgs(
                 name="minio-config-job",
                 namespace=args.minio_tenant_ns.metadata.name,
+                labels={"app": "minio-config-job"},
             ),
             spec=JobSpecArgs(
                 backoff_limit=1,
