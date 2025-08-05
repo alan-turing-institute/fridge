@@ -88,5 +88,4 @@ config:
     description: Kubernetes environment (e.g., Dawn, AKS)
   kubernetes:context:
     value: ""
-    type: string
     description: Kubernetes context for the FRIDGE deployment
