@@ -6,22 +6,12 @@ from pulumi import FileAsset, Output, ResourceOptions
 from pulumi_kubernetes.batch.v1 import (
     CronJobPatch,
     CronJobSpecPatchArgs,
-    Job,
-    JobSpecArgs,
 )
 from pulumi_kubernetes.core.v1 import (
-    ConfigMapVolumeSourceArgs,
-    ContainerArgs,
-    EnvVarArgs,
     Namespace,
     NamespacePatch,
-    PodSpecArgs,
-    PodTemplateSpecArgs,
     Secret,
-    SecurityContextArgs,
     ServiceAccount,
-    VolumeArgs,
-    VolumeMountArgs,
 )
 from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
@@ -485,98 +475,19 @@ minio_ingress = Ingress(
     ),
 )
 
-## Once the MinIO tenant is created, we need to configure the standard user accounts and policies manually
-## Run a job to configure the MinIO tenant
-minio_config_map = Template(
-    open("k8s/minio/minio-configuration-cm.yaml", "r").read()
-).substitute(
-    namespace="argo-artifacts",
-    minio_alias="argoartifacts",
-    minio_url="http://minio.argo-artifacts.svc.cluster.local:80",
-)
-
-minio_config_cm = ConfigGroup(
-    "minio-configuration-cm",
-    yaml=[minio_config_map],
-    opts=ResourceOptions(
-        depends_on=[minio_tenant],
-    ),
-)
-
-minio_config_job = Job(
-    "minio-config-job",
-    metadata=ObjectMetaArgs(
-        name="minio-config-job",
-        namespace=minio_tenant_ns.metadata.name,
-    ),
-    spec=JobSpecArgs(
-        backoff_limit=1,
-        template=PodTemplateSpecArgs(
-            spec=PodSpecArgs(
-                containers=[
-                    ContainerArgs(
-                        name="minio-config-job",
-                        image="minio/mc:latest",
-                        command=[
-                            "/bin/sh",
-                            "-c",
-                        ],
-                        args=[
-                            "mc --insecure alias set argoartifacts http://minio.argo-artifacts.svc.cluster.local:80 $(MINIO_ROOT_USER) $(MINIO_ROOT_PASSWORD) &&"
-                            "/tmp/scripts/setup.sh +x;",
-                        ],
-                        resources={
-                            "requests": {
-                                "cpu": "100m",
-                                "memory": "128Mi",
-                            },
-                            "limits": {
-                                "cpu": "100m",
-                                "memory": "128Mi",
-                            },
-                        },
-                        env=[
-                            EnvVarArgs(name="MC_CONFIG_DIR", value="/tmp/.mc"),
-                            EnvVarArgs(
-                                name="MINIO_ROOT_USER",
-                                value=config.require_secret("minio_root_user"),
-                            ),
-                            EnvVarArgs(
-                                name="MINIO_ROOT_PASSWORD",
-                                value=config.require_secret("minio_root_password"),
-                            ),
-                        ],
-                        security_context=SecurityContextArgs(
-                            allow_privilege_escalation=False,
-                            capabilities={"drop": ["ALL"]},
-                            run_as_group=1000,
-                            run_as_non_root=True,
-                            run_as_user=1000,
-                            seccomp_profile={"type": "RuntimeDefault"},
-                        ),
-                        volume_mounts=[
-                            VolumeMountArgs(
-                                name="minio-config-volume",
-                                mount_path="/tmp/scripts/",
-                            )
-                        ],
-                    )
-                ],
-                volumes=[
-                    VolumeArgs(
-                        name="minio-config-volume",
-                        config_map=ConfigMapVolumeSourceArgs(
-                            name="minio-configuration",
-                            default_mode=0o777,
-                        ),
-                    )
-                ],
-                restart_policy="Never",
-            ),
-        ),
+# MinIO configuration job
+minio_config = components.MinioConfigJob(
+    name=f"{stack_name}-minio-config-job",
+    args=components.MinioConfigArgs(
+        minio_tenant_ns=minio_tenant_ns,
+        minio_tenant=minio_tenant,
+        minio_credentials={
+            "minio_root_user": config.require_secret("minio_root_user"),
+            "minio_root_password": config.require_secret("minio_root_password"),
+        },
     ),
     opts=ResourceOptions(
-        depends_on=[minio_tenant, minio_env_secret],
+        depends_on=[minio_tenant, minio_env_secret, minio_tenant_ns],
     ),
 )
 
