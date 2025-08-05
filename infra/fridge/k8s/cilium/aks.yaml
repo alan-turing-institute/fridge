@@ -45,6 +45,13 @@ spec:
         - ports:
             - port: "443"
               protocol: TCP
+    # Allow autoscaler to communicate with the Azure DNS server
+    - toCIDR:
+        - 168.63.129.16/32
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
@@ -66,6 +73,28 @@ spec:
         - ports:
             - port: "4443"
               protocol: TCP
+    - fromEntities:
+        - remote-node
+      toPorts:
+        - ports:
+          - port : "10250"
+            protocol: TCP
+  egress:
+    - toEntities:
+        - remote-node
+      toPorts:
+        - ports:
+            - port: "10250"
+              protocol: TCP
+    - toEntities:
+        - kube-apiserver
+    - toEndpoints:
+        - matchLabels:
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
@@ -104,6 +133,35 @@ spec:
       toPorts:
         - ports:
             - port: "443"
+              protocol: TCP
+      # Allow autoscaler to communicate with the Azure DNS server
+    - toCIDR:
+        - 168.63.129.16/32
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: konnectivity-cert-manager
+  namespace: cert-manager
+  # Allow access to the cert manager webhook from the Konnectivity Agent,
+  # which mediates traffic from the Kubernetes API server resulting from
+  # webhooks
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s:app.kubernetes.io/component: webhook
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app: konnectivity-agent
+            k8s:io.kubernetes.pod.namespace: kube-system
+      toPorts:
+        - ports:
+            - port: "10250"
               protocol: TCP
 ---
 apiVersion: "cilium.io/v2"

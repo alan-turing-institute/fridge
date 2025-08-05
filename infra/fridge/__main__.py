@@ -1,24 +1,13 @@
-from enum import Enum, unique
 from string import Template
 
 import pulumi
-from pulumi import ComponentResource, FileAsset, Output, ResourceOptions
-import pulumi_kubernetes as kubernetes
-from pulumi_kubernetes.core.v1 import (
-    Namespace,
-    NamespacePatch,
-    Secret,
-    ServiceAccount,
-)
-from components.network_policies import NetworkPolicies
-
+from pulumi import FileAsset, Output, ResourceOptions
 from pulumi_kubernetes.batch.v1 import CronJobPatch, CronJobSpecPatchArgs
+from pulumi_kubernetes.core.v1 import Namespace, NamespacePatch, Secret, ServiceAccount
 from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs, ObjectMetaPatchArgs
 from pulumi_kubernetes.networking.v1 import Ingress
-from pulumi_kubernetes.storage.v1 import StorageClass
-from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
 from pulumi_kubernetes.rbac.v1 import (
     PolicyRuleArgs,
     Role,
@@ -26,28 +15,11 @@ from pulumi_kubernetes.rbac.v1 import (
     RoleRefArgs,
     SubjectArgs,
 )
+from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
 
+import components
 
-@unique
-class TlsEnvironment(Enum):
-    STAGING = "staging"
-    PRODUCTION = "production"
-
-
-@unique
-class PodSecurityStandard(Enum):
-    RESTRICTED = {"pod-security.kubernetes.io/enforce": "restricted"}
-    PRIVILEGED = {"pod-security.kubernetes.io/enforce": "privileged"}
-
-
-config = pulumi.Config()
-stack_name = pulumi.get_stack()
-
-tls_environment = TlsEnvironment(config.require("tls_environment"))
-tls_issuer_names = {
-    TlsEnvironment.STAGING: "letsencrypt-staging",
-    TlsEnvironment.PRODUCTION: "letsencrypt-prod",
-}
+from enums import K8sEnvironment, PodSecurityStandard, TlsEnvironment, tls_issuer_names
 
 
 def patch_namespace(name: str, pss: PodSecurityStandard) -> NamespacePatch:
@@ -60,29 +32,26 @@ def patch_namespace(name: str, pss: PodSecurityStandard) -> NamespacePatch:
     )
 
 
-k8s_environment = config.get("k8s_env")
-if k8s_environment not in ["AKS", "DAWN"]:
+config = pulumi.Config()
+tls_environment = TlsEnvironment(config.require("tls_environment"))
+stack_name = pulumi.get_stack()
+
+
+try:
+    k8s_environment = K8sEnvironment(config.get("k8s_env"))
+except ValueError:
     raise ValueError(
         f"Invalid k8s environment: {k8s_environment}. "
-        "Supported values are 'AKS' and 'DAWN'."
+        "Supported values are 'AKS' and 'Dawn'."
     )
 
-# Kubernetes configuration
-k8s_provider = kubernetes.Provider(
-    "k8s_provider",
-    context=config.require("k8s_context"),
-)
-
 match k8s_environment:
-    case "AKS":
+    case K8sEnvironment.AKS:
         # Hubble UI
         # Interface for Cilium
         hubble_ui = ConfigFile(
             "hubble-ui",
             file="./k8s/hubble/hubble_ui.yaml",
-            opts=ResourceOptions(
-                provider=k8s_provider,
-            ),
         )
 
         # Ingress NGINX (ingress provider)
@@ -92,16 +61,12 @@ match k8s_environment:
                 name="ingress-nginx",
                 labels={} | PodSecurityStandard.RESTRICTED.value,
             ),
-            opts=ResourceOptions(
-                provider=k8s_provider,
-            ),
         )
 
         ingress_nginx = ConfigFile(
             "ingress-nginx",
             file="https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.1/deploy/static/provider/cloud/deploy.yaml",
             opts=ResourceOptions(
-                provider=k8s_provider,
                 depends_on=[ingress_nginx_ns],
             ),
         )
@@ -112,9 +77,6 @@ match k8s_environment:
             metadata=ObjectMetaArgs(
                 name="cert-manager",
                 labels={} | PodSecurityStandard.RESTRICTED.value,
-            ),
-            opts=ResourceOptions(
-                provider=k8s_provider,
             ),
         )
 
@@ -131,7 +93,6 @@ match k8s_environment:
                 "extraArgs": ["--acme-http01-solver-nameservers=8.8.8.8:53,1.1.1.1:53"],
             },
             opts=ResourceOptions(
-                provider=k8s_provider,
                 depends_on=[cert_manager_ns],
             ),
         )
@@ -151,7 +112,7 @@ match k8s_environment:
             ].spec.ports.apply(lambda ports: [item.port for item in ports]),
         )
 
-    case "DAWN":
+    case K8sEnvironment.DAWN:
         dawn_managed_namespaces = ["cert-manager", "ingress-nginx"]
         cert_manager_ns = Namespace.get("cert-manager-ns", "cert-manager")
         ingress_nginx_ns = Namespace.get("ingress-nginx-ns", "ingress-nginx")
@@ -175,69 +136,33 @@ match k8s_environment:
             ),
         )
 
+# Storage classes
+storage_classes = components.StorageClasses(
+    "storage_classes",
+    components.StorageClassesArgs(
+        k8s_environment=k8s_environment,
+        azure_disk_encryption_set=(
+            config.require("azure_disk_encryption_set")
+            if k8s_environment is K8sEnvironment.AKS
+            else None
+        ),
+        azure_resource_group=(
+            config.require("azure_resource_group")
+            if k8s_environment is K8sEnvironment.AKS
+            else None
+        ),
+        azure_subscription_id=(
+            config.require("azure_subscription_id")
+            if k8s_environment is K8sEnvironment.AKS
+            else None
+        ),
+    ),
+)
+
 # Use patches for standard namespaces rather then trying to create them, so Pulumi does not try to delete them on teardown
 standard_namespaces = ["default", "kube-node-lease", "kube-public"]
 for namespace in standard_namespaces:
     patch_namespace(namespace, PodSecurityStandard.RESTRICTED)
-
-# Longhorn
-longhorn_ns = Namespace(
-    "longhorn-system",
-    metadata=ObjectMetaArgs(
-        name="longhorn-system",
-        labels={} | PodSecurityStandard.PRIVILEGED.value,
-    ),
-    opts=ResourceOptions(
-        provider=k8s_provider,
-    ),
-)
-
-longhorn = Release(
-    "longhorn",
-    namespace=longhorn_ns.metadata.name,
-    chart="longhorn",
-    version="1.9.0",
-    repository_opts=RepositoryOptsArgs(
-        repo="https://charts.longhorn.io",
-    ),
-    # Add a toleration for the GPU node, to allow Longhorn to schedule pods/create volumes there
-    values={
-        "global": {
-            "tolerations": [
-                {
-                    "key": "gpu.intel.com/i915",
-                    "operator": "Exists",
-                    "effect": "NoSchedule",
-                }
-            ]
-        },
-        "defaultSettings": {"taintToleration": "gpu.intel.com/i915:NoSchedule"},
-        "persistence": {"defaultClassReplicaCount": 2},
-    },
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[longhorn_ns],
-    ),
-)
-
-longhorn_storage_class = StorageClass(
-    "longhorn-storage",
-    allow_volume_expansion=True,
-    metadata=ObjectMetaArgs(
-        name="longhorn-storage",
-    ),
-    parameters={
-        "dataLocality": "best-effort",
-        "fsType": "ext4",
-        "numberOfReplicas": "2",
-        "staleReplicaTimeout": "2880",
-    },
-    provisioner="driver.longhorn.io",
-    opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[longhorn],
-    ),
-)
 
 
 cluster_issuer_config = Template(
@@ -252,7 +177,6 @@ cert_manager_issuers = ConfigGroup(
     "cert-manager-issuers",
     yaml=[cluster_issuer_config],
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[cert_manager, cert_manager_ns],
     ),
 )
@@ -263,9 +187,6 @@ minio_operator_ns = Namespace(
     metadata=ObjectMetaArgs(
         name="minio-operator",
         labels={} | PodSecurityStandard.RESTRICTED.value,
-    ),
-    opts=ResourceOptions(
-        provider=k8s_provider,
     ),
 )
 
@@ -278,7 +199,6 @@ minio_operator = Chart(
     ),
     version="7.1.1",
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[minio_operator_ns],
     ),
 )
@@ -288,9 +208,6 @@ minio_tenant_ns = Namespace(
     metadata=ObjectMetaArgs(
         name="argo-artifacts",
         labels={} | PodSecurityStandard.RESTRICTED.value,
-    ),
-    opts=ResourceOptions(
-        provider=k8s_provider,
     ),
 )
 
@@ -325,7 +242,6 @@ minio_env_secret = Secret(
         "config.env": minio_config_env,
     },
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[minio_tenant_ns],
     ),
 )
@@ -372,7 +288,7 @@ minio_tenant = Chart(
                     "name": "argo-artifacts-pool-0",
                     "size": config.require("minio_pool_size"),
                     "volumesPerServer": 1,
-                    "storageClassName": longhorn_storage_class.metadata.name,
+                    "storageClassName": storage_classes.encrypted_storage_class.metadata.name,
                     "containerSecurityContext": {
                         "runAsUser": 1000,
                         "runAsGroup": 1000,
@@ -388,8 +304,7 @@ minio_tenant = Chart(
         },
     },
     opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[longhorn, minio_env_secret, minio_operator, minio_tenant_ns],
+        depends_on=[storage_classes, minio_env_secret, minio_operator, minio_tenant_ns],
     ),
 )
 
@@ -437,7 +352,6 @@ minio_ingress = Ingress(
         ],
     },
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[minio_tenant],
     ),
 )
@@ -449,9 +363,6 @@ argo_server_ns = Namespace(
         name="argo-server",
         labels={} | PodSecurityStandard.RESTRICTED.value,
     ),
-    opts=ResourceOptions(
-        provider=k8s_provider,
-    ),
 )
 
 argo_workflows_ns = Namespace(
@@ -459,9 +370,6 @@ argo_workflows_ns = Namespace(
     metadata=ObjectMetaArgs(
         name="argo-workflows",
         labels={} | PodSecurityStandard.RESTRICTED.value,
-    ),
-    opts=ResourceOptions(
-        provider=k8s_provider,
     ),
 )
 
@@ -485,7 +393,6 @@ argo_sso_secret = Secret(
         "client-secret": config.require_secret("oidc_client_secret"),
     },
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[argo_server_ns],
     ),
 )
@@ -502,7 +409,6 @@ argo_minio_secret = Secret(
         "secretkey": config.require_secret("minio_root_password"),
     },
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[argo_server_ns],
     ),
 )
@@ -542,7 +448,6 @@ argo_workflows = Chart(
         },
     },
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[
             argo_minio_secret,
             argo_sso_secret,
@@ -593,7 +498,6 @@ argo_workflows_admin_role = Role(
         ),
     ],
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[argo_workflows],
     ),
 )
@@ -611,7 +515,6 @@ argo_workflows_admin_sa = ServiceAccount(
         },
     ),
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[argo_workflows],
     ),
 )
@@ -627,7 +530,6 @@ argo_workflows_admin_sa_token = Secret(
     ),
     type="kubernetes.io/service-account-token",
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[argo_workflows_admin_sa],
     ),
 )
@@ -651,7 +553,6 @@ argo_workflows_admin_role_binding = RoleBinding(
         )
     ],
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[argo_workflows_admin_role],
     ),
 )
@@ -670,7 +571,6 @@ argo_workflows_default_sa = ServiceAccount(
         },
     ),
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[argo_workflows],
     ),
 )
@@ -686,8 +586,15 @@ argo_workflows_default_sa_token = Secret(
     ),
     type="kubernetes.io/service-account-token",
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[argo_workflows_default_sa],
+    ),
+)
+
+api_rbac = components.ApiRbac(
+    name=f"{stack_name}-api-rbac",
+    argo_workflows_ns=argo_workflows_ns.metadata.name,
+    opts=ResourceOptions(
+        depends_on=[argo_workflows_ns],
     ),
 )
 
@@ -697,9 +604,6 @@ harbor_ns = Namespace(
     metadata=ObjectMetaArgs(
         name="harbor",
         labels={} | PodSecurityStandard.RESTRICTED.value,
-    ),
-    opts=ResourceOptions(
-        provider=k8s_provider,
     ),
 )
 
@@ -719,24 +623,44 @@ harbor = Release(
     ReleaseArgs(
         chart="harbor",
         namespace="harbor",
-        version="1.16.2",
+        version="1.17.1",
         repository_opts=RepositoryOptsArgs(
             repo="https://helm.goharbor.io",
         ),
-        value_yaml_files=[FileAsset("./k8s/harbor/values.yaml")],
         values={
             "expose": {
                 "clusterIP": {
                     "staticClusterIP": config.require("harbor_ip"),
-                }
+                },
+                "type": "clusterIP",
+                "tls": {
+                    "enabled": "false",
+                    "certSource": "none",
+                },
+                "secret": {
+                    "secretName": "harbor-ingress-tls",
+                },
             },
             "externalURL": harbor_external_url,
             "harborAdminPassword": config.require_secret("harbor_admin_password"),
+            "persistence": {
+                "persistentVolumeClaim": {
+                    "registry": {
+                        "storageClass": storage_classes.rwm_class_name,
+                        "accessMode": "ReadWriteMany",
+                    },
+                    "jobservice": {
+                        "jobLog": {
+                            "storageClass": storage_classes.rwm_class_name,
+                            "accessMode": "ReadWriteMany",
+                        }
+                    },
+                },
+            },
         },
     ),
     opts=ResourceOptions(
-        provider=k8s_provider,
-        depends_on=[harbor_ns, longhorn, longhorn_storage_class],
+        depends_on=[harbor_ns, storage_classes],
     ),
 )
 
@@ -784,7 +708,6 @@ harbor_ingress = Ingress(
         ],
     },
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[harbor],
     ),
 )
@@ -800,7 +723,6 @@ containerd_config_ns = Namespace(
         labels={} | PodSecurityStandard.PRIVILEGED.value,
     ),
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[harbor],
     ),
 )
@@ -819,7 +741,6 @@ configure_containerd_daemonset = ConfigGroup(
     "configure-containerd-daemon",
     yaml=[skip_harbor_tls],
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=[harbor],
     ),
 )
@@ -833,17 +754,16 @@ resources = [
     configure_containerd_daemonset,
     harbor,
     ingress_nginx,
-    longhorn,
     minio_ingress,
     minio_operator,
     minio_tenant,
+    storage_classes,
 ]
 
-network_policies = NetworkPolicies(
+network_policies = components.NetworkPolicies(
     name=f"{stack_name}-network-policies",
     k8s_environment=k8s_environment,
     opts=ResourceOptions(
-        provider=k8s_provider,
         depends_on=resources,
     ),
 )
