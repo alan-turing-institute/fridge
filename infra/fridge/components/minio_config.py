@@ -37,9 +37,9 @@ class MinioConfigJob(ComponentResource):
         minio_setup_sh = """
             echo "Creating default S3 policies"
             for policy in /tmp/scripts/*.json; do
-                echo "Creating policy $$policy"
-                mc --insecure admin policy create $1 $$(basename $$policy .json) $$policy
-                echo "Policy $$(basename $$policy .json) created"
+                echo "Creating policy $policy"
+                mc --insecure admin policy create $1 $(basename "$policy" .json) "$policy"
+                echo "Policy $(basename "$policy" .json) created"
             done
         """
 
@@ -187,7 +187,7 @@ class MinioConfigJob(ComponentResource):
                                 ],
                                 args=[
                                     "mc --insecure alias set argoartifacts http://minio.argo-artifacts.svc.cluster.local:80 $(MINIO_ROOT_USER) $(MINIO_ROOT_PASSWORD) &&"
-                                    "/tmp/scripts/setup.sh +x;",
+                                    "/tmp/scripts/setup.sh argoartifacts;",
                                 ],
                                 resources={
                                     "requests": {
