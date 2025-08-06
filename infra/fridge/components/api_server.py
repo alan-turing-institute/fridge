@@ -112,7 +112,7 @@ class ApiServer(ComponentResource):
             string_data={
                 "FRIDGE_API_ADMIN": args.fridge_api_admin,
                 "FRIDGE_API_PASSWORD": args.fridge_api_password,
-                "VERIFY_TLS": args.verify_tls,
+                "VERIFY_TLS": str(args.verify_tls),
             },
             opts=child_opts,
         )
