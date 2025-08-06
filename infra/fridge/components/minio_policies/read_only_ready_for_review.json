@@ -1,0 +1,17 @@
+{
+    "version": "2012-10-17",
+    "statement": [
+        {
+            "Effect": "Allow",
+            "action": [
+                "s3:GetBucketLocation",
+                "s3:GetObject",
+                "s3:ListBucket"
+            ],
+            "resource": [
+                "arn:aws:s3:::ready-for-review",
+                "arn:aws:s3:::ready-for-review/*"
+            ]
+        }
+    ]
+}

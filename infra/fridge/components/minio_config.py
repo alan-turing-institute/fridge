@@ -1,3 +1,4 @@
+import os
 from string import Template
 from pulumi import ComponentResource, ResourceOptions
 from pulumi_kubernetes.batch.v1 import (
@@ -18,6 +19,16 @@ from pulumi_kubernetes.core.v1 import (
 )
 from pulumi_kubernetes.helm.v4 import Chart
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
+
+
+def load_policy(name: str) -> str:
+    """
+    Load a policy from the policies directory.
+    """
+    with open(
+        os.path.join(os.path.dirname(__file__), "minio_policies", name), "r"
+    ) as f:
+        return f.read()
 
 
 class MinioConfigArgs:
@@ -43,129 +54,6 @@ class MinioConfigJob(ComponentResource):
             done
         """
 
-        policies = {
-            "read_only_ingress": """
-            {
-                "version": "2012-10-17",
-                "statement": [
-                    {
-                        "Effect": "Allow",
-                        "action": [
-                            "s3:GetBucketLocation",
-                            "s3:GetObject",
-                            "s3:ListBucket"
-                        ],
-                        "resource": [
-                            "arn:aws:s3:::ingress",
-                            "arn:aws:s3:::ingress/*"
-                        ]
-                    }
-                ]
-            }
-            """,
-            "read_only_sensitive_ingress": """
-            {
-                "version": "2012-10-17",
-                "statement": [
-                    {
-                        "Effect": "Allow",
-                        "action": [
-                            "s3:GetBucketLocation",
-                            "s3:GetObject",
-                            "s3:ListBucket"
-                        ],
-                        "resource": [
-                            "arn:aws:s3:::sensitive-ingress",
-                            "arn:aws:s3:::sensitive-ingress/*"
-                        ]
-                    }
-                ]
-            }
-            """,
-            "write_only_ready_for_review": """
-            {
-                "version": "2012-10-17",
-                "statement": [
-                    {
-                        "Effect": "Allow",
-                        "action": [
-                            "s3:PutObject"
-                        ],
-                        "resource": [
-                            "arn:aws:s3:::ready-for-review",
-                            "arn:aws:s3:::ready-for-review/*"
-                        ]
-                    }
-                ]
-            }
-            """,
-            "read_only_ready_for_review": """
-            {
-                "version": "2012-10-17",
-                "statement": [
-                    {
-                        "Effect": "Allow",
-                        "action": [
-                            "s3:GetBucketLocation",
-                            "s3:GetObject",
-                            "s3:ListBucket"
-                        ],
-                        "resource": [
-                            "arn:aws:s3:::ready-for-review",
-                            "arn:aws:s3:::ready-for-review/*"
-                        ]
-                    }
-                ]
-            }
-            """,
-            "write_only_ready_for_egress": """
-            {
-                "version": "2012-10-17",
-                "statement": [
-                    {
-                        "Effect": "Allow",
-                        "action": [
-                            "s3:PutObject"
-                        ],
-                        "resource": [
-                            "arn:aws:s3:::ready-for-egress",
-                            "arn:aws:s3:::ready-for-egress/*"
-                        ]
-                    }
-                ]
-            }
-            """,
-            "argo-workflows-pod-policy": """
-            {
-                "Version": "2012-10-17",
-                "Statement": [
-                    {
-                        "Effect": "Allow",
-                        "Action": [
-                            "s3:PutObject"
-                        ],
-                        "Resource": [
-                            "arn:aws:s3:::ready-for-egress",
-                            "arn:aws:s3:::ready-for-egress/*"
-                        ]
-                    },
-                    {
-                        "Effect": "Allow",
-                        "Action": [
-                            "s3:GetBucketLocation",
-                            "s3:GetObject",
-                            "s3:ListBucket"
-                        ],
-                        "Resource": [
-                            "arn:aws:s3:::ingress",
-                            "arn:aws:s3:::ingress/*"
-                        ]
-                    }
-                ]
-            }
-        """,
-        }
-
         # Create a ConfigMap for MinIO configuration
         minio_config_map = ConfigMap(
             "minio-configuration",
@@ -178,26 +66,28 @@ class MinioConfigJob(ComponentResource):
                 "MINIO_URL": "http://minio.argo-artifacts.svc.cluster.local:80",
                 "MINIO_NAMESPACE": args.minio_tenant_ns.metadata.name,
                 "setup.sh": minio_setup_sh,
-                "read-only-ingress.json": policies["read_only_ingress"],
-                "read-only-sensitive-ingress.json": policies[
-                    "read_only_sensitive_ingress"
-                ],
-                "write-only-ready-for-review.json": policies[
-                    "write_only_ready_for_review"
-                ],
-                "read-only-ready-for-review.json": policies[
-                    "read_only_ready_for_review"
-                ],
-                "write-only-ready-for-egress.json": policies[
-                    "write_only_ready_for_egress"
-                ],
-                "argo-workflows-pod-policy.json": policies["argo-workflows-pod-policy"],
+                "read-only-ingress.json": load_policy("read-only-ingress.json"),
+                "read-only-sensitive-ingress.json": load_policy(
+                    "read-only-sensitive-ingress.json"
+                ),
+                "write-only-ready-for-review.json": load_policy(
+                    "write-only-ready-for-review.json"
+                ),
+                "read-only-ready-for-review.json": load_policy(
+                    "read-only-ready-for-review.json"
+                ),
+                "write-only-ready-for-egress.json": load_policy(
+                    "write-only-ready-for-egress.json"
+                ),
+                "argo-workflows-pod-policy.json": load_policy(
+                    "argo-workflows-pod-policy.json"
+                ),
             },
             opts=child_opts,
         )
 
         # Create a Job to configure MinIO
-        minio_config_job = Job(
+        Job(
             "minio-config-job",
             metadata=ObjectMetaArgs(
                 name="minio-config-job",
