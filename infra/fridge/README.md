@@ -97,11 +97,18 @@ Currently, FRIDGE is configured to support deployment on Azure Kubernetes Servic
 
 FRIDGE uses Cilium for networking, and thus requires a Kubernetes cluster with Cilium installed.
 
+In the table below, you can see the components need to be deployed to each target.
+
+Some components are pre-installed on DAWN.
+
 | Component | AKS | DAWN |
 |---|---|---|
-| cert-manager.io | | [x] |
-| hubble | | [x] |
-| ingress-nginx | | [x] |
-| minio | [x] | [x] |
 | argo-workflows | [x] | [x] |
+| cert-manager.io | [x] |  |
+| fridge-api | [x] | [x] |
+| harbor | [x] | [x] |
+| hubble | [x] | |
+| ingress-nginx | [x] | |
 | longhorn |  | [x] |
+| minio | [x] | [x] |
+| prometheus | [x] |  |
