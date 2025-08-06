@@ -9,9 +9,7 @@ from secrets import compare_digest
 from typing import Annotated
 
 # Check if running in the Kubernetes cluster
-# If so, use the in-cluster configuration to retrieve the token
-# Note that this requires a service account with the necessary permissions
-# If not in the cluster, use the current kube config credentials to retrieve the token
+# If not in the cluster, load environment variables from .env file
 if os.getenv("KUBERNETES_SERVICE_HOST"):
     FRIDGE_API_ADMIN = os.getenv("FRIDGE_API_ADMIN")
     FRIDGE_API_PASSWORD = os.getenv("FRIDGE_API_PASSWORD")
@@ -22,6 +20,7 @@ else:
     FRIDGE_API_ADMIN = os.getenv("FRIDGE_API_ADMIN")
     FRIDGE_API_PASSWORD = os.getenv("FRIDGE_API_PASSWORD")
     ARGO_SERVER = os.getenv("ARGO_SERVER")
+
 
 description = """
 FRIDGE API allows you to interact with the FRIDGE cluster.
@@ -37,8 +36,11 @@ and submit workflows based on templates.
 
 app = FastAPI(title="FRIDGE API", description=description, version="0.2.0")
 
-
-def argo_token():
+# On the Kubernetes cluster, the Argo token is stored in a service account token file on a projected volume
+# The token expires after one hour; the file on the volume is updated automatically by Kubernetes
+# Reading the token from the file when required ensures that we always use a valid token
+# If not running in the cluster, we use the ARGO_TOKEN environment variable
+def argo_token() -> str:
     """
     Load the ARGO token on request from the environment variable or from the service account token file if running in a Kubernetes cluster.
     """
@@ -47,6 +49,11 @@ def argo_token():
             ARGO_TOKEN = f.read().strip()
     else:
         ARGO_TOKEN = os.getenv("ARGO_TOKEN")
+        if ARGO_TOKEN is None:
+            raise HTTPException(
+                status_code=500,
+                detail="ARGO_TOKEN environment variable is not set.",
+            )
     return ARGO_TOKEN
 
 
@@ -197,8 +204,6 @@ async def get_workflows(
         verify=False,
         headers={"Authorization": f"Bearer {argo_token()}"},
     )
-    print(f"Bearer {argo_token()}")
-    print(f"{ARGO_SERVER}/api/v1/workflows/{namespace}")
     if r.status_code != 200:
         raise HTTPException(
             status_code=r.status_code, detail=parse_argo_error(r.json())
