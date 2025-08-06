@@ -37,11 +37,13 @@ class ApiServerArgs:
         argo_workflows_ns: str,
         fridge_api_admin: str,
         fridge_api_password: str,
+        verify_tls: bool = True,
     ) -> None:
         self.api_server_ns = api_server_ns
         self.argo_workflows_ns = argo_workflows_ns
         self.fridge_api_admin = fridge_api_admin
         self.fridge_api_password = fridge_api_password
+        self.verify_tls = verify_tls
 
 
 class ApiServer(ComponentResource):
@@ -110,6 +112,7 @@ class ApiServer(ComponentResource):
             string_data={
                 "FRIDGE_API_ADMIN": args.fridge_api_admin,
                 "FRIDGE_API_PASSWORD": args.fridge_api_password,
+                "VERIFY_TLS": args.verify_tls,
             },
             opts=child_opts,
         )

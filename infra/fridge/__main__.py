@@ -753,6 +753,7 @@ api_server = components.ApiServer(
         argo_workflows_ns=argo_workflows_ns.metadata.name,
         fridge_api_admin=config.require_secret("fridge_api_admin"),
         fridge_api_password=config.require_secret("fridge_api_password"),
+        verify_tls=tls_environment is TlsEnvironment.PRODUCTION,
     ),
     opts=ResourceOptions(
         depends_on=[api_server_ns, argo_workflows_ns],
