@@ -42,7 +42,7 @@ try:
 except ValueError:
     raise ValueError(
         f"Invalid k8s environment: {k8s_environment}. "
-        "Supported values are 'AKS' and 'Dawn'."
+        "Supported values are 'AKS', 'Dawn', and 'Local'."
     )
 
 match k8s_environment:
@@ -135,6 +135,9 @@ match k8s_environment:
                 }
             ),
         )
+    case K8sEnvironment.LOCAL:
+        pass
+
 
 # Storage classes
 storage_classes = components.StorageClasses(
@@ -413,6 +416,21 @@ argo_minio_secret = Secret(
     ),
 )
 
+enable_sso = k8s_environment is not K8sEnvironment.LOCAL
+
+argo_server_sso_config = {
+    "enabled": enable_sso,
+}
+
+if enable_sso:
+    argo_server_sso_config.update(
+        {
+            "issuer": config.require_secret("sso_issuer_url"),
+            "redirectUrl": Output.concat("https://", argo_fqdn, "/oauth2/callback"),
+            "scopes": config.require_object("argo_scopes"),
+        }
+    )
+
 argo_workflows = Chart(
     "argo-workflows",
     namespace=argo_server_ns.metadata.name,
@@ -439,12 +457,7 @@ argo_workflows = Chart(
                     }
                 ],
             },
-            "sso": {
-                "enabled": True,
-                "issuer": config.require_secret("sso_issuer_url"),
-                "redirectUrl": Output.concat("https://", argo_fqdn, "/oauth2/callback"),
-                "scopes": config.require_object("argo_scopes"),
-            },
+            "sso": argo_server_sso_config,
         },
     },
     opts=ResourceOptions(
@@ -457,105 +470,105 @@ argo_workflows = Chart(
     ),
 )
 
-
-# Define argo workflows service accounts and roles
-# See https://argo-workflows.readthedocs.io/en/latest/security/
-# The admin service account gives users in the admin entra group
-# permission to run workflows in the Argo Workflows namespace
-argo_workflows_admin_role = Role(
-    "argo-workflows-admin-role",
-    metadata=ObjectMetaArgs(
-        name="argo-workflows-admin-role",
-        namespace=argo_workflows_ns.metadata.name,
-    ),
-    rules=[
-        PolicyRuleArgs(
-            api_groups=[""],
-            resources=["events", "pods", "pods/log"],
-            verbs=["get", "list", "watch"],
-        ),
-        PolicyRuleArgs(
-            api_groups=["argoproj.io"],
-            resources=[
-                "cronworkflows",
-                "eventsources",
-                "workflows",
-                "workflows/finalizers",
-                "workflowtaskresults",
-                "workflowtemplates",
-                "clusterworkflowtemplates",
-            ],
-            verbs=[
-                "create",
-                "delete",
-                "deletecollection",
-                "get",
-                "list",
-                "patch",
-                "watch",
-                "update",
-            ],
-        ),
-    ],
-    opts=ResourceOptions(
-        depends_on=[argo_workflows],
-    ),
-)
-
-argo_workflows_admin_sa = ServiceAccount(
-    "argo-workflows-admin-sa",
-    metadata=ObjectMetaArgs(
-        name="argo-workflows-admin-sa",
-        namespace=argo_workflows_ns.metadata.name,
-        annotations={
-            "workflows.argoproj.io/rbac-rule": Output.concat(
-                "'", config.require_secret("oidc_admin_group_id"), "'", " in groups"
-            ),
-            "workflows.argoproj.io/rbac-rule-precedence": "2",
-        },
-    ),
-    opts=ResourceOptions(
-        depends_on=[argo_workflows],
-    ),
-)
-
-argo_workflows_admin_sa_token = Secret(
-    "argo-workflows-admin-sa-token",
-    metadata=ObjectMetaArgs(
-        name="argo-workflows-admin-sa.service-account-token",
-        namespace=argo_workflows_ns.metadata.name,
-        annotations={
-            "kubernetes.io/service-account.name": argo_workflows_admin_sa.metadata.name,
-        },
-    ),
-    type="kubernetes.io/service-account-token",
-    opts=ResourceOptions(
-        depends_on=[argo_workflows_admin_sa],
-    ),
-)
-
-argo_workflows_admin_role_binding = RoleBinding(
-    "argo-workflows-admin-role-binding",
-    metadata=ObjectMetaArgs(
-        name="argo-workflows-admin-role-binding",
-        namespace=argo_workflows_ns.metadata.name,
-    ),
-    role_ref=RoleRefArgs(
-        api_group="rbac.authorization.k8s.io",
-        kind="Role",
-        name=argo_workflows_admin_role.metadata.name,
-    ),
-    subjects=[
-        SubjectArgs(
-            kind="ServiceAccount",
-            name=argo_workflows_admin_sa.metadata.name,
+if enable_sso:
+    # Define argo workflows service accounts and roles
+    # See https://argo-workflows.readthedocs.io/en/latest/security/
+    # The admin service account gives users in the admin entra group
+    # permission to run workflows in the Argo Workflows namespace
+    argo_workflows_admin_role = Role(
+        "argo-workflows-admin-role",
+        metadata=ObjectMetaArgs(
+            name="argo-workflows-admin-role",
             namespace=argo_workflows_ns.metadata.name,
-        )
-    ],
-    opts=ResourceOptions(
-        depends_on=[argo_workflows_admin_role],
-    ),
-)
+        ),
+        rules=[
+            PolicyRuleArgs(
+                api_groups=[""],
+                resources=["events", "pods", "pods/log"],
+                verbs=["get", "list", "watch"],
+            ),
+            PolicyRuleArgs(
+                api_groups=["argoproj.io"],
+                resources=[
+                    "cronworkflows",
+                    "eventsources",
+                    "workflows",
+                    "workflows/finalizers",
+                    "workflowtaskresults",
+                    "workflowtemplates",
+                    "clusterworkflowtemplates",
+                ],
+                verbs=[
+                    "create",
+                    "delete",
+                    "deletecollection",
+                    "get",
+                    "list",
+                    "patch",
+                    "watch",
+                    "update",
+                ],
+            ),
+        ],
+        opts=ResourceOptions(
+            depends_on=[argo_workflows],
+        ),
+    )
+
+    argo_workflows_admin_sa = ServiceAccount(
+        "argo-workflows-admin-sa",
+        metadata=ObjectMetaArgs(
+            name="argo-workflows-admin-sa",
+            namespace=argo_workflows_ns.metadata.name,
+            annotations={
+                "workflows.argoproj.io/rbac-rule": Output.concat(
+                    "'", config.require_secret("oidc_admin_group_id"), "'", " in groups"
+                ),
+                "workflows.argoproj.io/rbac-rule-precedence": "2",
+            },
+        ),
+        opts=ResourceOptions(
+            depends_on=[argo_workflows],
+        ),
+    )
+
+    argo_workflows_admin_sa_token = Secret(
+        "argo-workflows-admin-sa-token",
+        metadata=ObjectMetaArgs(
+            name="argo-workflows-admin-sa.service-account-token",
+            namespace=argo_workflows_ns.metadata.name,
+            annotations={
+                "kubernetes.io/service-account.name": argo_workflows_admin_sa.metadata.name,
+            },
+        ),
+        type="kubernetes.io/service-account-token",
+        opts=ResourceOptions(
+            depends_on=[argo_workflows_admin_sa],
+        ),
+    )
+
+    argo_workflows_admin_role_binding = RoleBinding(
+        "argo-workflows-admin-role-binding",
+        metadata=ObjectMetaArgs(
+            name="argo-workflows-admin-role-binding",
+            namespace=argo_workflows_ns.metadata.name,
+        ),
+        role_ref=RoleRefArgs(
+            api_group="rbac.authorization.k8s.io",
+            kind="Role",
+            name=argo_workflows_admin_role.metadata.name,
+        ),
+        subjects=[
+            SubjectArgs(
+                kind="ServiceAccount",
+                name=argo_workflows_admin_sa.metadata.name,
+                namespace=argo_workflows_ns.metadata.name,
+            )
+        ],
+        opts=ResourceOptions(
+            depends_on=[argo_workflows_admin_role],
+        ),
+    )
 
 # The admin service account above does not give permission to access the server workspace,
 # so the default service account below allows them to get sufficient access to use the UI
