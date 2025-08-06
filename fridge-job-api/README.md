@@ -15,12 +15,15 @@ It is designed to interact with the Argo Workflows API.
 
 ### Configuration
 
-The API uses environment variables for configuration. You can set the following variables in a `.env` file:
+The API uses environment variables for configuration.
+
+For local development, you can set the following variables in a `.env` file:
 
 - `ARGO_SERVER`: The URL of the Argo Workflows server
 - `ARGO_TOKEN`: The access token for authenticating with the Argo Workflows server
 - `FRIDGE_API_ADMIN`: The username of the admin user for the FRIDGE API
 - `FRIDGE_API_PASSWORD`: The password for the admin user for the FRIDGE API
+- `VERIFY_TLS`: Set to `False` to disable TLS verification (not recommended for production)
 
 An appropriate access token can be generated and obtained following the instructions in the [Argo Workflows documentation](https://argo-workflows.readthedocs.io/en/latest/access-token/)
 
@@ -29,6 +32,8 @@ An appropriate access token can be generated and obtained following the instruct
 When deploying the API on a Kubernetes cluster, the access token is automatically retrieved from the service account token mounted at `/service-account/token`.
 
 The API will use this token to authenticate with the Argo Workflows server.
+
+Other variables can be set in the Pulumi configuration for the stack.
 
 ## Configuration for Pulumi
 

@@ -21,6 +21,11 @@ else:
     FRIDGE_API_PASSWORD = os.getenv("FRIDGE_API_PASSWORD")
     ARGO_SERVER = os.getenv("ARGO_SERVER")
 
+# Disable TLS verification in development mode
+VERIFY_TLS = os.getenv("VERIFY_TLS", "False") == "True"
+if not VERIFY_TLS:
+    print("Running in development mode, TLS verification is disabled.")
+
 
 description = """
 FRIDGE API allows you to interact with the FRIDGE cluster.
@@ -201,7 +206,7 @@ async def get_workflows(
 ) -> list[Workflow] | Workflow | dict:
     r = requests.get(
         f"{ARGO_SERVER}/api/v1/workflows/{namespace}",
-        verify=False,
+        verify=VERIFY_TLS,
         headers={"Authorization": f"Bearer {argo_token()}"},
     )
     if r.status_code != 200:
@@ -226,7 +231,7 @@ async def get_single_workflow(
 ) -> list[Workflow] | Workflow | dict:
     r = requests.get(
         f"{ARGO_SERVER}/api/v1/workflows/{namespace}/{workflow_name}",
-        verify=False,
+        verify=VERIFY_TLS,
         headers={"Authorization": f"Bearer {argo_token()}"},
     )
     if r.status_code != 200:
@@ -250,7 +255,7 @@ async def list_workflow_templates(
 ) -> list[WorkflowTemplate] | WorkflowTemplate | dict | Union[list, WorkflowTemplate]:
     r = requests.get(
         f"{ARGO_SERVER}/api/v1/workflow-templates/{namespace}",
-        verify=False,
+        verify=VERIFY_TLS,
         headers={"Authorization": f"Bearer {argo_token()}"},
     )
     if r.status_code != 200:
@@ -277,7 +282,7 @@ async def get_workflow_template(
 ) -> WorkflowTemplate | dict | Union[Any, WorkflowTemplate]:
     r = requests.get(
         f"{ARGO_SERVER}/api/v1/workflow-templates/{namespace}/{template_name}",
-        verify=False,
+        verify=VERIFY_TLS,
         headers={"Authorization": f"Bearer {argo_token()}"},
     )
     if r.status_code != 200:
@@ -307,7 +312,7 @@ async def submit_workflow_from_template(
 ) -> dict:
     r = requests.post(
         f"{ARGO_SERVER}/api/v1/workflows/{workflow_template.namespace}/submit",
-        verify=False,
+        verify=VERIFY_TLS,
         headers={"Authorization": f"Bearer {argo_token()}"},
         data=json.dumps(
             {
