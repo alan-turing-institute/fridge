@@ -24,7 +24,9 @@ else:
 # Disable TLS verification in development mode
 VERIFY_TLS = os.getenv("VERIFY_TLS", "False") == "True"
 if not VERIFY_TLS:
-    print("Running in development mode, TLS verification is disabled.")
+    print(
+        "Warning: TLS verification is disabled. This is not secure and should only be used in development environments."
+    )
 
 
 description = """
