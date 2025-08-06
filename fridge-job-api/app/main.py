@@ -6,7 +6,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel
 from secrets import compare_digest
-from typing import Annotated
+from typing import Annotated, Any, Union
 
 # Check if running in the Kubernetes cluster
 # If not in the cluster, load environment variables from .env file
@@ -198,7 +198,7 @@ async def get_workflows(
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
     ),
-):
+) -> list[Workflow] | Workflow | dict:
     r = requests.get(
         f"{ARGO_SERVER}/api/v1/workflows/{namespace}",
         verify=False,
@@ -223,7 +223,7 @@ async def get_single_workflow(
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
     ),
-):
+) -> list[Workflow] | Workflow | dict:
     r = requests.get(
         f"{ARGO_SERVER}/api/v1/workflows/{namespace}/{workflow_name}",
         verify=False,
@@ -247,7 +247,7 @@ async def list_workflow_templates(
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
     ),
-):
+) -> list[WorkflowTemplate] | WorkflowTemplate | dict | Union[list, WorkflowTemplate]:
     r = requests.get(
         f"{ARGO_SERVER}/api/v1/workflow-templates/{namespace}",
         verify=False,
@@ -274,7 +274,7 @@ async def get_workflow_template(
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
     ),
-):
+) -> WorkflowTemplate | dict | Union[Any, WorkflowTemplate]:
     r = requests.get(
         f"{ARGO_SERVER}/api/v1/workflow-templates/{namespace}/{template_name}",
         verify=False,
@@ -304,7 +304,7 @@ async def submit_workflow_from_template(
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
     ),
-):
+) -> dict:
     r = requests.post(
         f"{ARGO_SERVER}/api/v1/workflows/{workflow_template.namespace}/submit",
         verify=False,
