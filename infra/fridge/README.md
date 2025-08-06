@@ -101,14 +101,15 @@ In the table below, you can see the components need to be deployed to each targe
 
 Some components are pre-installed on DAWN.
 
-| Component | AKS | DAWN |
+| Component | AKS | DAWN | Local |
 |---|---|---|
-| argo-workflows | [x] | [x] |
-| cert-manager.io | [x] |  |
-| fridge-api | [x] | [x] |
-| harbor | [x] | [x] |
-| hubble | [x] | |
-| ingress-nginx | [x] | |
-| longhorn |  | [x] |
-| minio | [x] | [x] |
-| prometheus | [x] |  |
+| argo-workflows | [x] | [x] | [x] |
+| cert-manager.io | [x] |  | [x] |
+| cilium |  |  | [x] |
+| fridge-api | [x] | [x] | [x] |
+| harbor | [x] | [x] | [x] |
+| hubble | [x] | | [x] |
+| ingress-nginx | [x] | | [x] |
+| longhorn |  | [x] | [x] |
+| minio | [x] | [x] | [x] |
+| prometheus | [x] |  | [x] |
