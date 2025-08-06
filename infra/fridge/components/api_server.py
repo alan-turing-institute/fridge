@@ -27,6 +27,8 @@ from pulumi_kubernetes.rbac.v1 import (
     SubjectArgs,
 )
 
+API_SERVER_IMAGE = "ghcr.io/alan-turing-institute/fridge:main"
+
 
 class ApiServerArgs:
     def __init__(
@@ -159,7 +161,7 @@ class ApiServer(ComponentResource):
                                         )
                                     )
                                 ],
-                                image="ghcr.io/alan-turing-institute/fridge:main",
+                                image=API_SERVER_IMAGE,
                                 image_pull_policy="Always",
                                 ports=[ContainerPortArgs(container_port=8000)],
                                 security_context=SecurityContextArgs(
