@@ -168,7 +168,7 @@ def parse_parameters(parameters: list[dict]) -> list[str]:
     ]
 
 
-def verify_request(credentials: HTTPBasicCredentials = Depends(security)):
+def verify_request(credentials: HTTPBasicCredentials = Depends(security)) -> bool:
     """
     Verify the request using basic auth.
     """
