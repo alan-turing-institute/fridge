@@ -186,8 +186,8 @@ minio = components.ObjectStorage(
     "minio",
     args=components.ObjectStorageArgs(
         config=config,
-        k8s_environment=k8s_environment,
         tls_environment=tls_environment,
+        storage_classes=storage_classes,
     ),
     opts=ResourceOptions(
         depends_on=[
@@ -480,11 +480,8 @@ harbor = Release(
                 },
                 "type": "clusterIP",
                 "tls": {
-                    "enabled": "false",
+                    "enabled": False,
                     "certSource": "none",
-                },
-                "secret": {
-                    "secretName": "harbor-ingress-tls",
                 },
             },
             "externalURL": harbor_external_url,
