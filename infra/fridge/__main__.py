@@ -184,7 +184,11 @@ cert_manager_issuers = ConfigGroup(
 # Minio
 minio = components.ObjectStorage(
     "minio",
-    k8s_environment=k8s_environment,
+    args=components.ObjectStorageArgs(
+        config=config,
+        k8s_environment=k8s_environment,
+        tls_environment=tls_environment,
+    ),
     opts=ResourceOptions(
         depends_on=[
             ingress_nginx,
@@ -194,6 +198,9 @@ minio = components.ObjectStorage(
         ]
     ),
 )
+
+pulumi.export("minio_fqdn", minio.minio_fqdn)
+
 
 # Argo Workflows
 argo_server_ns = Namespace(
@@ -593,9 +600,7 @@ resources = [
     configure_containerd_daemonset,
     harbor,
     ingress_nginx,
-    minio_ingress,
-    minio_operator,
-    minio_tenant,
+    minio,
     storage_classes,
 ]
 
