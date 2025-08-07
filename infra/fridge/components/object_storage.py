@@ -4,12 +4,19 @@ from pulumi_kubernetes.core.v1 import Namespace
 from pulumi_kubernetes.helm.v3 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 
-from enums import K8sEnvironment, PodSecurityStandard
+from enums import K8sEnvironment, PodSecurityStandard, TlsEnvironment, tls_issuer_names
 
 
 class ObjectStorageArgs:
-    def __init__(self, k8s_environment: K8sEnvironment) -> None:
+    def __init__(
+        self,
+        config: pulumi.Config,
+        k8s_environment: K8sEnvironment,
+        tls_environment: TlsEnvironment,
+    ) -> None:
+        self.config = config
         self.k8s_environment = k8s_environment
+        self.tls_environment = tls_environment
 
 
 class ObjectStorage(ComponentResource):
@@ -50,11 +57,10 @@ class ObjectStorage(ComponentResource):
 
         minio_fqdn = ".".join(
             (
-                config.require("minio_fqdn_prefix"),
-                config.require("base_fqdn"),
+                args.config.require("minio_fqdn_prefix"),
+                args.config.require("base_fqdn"),
             )
         )
-        pulumi.export("minio_fqdn", minio_fqdn)
 
         minio_config_env = Output.format(
             (
@@ -64,8 +70,8 @@ class ObjectStorage(ComponentResource):
                 "export MINIO_ROOT_PASSWORD={2}"
             ),
             minio_fqdn,
-            config.require_secret("minio_root_user"),
-            config.require_secret("minio_root_password"),
+            args.config.require_secret("minio_root_user"),
+            args.config.require_secret("minio_root_password"),
         )
 
         minio_env_secret = Secret(
@@ -142,7 +148,6 @@ class ObjectStorage(ComponentResource):
             },
             opts=ResourceOptions(
                 depends_on=[
-                    storage_classes,
                     minio_env_secret,
                     minio_operator,
                     minio_tenant_ns,
@@ -158,7 +163,9 @@ class ObjectStorage(ComponentResource):
                 annotations={
                     "nginx.ingress.kubernetes.io/proxy-body-size": "0",
                     "nginx.ingress.kubernetes.io/force-ssl-redirect": "true",
-                    "cert-manager.io/cluster-issuer": tls_issuer_names[tls_environment],
+                    "cert-manager.io/cluster-issuer": tls_issuer_names[
+                        args.config.tls_environment
+                    ],
                 },
             ),
             spec={
@@ -196,4 +203,10 @@ class ObjectStorage(ComponentResource):
             opts=ResourceOptions(
                 depends_on=[minio_tenant],
             ),
+        )
+
+        self.register_outputs(
+            {
+                "minio_fqdn": minio_fqdn,
+            }
         )
