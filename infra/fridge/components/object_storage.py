@@ -42,6 +42,7 @@ class ObjectStorage(ComponentResource):
                 name="minio-operator",
                 labels={} | PodSecurityStandard.RESTRICTED.value,
             ),
+            opts=child_opts,
         )
 
         minio_tenant_ns = Namespace(
@@ -50,6 +51,7 @@ class ObjectStorage(ComponentResource):
                 name="argo-artifacts",
                 labels={} | PodSecurityStandard.RESTRICTED.value,
             ),
+            opts=child_opts,
         )
 
         minio_operator = Chart(
@@ -60,8 +62,9 @@ class ObjectStorage(ComponentResource):
                 repo="https://operator.min.io",
             ),
             version="7.1.1",
-            opts=ResourceOptions(
-                depends_on=[minio_operator_ns],
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(depends_on=[minio_operator_ns]),
             ),
         )
 
@@ -94,8 +97,9 @@ class ObjectStorage(ComponentResource):
             string_data={
                 "config.env": minio_config_env,
             },
-            opts=ResourceOptions(
-                depends_on=[minio_tenant_ns],
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(depends_on=[minio_tenant_ns]),
             ),
         )
 
@@ -156,12 +160,15 @@ class ObjectStorage(ComponentResource):
                     ],
                 },
             },
-            opts=ResourceOptions(
-                depends_on=[
-                    minio_env_secret,
-                    minio_operator,
-                    minio_tenant_ns,
-                ],
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(
+                    depends_on=[
+                        minio_env_secret,
+                        minio_operator,
+                        minio_tenant_ns,
+                    ]
+                ),
             ),
         )
 
@@ -213,3 +220,14 @@ class ObjectStorage(ComponentResource):
         )
 
         self.minio_fqdn = minio_fqdn
+        self.register_outputs(
+            {
+                "minio_fqdn": self.minio_fqdn,
+                "minio_ingress": minio_ingress,
+                "minio_tenant": minio_tenant,
+                "minio_operator": minio_operator,
+                "minio_env_secret": minio_env_secret,
+                "minio_tenant_ns": minio_tenant_ns,
+                "minio_operator_ns": minio_operator_ns,
+            }
+        )
