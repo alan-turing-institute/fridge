@@ -1,8 +1,18 @@
 import pulumi
+from pulumi import Output
 from pulumi import ComponentResource, ResourceOptions
-from pulumi_kubernetes.core.v1 import Namespace
+from pulumi_kubernetes.core.v1 import Namespace, Secret
 from pulumi_kubernetes.helm.v3 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
+from pulumi_kubernetes.networking.v1 import (
+    Ingress,
+    IngressBackendArgs,
+    IngressServiceBackendArgs,
+    IngressSpecArgs,
+    IngressRuleArgs,
+    IngressTLSArgs,
+)
+from .storage_classes import StorageClasses
 
 from enums import K8sEnvironment, PodSecurityStandard, TlsEnvironment, tls_issuer_names
 
@@ -12,11 +22,13 @@ class ObjectStorageArgs:
         self,
         config: pulumi.Config,
         k8s_environment: K8sEnvironment,
+        storage_classes: StorageClasses,
         tls_environment: TlsEnvironment,
     ) -> None:
         self.config = config
         self.k8s_environment = k8s_environment
         self.tls_environment = tls_environment
+        self.storage_classes = storage_classes
 
 
 class ObjectStorage(ComponentResource):
@@ -129,9 +141,9 @@ class ObjectStorage(ComponentResource):
                         {
                             "servers": 1,
                             "name": "argo-artifacts-pool-0",
-                            "size": config.require("minio_pool_size"),
+                            "size": args.config.require("minio_pool_size"),
                             "volumesPerServer": 1,
-                            "storageClassName": storage_classes.encrypted_storage_class.metadata.name,
+                            "storageClassName": args.storage_classes.encrypted_storage_class.metadata.name,
                             "containerSecurityContext": {
                                 "runAsUser": 1000,
                                 "runAsGroup": 1000,
@@ -168,40 +180,37 @@ class ObjectStorage(ComponentResource):
                     ],
                 },
             ),
-            spec={
-                "ingress_class_name": "nginx",
-                "tls": [
-                    {
-                        "hosts": [
-                            minio_fqdn,
-                        ],
-                        "secret_name": "argo-artifacts-tls",
-                    }
-                ],
-                "rules": [
-                    {
-                        "host": minio_fqdn,
-                        "http": {
+            spec=IngressSpecArgs(
+                ingress_class_name="nginx",
+                rules=[
+                    IngressRuleArgs(
+                        host=minio_fqdn,
+                        http={
                             "paths": [
                                 {
                                     "path": "/",
                                     "path_type": "Prefix",
-                                    "backend": {
-                                        "service": {
-                                            "name": "argo-artifacts-console",
-                                            "port": {
-                                                "number": 9090,
-                                            },
-                                        }
-                                    },
+                                    "backend": IngressBackendArgs(
+                                        service=IngressServiceBackendArgs(
+                                            name="argo-artifacts-console",
+                                            port={"number": 9090},
+                                        )
+                                    ),
                                 }
                             ]
                         },
-                    }
+                    )
                 ],
-            },
-            opts=ResourceOptions(
-                depends_on=[minio_tenant],
+                tls=[
+                    IngressTLSArgs(
+                        hosts=[minio_fqdn],
+                        secret_name="argo-artifacts-tls",
+                    )
+                ],
+            ),
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(depends_on=[minio_tenant]),
             ),
         )
 
