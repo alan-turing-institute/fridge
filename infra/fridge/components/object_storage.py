@@ -2,7 +2,7 @@ import pulumi
 from pulumi import Output
 from pulumi import ComponentResource, ResourceOptions
 from pulumi_kubernetes.core.v1 import Namespace, Secret
-from pulumi_kubernetes.helm.v3 import Chart, RepositoryOptsArgs
+from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.networking.v1 import (
     Ingress,
@@ -20,13 +20,11 @@ from enums import K8sEnvironment, PodSecurityStandard, TlsEnvironment, tls_issue
 class ObjectStorageArgs:
     def __init__(
         self,
-        config: pulumi.Config,
-        k8s_environment: K8sEnvironment,
+        config: pulumi.config.Config,
         storage_classes: StorageClasses,
         tls_environment: TlsEnvironment,
     ) -> None:
         self.config = config
-        self.k8s_environment = k8s_environment
         self.tls_environment = tls_environment
         self.storage_classes = storage_classes
 
@@ -176,7 +174,7 @@ class ObjectStorage(ComponentResource):
                     "nginx.ingress.kubernetes.io/proxy-body-size": "0",
                     "nginx.ingress.kubernetes.io/force-ssl-redirect": "true",
                     "cert-manager.io/cluster-issuer": tls_issuer_names[
-                        args.config.tls_environment
+                        args.tls_environment
                     ],
                 },
             ),
@@ -214,8 +212,4 @@ class ObjectStorage(ComponentResource):
             ),
         )
 
-        self.register_outputs(
-            {
-                "minio_fqdn": minio_fqdn,
-            }
-        )
+        self.minio_fqdn = minio_fqdn
