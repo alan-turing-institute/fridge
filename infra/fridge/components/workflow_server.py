@@ -135,3 +135,13 @@ class WorkflowServer(ComponentResource):
         )
 
         self.argo_fqdn = argo_fqdn
+        self.register_outputs(
+            {
+                "argo_fqdn": self.argo_fqdn,
+                "argo_workflows": argo_workflows,
+                "argo_sso_secret": argo_sso_secret,
+                "argo_minio_secret": argo_minio_secret,
+                "argo_server_ns": argo_server_ns,
+                "argo_workflows_ns": argo_workflows_ns,
+            }
+        )
