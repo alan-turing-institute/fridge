@@ -1,9 +1,10 @@
 import pulumi
 from pulumi import ComponentResource, Output, ResourceOptions
 from pulumi_kubernetes.core.v1 import Namespace, Secret
+from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 
-from enums import PodSecurityStandard
+from enums import PodSecurityStandard, TlsEnvironment, tls_issuer_names
 
 
 class WorkflowServerArgs:
@@ -99,7 +100,7 @@ class WorkflowServer(ComponentResource):
                     "ingress": {
                         "annotations": {
                             "cert-manager.io/cluster-issuer": tls_issuer_names[
-                                tls_environment
+                                args.tls_environment
                             ],
                         },
                         "hosts": [argo_fqdn],
