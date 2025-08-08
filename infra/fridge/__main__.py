@@ -203,105 +203,22 @@ pulumi.export("minio_fqdn", minio.minio_fqdn)
 
 
 # Argo Workflows
-argo_server_ns = Namespace(
-    "argo-server-ns",
-    metadata=ObjectMetaArgs(
-        name="argo-server",
-        labels={} | PodSecurityStandard.RESTRICTED.value,
-    ),
-)
-
-argo_workflows_ns = Namespace(
-    "argo-workflows-ns",
-    metadata=ObjectMetaArgs(
-        name="argo-workflows",
-        labels={} | PodSecurityStandard.RESTRICTED.value,
-    ),
-)
-
-argo_fqdn = ".".join(
-    (
-        config.require("argo_fqdn_prefix"),
-        config.require("base_fqdn"),
-    )
-)
-pulumi.export("argo_fqdn", argo_fqdn)
-
-argo_sso_secret = Secret(
-    "argo-server-sso-secret",
-    metadata=ObjectMetaArgs(
-        name="argo-server-sso",
-        namespace=argo_server_ns.metadata.name,
-    ),
-    type="Opaque",
-    string_data={
-        "client-id": config.require_secret("oidc_client_id"),
-        "client-secret": config.require_secret("oidc_client_secret"),
-    },
-    opts=ResourceOptions(
-        depends_on=[argo_server_ns],
-    ),
-)
-
-argo_minio_secret = Secret(
-    "argo-minio-secret",
-    metadata=ObjectMetaArgs(
-        name="argo-artifacts-minio",
-        namespace=argo_workflows_ns.metadata.name,
-    ),
-    type="Opaque",
-    string_data={
-        "accesskey": config.require_secret("minio_root_user"),
-        "secretkey": config.require_secret("minio_root_password"),
-    },
-    opts=ResourceOptions(
-        depends_on=[argo_server_ns],
-    ),
-)
-
-argo_workflows = Chart(
+argo_workflows = components.WorkflowServer(
     "argo-workflows",
-    namespace=argo_server_ns.metadata.name,
-    chart="argo-workflows",
-    version="0.45.12",
-    repository_opts=RepositoryOptsArgs(
-        repo="https://argoproj.github.io/argo-helm",
+    args=components.WorkflowServerArgs(
+        config=config,
+        tls_environment=tls_environment,
     ),
-    value_yaml_files=[
-        FileAsset("./k8s/argo_workflows/values.yaml"),
-    ],
-    values={
-        "controller": {"workflowNamespaces": [argo_workflows_ns.metadata.name]},
-        "server": {
-            "ingress": {
-                "annotations": {
-                    "cert-manager.io/cluster-issuer": tls_issuer_names[tls_environment],
-                },
-                "hosts": [argo_fqdn],
-                "tls": [
-                    {
-                        "secretName": "argo-ingress-tls-letsencrypt",
-                        "hosts": [argo_fqdn],
-                    }
-                ],
-            },
-            "sso": {
-                "enabled": True,
-                "issuer": config.require_secret("sso_issuer_url"),
-                "redirectUrl": Output.concat("https://", argo_fqdn, "/oauth2/callback"),
-                "scopes": config.require_object("argo_scopes"),
-            },
-        },
-    },
     opts=ResourceOptions(
         depends_on=[
-            argo_minio_secret,
-            argo_sso_secret,
-            argo_server_ns,
-            argo_workflows_ns,
-        ],
+            ingress_nginx,
+            cert_manager,
+            cert_manager_issuers,
+        ]
     ),
 )
+
+pulumi.export("argo_fqdn", argo_workflows.argo_fqdn)
 
 
 # Define argo workflows service accounts and roles
@@ -312,7 +229,7 @@ argo_workflows_admin_role = Role(
     "argo-workflows-admin-role",
     metadata=ObjectMetaArgs(
         name="argo-workflows-admin-role",
-        namespace=argo_workflows_ns.metadata.name,
+        namespace=argo_workflows.argo_workflows_ns,
     ),
     rules=[
         PolicyRuleArgs(
@@ -352,7 +269,7 @@ argo_workflows_admin_sa = ServiceAccount(
     "argo-workflows-admin-sa",
     metadata=ObjectMetaArgs(
         name="argo-workflows-admin-sa",
-        namespace=argo_workflows_ns.metadata.name,
+        namespace=argo_workflows.argo_workflows_ns,
         annotations={
             "workflows.argoproj.io/rbac-rule": Output.concat(
                 "'", config.require_secret("oidc_admin_group_id"), "'", " in groups"
@@ -369,7 +286,7 @@ argo_workflows_admin_sa_token = Secret(
     "argo-workflows-admin-sa-token",
     metadata=ObjectMetaArgs(
         name="argo-workflows-admin-sa.service-account-token",
-        namespace=argo_workflows_ns.metadata.name,
+        namespace=argo_workflows.argo_workflows_ns,
         annotations={
             "kubernetes.io/service-account.name": argo_workflows_admin_sa.metadata.name,
         },
@@ -384,7 +301,7 @@ argo_workflows_admin_role_binding = RoleBinding(
     "argo-workflows-admin-role-binding",
     metadata=ObjectMetaArgs(
         name="argo-workflows-admin-role-binding",
-        namespace=argo_workflows_ns.metadata.name,
+        namespace=argo_workflows.argo_workflows_ns,
     ),
     role_ref=RoleRefArgs(
         api_group="rbac.authorization.k8s.io",
@@ -395,7 +312,7 @@ argo_workflows_admin_role_binding = RoleBinding(
         SubjectArgs(
             kind="ServiceAccount",
             name=argo_workflows_admin_sa.metadata.name,
-            namespace=argo_workflows_ns.metadata.name,
+            namespace=argo_workflows.argo_workflows_ns,
         )
     ],
     opts=ResourceOptions(
@@ -410,7 +327,7 @@ argo_workflows_default_sa = ServiceAccount(
     "argo-workflows-default-sa",
     metadata=ObjectMetaArgs(
         name="user-default-login",
-        namespace=argo_server_ns.metadata.name,
+        namespace=argo_workflows.argo_server_ns,
         annotations={
             "workflows.argoproj.io/rbac-rule": "true",
             "workflows.argoproj.io/rbac-rule-precedence": "0",
@@ -425,7 +342,7 @@ argo_workflows_default_sa_token = Secret(
     "argo-workflows-default-sa-token",
     metadata=ObjectMetaArgs(
         name="user-default-login.service-account-token",
-        namespace=argo_server_ns.metadata.name,
+        namespace=argo_workflows.argo_server_ns,
         annotations={
             "kubernetes.io/service-account.name": argo_workflows_default_sa.metadata.name,
         },
@@ -438,9 +355,9 @@ argo_workflows_default_sa_token = Secret(
 
 api_rbac = components.ApiRbac(
     name=f"{stack_name}-api-rbac",
-    argo_workflows_ns=argo_workflows_ns.metadata.name,
+    argo_workflows_ns=argo_workflows.argo_workflows_ns,
     opts=ResourceOptions(
-        depends_on=[argo_workflows_ns],
+        depends_on=[argo_workflows],
     ),
 )
 
