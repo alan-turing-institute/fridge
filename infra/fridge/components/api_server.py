@@ -53,7 +53,7 @@ class ApiServer(ComponentResource):
         args: ApiServerArgs,
         opts=ResourceOptions,
     ) -> None:
-        super().__init__("fridge:k8s:ApiServer", name, {}, opts)
+        super().__init__("fridge:ApiServer", name, {}, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
         # Define argo workflows service accounts and roles
