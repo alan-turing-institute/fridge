@@ -1,5 +1,9 @@
 import pulumi
 from pulumi import ComponentResource, ResourceOptions
+from pulumi_kubernetes.core.v1 import Namespace
+from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs, RepositoryOptsArgs
+from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
+from pulumi_kubernetes.networking.v1 import Ingress
 
 from .storage_classes import StorageClasses
 
@@ -7,9 +11,15 @@ from enums import PodSecurityStandard, TlsEnvironment, tls_issuer_names
 
 
 class ContainerRegistryArgs:
-    def __init__(self, config: Pulumi.Config, tls_environment: TlsEnvironment):
+    def __init__(
+        self,
+        config: pulumi.config.Config,
+        storage_classes: StorageClasses,
+        tls_environment: TlsEnvironment,
+    ) -> None:
         self.config = config
         self.tls_environment = tls_environment
+        self.storage_classes = storage_classes
 
 
 class ContainerRegistry(ComponentResource):
@@ -25,17 +35,16 @@ class ContainerRegistry(ComponentResource):
                 name="harbor",
                 labels={} | PodSecurityStandard.RESTRICTED.value,
             ),
+            opts=child_opts,
         )
 
         harbor_fqdn = ".".join(
             (
-                config.require("harbor_fqdn_prefix"),
-                config.require("base_fqdn"),
+                args.config.require("harbor_fqdn_prefix"),
+                args.config.require("base_fqdn"),
             )
         )
 
-        f"{config.require('harbor_fqdn_prefix')}.{config.require('base_fqdn')}"
-        pulumi.export("harbor_fqdn", harbor_fqdn)
         harbor_external_url = f"https://{harbor_fqdn}"
 
         harbor = Release(
@@ -50,7 +59,7 @@ class ContainerRegistry(ComponentResource):
                 values={
                     "expose": {
                         "clusterIP": {
-                            "staticClusterIP": config.require("harbor_ip"),
+                            "staticClusterIP": args.config.require("harbor_ip"),
                         },
                         "type": "clusterIP",
                         "tls": {
@@ -59,18 +68,18 @@ class ContainerRegistry(ComponentResource):
                         },
                     },
                     "externalURL": harbor_external_url,
-                    "harborAdminPassword": config.require_secret(
+                    "harborAdminPassword": args.config.require_secret(
                         "harbor_admin_password"
                     ),
                     "persistence": {
                         "persistentVolumeClaim": {
                             "registry": {
-                                "storageClass": storage_classes.rwm_class_name,
+                                "storageClass": args.storage_classes.rwm_class_name,
                                 "accessMode": "ReadWriteMany",
                             },
                             "jobservice": {
                                 "jobLog": {
-                                    "storageClass": storage_classes.rwm_class_name,
+                                    "storageClass": args.storage_classes.rwm_class_name,
                                     "accessMode": "ReadWriteMany",
                                 }
                             },
@@ -78,8 +87,9 @@ class ContainerRegistry(ComponentResource):
                     },
                 },
             ),
-            opts=ResourceOptions(
-                depends_on=[harbor_ns, storage_classes],
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(depends_on=[harbor_ns]),
             ),
         )
 
@@ -91,7 +101,9 @@ class ContainerRegistry(ComponentResource):
                 annotations={
                     "nginx.ingress.kubernetes.io/force-ssl-redirect": "true",
                     "nginx.ingress.kubernetes.io/proxy-body-size": "0",
-                    "cert-manager.io/cluster-issuer": tls_issuer_names[tls_environment],
+                    "cert-manager.io/cluster-issuer": tls_issuer_names[
+                        args.tls_environment
+                    ],
                 },
             ),
             spec={
@@ -126,7 +138,23 @@ class ContainerRegistry(ComponentResource):
                     }
                 ],
             },
-            opts=ResourceOptions(
-                depends_on=[harbor],
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(
+                    depends_on=[
+                        harbor,
+                    ]
+                ),
             ),
+        )
+
+        self.harbor_fqdn = harbor_fqdn
+        self.harbor_external_url = harbor_external_url
+
+        self.register_outputs(
+            {
+                "harbor": harbor,
+                "harbor_ingress": harbor_ingress,
+                "harbor_ns": harbor_ns,
+            }
         )
