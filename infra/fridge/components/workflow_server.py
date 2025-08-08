@@ -1,5 +1,5 @@
 import pulumi
-from pulumi import ComponentResource, Output, ResourceOptions
+from pulumi import ComponentResource, FileAsset, Output, ResourceOptions
 from pulumi_kubernetes.core.v1 import Namespace, Secret
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
@@ -113,11 +113,11 @@ class WorkflowServer(ComponentResource):
                     },
                     "sso": {
                         "enabled": True,
-                        "issuer": config.require_secret("sso_issuer_url"),
+                        "issuer": args.config.require_secret("sso_issuer_url"),
                         "redirectUrl": Output.concat(
                             "https://", argo_fqdn, "/oauth2/callback"
                         ),
-                        "scopes": config.require_object("argo_scopes"),
+                        "scopes": args.config.require_object("argo_scopes"),
                     },
                 },
             },
@@ -133,3 +133,5 @@ class WorkflowServer(ComponentResource):
                 ),
             ),
         )
+
+        self.argo_fqdn = argo_fqdn
