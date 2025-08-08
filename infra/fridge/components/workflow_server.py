@@ -10,7 +10,7 @@ from enums import PodSecurityStandard, TlsEnvironment, tls_issuer_names
 class WorkflowServerArgs:
     def __init__(
         self,
-        config: pulumi.Config,
+        config: pulumi.config.Config,
         tls_environment: TlsEnvironment,
     ):
         self.config = config
@@ -21,7 +21,7 @@ class WorkflowServer(ComponentResource):
     def __init__(
         self, name: str, args: WorkflowServerArgs, opts: ResourceOptions = None
     ):
-        super().__init__(name, "fridge:WorkflowServer", props=vars(args), opts=opts)
+        super().__init__("fridge:WorkflowServer", name, None, opts=opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
         argo_server_ns = Namespace(
@@ -135,9 +135,10 @@ class WorkflowServer(ComponentResource):
         )
 
         self.argo_fqdn = argo_fqdn
+        self.argo_server_ns = argo_server_ns.metadata.name
+        self.argo_workflows_ns = argo_workflows_ns.metadata.name
         self.register_outputs(
             {
-                "argo_fqdn": self.argo_fqdn,
                 "argo_workflows": argo_workflows,
                 "argo_sso_secret": argo_sso_secret,
                 "argo_minio_secret": argo_minio_secret,
