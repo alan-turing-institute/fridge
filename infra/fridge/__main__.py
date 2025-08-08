@@ -1,13 +1,12 @@
 from string import Template
 
 import pulumi
-from pulumi import FileAsset, Output, ResourceOptions
+from pulumi import Output, ResourceOptions
 from pulumi_kubernetes.batch.v1 import CronJobPatch, CronJobSpecPatchArgs
 from pulumi_kubernetes.core.v1 import Namespace, NamespacePatch, Secret, ServiceAccount
-from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs
+from pulumi_kubernetes.helm.v3 import Release
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs, ObjectMetaPatchArgs
-from pulumi_kubernetes.networking.v1 import Ingress
 from pulumi_kubernetes.rbac.v1 import (
     PolicyRuleArgs,
     Role,
@@ -199,9 +198,6 @@ minio = components.ObjectStorage(
     ),
 )
 
-pulumi.export("minio_fqdn", minio.minio_fqdn)
-
-
 # Argo Workflows
 argo_workflows = components.WorkflowServer(
     "argo-workflows",
@@ -217,8 +213,6 @@ argo_workflows = components.WorkflowServer(
         ]
     ),
 )
-
-pulumi.export("argo_fqdn", argo_workflows.argo_fqdn)
 
 
 # Define argo workflows service accounts and roles
@@ -362,113 +356,15 @@ api_rbac = components.ApiRbac(
 )
 
 # Harbor
-harbor_ns = Namespace(
-    "harbor-ns",
-    metadata=ObjectMetaArgs(
-        name="harbor",
-        labels={} | PodSecurityStandard.RESTRICTED.value,
-    ),
-)
-
-harbor_fqdn = ".".join(
-    (
-        config.require("harbor_fqdn_prefix"),
-        config.require("base_fqdn"),
-    )
-)
-
-f"{config.require('harbor_fqdn_prefix')}.{config.require('base_fqdn')}"
-pulumi.export("harbor_fqdn", harbor_fqdn)
-harbor_external_url = f"https://{harbor_fqdn}"
-
-harbor = Release(
+harbor = components.ContainerRegistry(
     "harbor",
-    ReleaseArgs(
-        chart="harbor",
-        namespace="harbor",
-        version="1.17.1",
-        repository_opts=RepositoryOptsArgs(
-            repo="https://helm.goharbor.io",
-        ),
-        values={
-            "expose": {
-                "clusterIP": {
-                    "staticClusterIP": config.require("harbor_ip"),
-                },
-                "type": "clusterIP",
-                "tls": {
-                    "enabled": False,
-                    "certSource": "none",
-                },
-            },
-            "externalURL": harbor_external_url,
-            "harborAdminPassword": config.require_secret("harbor_admin_password"),
-            "persistence": {
-                "persistentVolumeClaim": {
-                    "registry": {
-                        "storageClass": storage_classes.rwm_class_name,
-                        "accessMode": "ReadWriteMany",
-                    },
-                    "jobservice": {
-                        "jobLog": {
-                            "storageClass": storage_classes.rwm_class_name,
-                            "accessMode": "ReadWriteMany",
-                        }
-                    },
-                },
-            },
-        },
+    components.ContainerRegistryArgs(
+        config=config,
+        tls_environment=tls_environment,
+        storage_classes=storage_classes,
     ),
     opts=ResourceOptions(
-        depends_on=[harbor_ns, storage_classes],
-    ),
-)
-
-harbor_ingress = Ingress(
-    "harbor-ingress",
-    metadata=ObjectMetaArgs(
-        name="harbor-ingress",
-        namespace=harbor_ns.metadata.name,
-        annotations={
-            "nginx.ingress.kubernetes.io/force-ssl-redirect": "true",
-            "nginx.ingress.kubernetes.io/proxy-body-size": "0",
-            "cert-manager.io/cluster-issuer": tls_issuer_names[tls_environment],
-        },
-    ),
-    spec={
-        "ingress_class_name": "nginx",
-        "tls": [
-            {
-                "hosts": [
-                    harbor_fqdn,
-                ],
-                "secret_name": "harbor-ingress-tls",
-            }
-        ],
-        "rules": [
-            {
-                "host": harbor_fqdn,
-                "http": {
-                    "paths": [
-                        {
-                            "path": "/",
-                            "path_type": "Prefix",
-                            "backend": {
-                                "service": {
-                                    "name": "harbor",
-                                    "port": {
-                                        "number": 80,
-                                    },
-                                }
-                            },
-                        }
-                    ]
-                },
-            }
-        ],
-    },
-    opts=ResourceOptions(
-        depends_on=[harbor],
+        depends_on=[ingress_nginx, cert_manager, cert_manager_issuers, storage_classes],
     ),
 )
 
@@ -491,8 +387,8 @@ skip_harbor_tls = Template(
     open("k8s/harbor/skip_harbor_tls_verification.yaml", "r").read()
 ).substitute(
     namespace="containerd-config",
-    harbor_fqdn=harbor_fqdn,
-    harbor_url=harbor_external_url,
+    harbor_fqdn=harbor.harbor_fqdn,
+    harbor_url=harbor.harbor_external_url,
     harbor_ip=config.require("harbor_ip"),
     harbor_internal_url="http://" + config.require("harbor_ip"),
 )
@@ -525,3 +421,8 @@ network_policies = components.NetworkPolicies(
         depends_on=resources,
     ),
 )
+
+# Pulumi exports
+pulumi.export("argo_fqdn", argo_workflows.argo_fqdn)
+pulumi.export("harbor_fqdn", harbor.harbor_fqdn)
+pulumi.export("minio_fqdn", minio.minio_fqdn)
