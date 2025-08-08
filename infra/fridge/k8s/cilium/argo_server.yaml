@@ -1,0 +1,51 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: argo-workflows-server
+  namespace: argo-server
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: argo-workflows-server
+  ingress:
+    - fromEndpoints:
+      - matchLabels:
+          app.kubernetes.io/name: ingress-nginx
+          k8s:io.kubernetes.pod.namespace: ingress-nginx
+      toPorts:
+        - ports:
+          - port: "2746"
+            protocol: TCP
+      # The server offers its web UI on port 2746, which needs to be accessible from the ingress-nginx controller to be served externally
+  egress:
+    - toEndpoints:
+      - matchLabels:
+          k8s:io.kubernetes.pod.namespace: kube-system
+          k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+          rules:
+            dns:
+              - matchPattern: "login.microsoftonline.com"
+    - toFQDNs:
+      - matchName: login.microsoftonline.com
+      toPorts:
+        - ports:
+            - port: "443"
+    - toEntities:
+        - kube-apiserver
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: argo-workflows-controller
+  namespace: argo-server
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: argo-workflows-workflow-controller
+  egress:
+    - toEntities:
+        - kube-apiserver
