@@ -117,7 +117,7 @@ class ApiServer(ComponentResource):
             opts=child_opts,
         )
 
-        RoleBinding(
+        argo_workflows_api_rolebinding = RoleBinding(
             "argo-workflows-api-role-binding",
             metadata=ObjectMetaArgs(
                 name="argo-workflows-api-role-binding",
@@ -141,7 +141,7 @@ class ApiServer(ComponentResource):
             ),
         )
 
-        Deployment(
+        fridge_api_server = Deployment(
             "fridge-api-server",
             metadata=ObjectMetaArgs(
                 name="fridge-api-server",
@@ -208,4 +208,14 @@ class ApiServer(ComponentResource):
                 ),
             ),
             opts=child_opts,
+        )
+
+        self.register_outputs(
+            {
+                "argo_workflows_api_role": argo_workflows_api_role,
+                "argo_workflows_api_rolebinding": argo_workflows_api_rolebinding,
+                "fridge_api_config": fridge_api_config,
+                "fridge_api_sa": fridge_api_sa,
+                "fridge_api_server": fridge_api_server,
+            }
         )
