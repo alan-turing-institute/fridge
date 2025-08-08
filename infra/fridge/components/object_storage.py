@@ -13,7 +13,7 @@ from pulumi_kubernetes.networking.v1 import (
 )
 from .storage_classes import StorageClasses
 
-from enums import K8sEnvironment, PodSecurityStandard, TlsEnvironment, tls_issuer_names
+from enums import PodSecurityStandard, TlsEnvironment, tls_issuer_names
 
 
 class ObjectStorageArgs:
