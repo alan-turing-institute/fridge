@@ -32,7 +32,7 @@ class ObjectStorage(ComponentResource):
     def __init__(
         self, name: str, args: ObjectStorageArgs, opts: ResourceOptions | None = None
     ) -> None:
-        super().__init__("fridge:k8s:ObjectStorage", name, {}, opts)
+        super().__init__("fridge:ObjectStorage", name, {}, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
         minio_operator_ns = Namespace(
