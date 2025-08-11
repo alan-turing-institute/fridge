@@ -43,6 +43,15 @@ RUN if [ "$(uname -m)" = "x86_64" ]; then \
     chmod +x ./kind && \
     mv ./kind /usr/local/bin/kind
 
+# Install k3d
+RUN if [ "$(uname -m)" = "x86_64" ]; then \
+        wget https://github.com/k3d-io/k3d/releases/download/v5.8.3/k3d-linux-amd64; \
+    elif [ "$(uname -m)" = "aarch64" ]; then \
+        wget https://github.com/k3d-io/k3d/releases/download/v5.8.3/k3d-linux-arm64; \
+    fi && \
+    chmod +x k3d-linux-* && \
+    mv k3d-linux-* /usr/local/bin/k3d
+
 # Istall k9s
 RUN if [ "$(uname -m)" = "x86_64" ]; then \
         wget https://github.com/derailed/k9s/releases/download/v0.50.9/k9s_linux_amd64.deb && \
@@ -81,3 +90,6 @@ RUN mv "./argo-$ARGO_OS-amd64" /usr/local/bin/argo
 RUN curl -sLO "https://github.com/carapace-sh/carapace-bin/releases/download/v1.4.0/carapace-bin_1.4.0_linux_arm64.tar.gz" && \
     tar -xzf carapace-bin_1.4.0_linux_arm64.tar.gz -C /usr/local/bin && \
     rm carapace-bin_1.4.0_linux_arm64.tar.gz
+
+# use fzf-tab for fzf completions
+RUN git clone --depth 1 https://github.com/Aloxaf/fzf-tab /home/vscode/.oh-my-zsh/custom/plugins/fzf-tab

@@ -43,9 +43,6 @@
             }
         }
     },
-    "forwardPorts": [
-        2746 // Argo-workflows UI
-    ],
     "postCreateCommand": "bash .devcontainer/post-create.sh",
     "remoteUser": "vscode",
     "mounts": [

@@ -14,21 +14,31 @@ print_message "Setting up environment variables"
 echo "export KUBECONFIG=/home/vscode/.kube/config" >> /home/vscode/.zshrc
 echo "export PATH=\$PATH:/home/vscode/.local/bin" >> /home/vscode/.zshrc
 
-cilium completion zsh > /home/vscode/.config/cilium-completions.zsh
-argo completion zsh > /home/vscode/.config/argo-completions.zsh
+# Install completions
+/usr/local/bin/k3d completion zsh > /home/vscode/.config/k3d-completions.zsh
+/usr/local/bin/cilium completion zsh > /home/vscode/.config/cilium-completions.zsh
+/usr/local/bin/argo completion zsh > /home/vscode/.config/argo-completions.zsh
 /home/vscode/.pulumi/bin/pulumi gen-completion zsh > /home/vscode/.config/pulumi-completions.zsh
 
-[ -d ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/fzf-tab ] || git clone --depth 1 https://github.com/Aloxaf/fzf-tab ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/fzf-tab
-
-# add fzf-tab to .zshrc plugins
-sed -i "s/plugins=(/plugins=(fzf-tab fzf /" /home/vscode/.zshrc
+# delete existing plugins line if it exists
+if grep -q "plugins=(" /home/vscode/.zshrc; then
+  sed -i "/plugins=(/d" /home/vscode/.zshrc
+fi
 
 # Create aliases
 cat >> /home/vscode/.zshrc << EOF
 # ~/.zshrc
+export PATH=\$PATH:~/.pulumi/bin
+export PATH=\$PATH:/workspace/scripts
+
+autoload -U compinit && compinit
+
 export CARAPACE_BRIDGES='zsh,fish,bash,inshellisense' # optional
 zstyle ':completion:*' format $'\e[2;37mCompleting %d\e[m'
 source <(carapace _carapace)
+for f in /home/vscode/.config/*-completions.zsh; do
+  source \$f
+done
 
 # k8s aliases
 alias k='kubectl'
@@ -36,9 +46,8 @@ alias ksec='kubectl get secret'
 alias kpods='kubectl get pods'
 alias kdep='kubectl get deployments'
 alias ksvc='kubectl get services'
-export PATH=\$PATH:~/.pulumi/bin
-export PATH=\$PATH:/workspace/scripts
-source /home/vscode/.config/*-completions.zsh
+
+plugins=(git docker docker-compose kubectl fzf-tab)
 EOF
 
 # set up Docker socket permissions for KInD
@@ -56,4 +65,6 @@ elif [ -d "/workspace/infra/fridge/venv" ]; then
 fi
 
 print_message "DevContainer setup complete! 🎉"
+echo "You can now use the following commands:"
+echo "run 'source ~/.zshrc'"
 echo "run '/workspace/scripts/kind-rebuild-cluster.sh' (also in PATH) to create a new cluster"
