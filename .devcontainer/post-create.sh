@@ -67,4 +67,4 @@ fi
 print_message "DevContainer setup complete! 🎉"
 echo "You can now use the following commands:"
 echo "run 'source ~/.zshrc'"
-echo "run '/workspace/scripts/kind-rebuild-cluster.sh' (also in PATH) to create a new cluster"
+echo "run 'k3d cluster create --config k3d-default.yaml && /workspace/infra/fridge/k3d-default.yaml' to create a new cluster"
