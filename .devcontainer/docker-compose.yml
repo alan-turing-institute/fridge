@@ -7,7 +7,7 @@ services:
     container_name: fridge-devcontainer
     volumes:
       - ..:/workspace:cached
-      - k8s-config:/kubeconfig:cached 
+      - k8s-config:/kubeconfig:cached
     command: /bin/sh -c "while sleep 1000; do :; done"
 
     user: vscode
@@ -17,7 +17,7 @@ services:
 #       - devcontainer_network
   # k3s-server:
   #   image: "rancher/k3s:${K3S_VERSION:-latest}"
-  #   command: 
+  #   command:
   #     - server
   #     - "--flannel-backend=none" # Disable flannel (we use cilium)
   #     - "--disable=traefik" # Disable traefik ingress controller
@@ -37,13 +37,13 @@ services:
   #   volumes:
   #   - k3s-server:/var/lib/rancher/k3s
   #   # This is just so that we get the kubeconfig file out
-  #   - k8s-config:/output 
+  #   - k8s-config:/output
   #   expose:
   #     - 6443 # Kubernetes API Server
   #     - 80 # Ingress controller port 80 - not used at the moment
   #     - 443 # Ingress controller port 443 - not used at the moment
   #     - 2746  # Argo-workflows UI
-    
+
   #   ports:
   #   - 6443:6443  # Kubernetes API Server
   #   # - 80:80      # Ingress controller port 80

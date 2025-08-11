@@ -42,8 +42,8 @@ fi
 if [ "$(pulumi stack ls --json | jq '. | length == 0')" = "true" ]; then
     echo -e "${COLOR_YELLOW}No stacks found. Please create a stack first.${COLOR_REST}"
     echo -e "Run '${COLOR_BLUE}pulumi stack init <stack-name>${COLOR_REST}' to create a new stack."
-    gum confirm "Would you like to create a new stack?" && 
-        pulumi stack init dev && 
+    gum confirm "Would you like to create a new stack?" &&
+        pulumi stack init dev &&
         pulumi stack select dev
     echo "New stack created and selected."
 else
