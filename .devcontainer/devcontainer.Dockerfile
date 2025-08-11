@@ -21,7 +21,6 @@ RUN apt-get update \
     software-properties-common \
     unzip \
     wget \
-    just \
     fzf \
     python3.12-venv
 
