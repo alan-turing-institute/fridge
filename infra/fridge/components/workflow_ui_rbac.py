@@ -20,7 +20,7 @@ class WorkflowUiRbacArgs:
         self.config = config
 
 
-class WorkflowUIRbac(ComponentResource):
+class WorkflowUiRbac(ComponentResource):
     def __init__(
         self, name: str, args: WorkflowUiRbacArgs, opts: ResourceOptions = None
     ):
