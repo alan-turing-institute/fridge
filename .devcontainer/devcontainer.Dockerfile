@@ -33,14 +33,6 @@ RUN curl -fsSL https://get.pulumi.com | sh
 RUN mv ~/.pulumi/ /home/vscode/.pulumi
 RUN chown -R vscode:vscode /home/vscode/.pulumi
 
-# install KInD
-RUN if [ "$(uname -m)" = "x86_64" ]; then \
-        curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.29.0/kind-linux-amd64; \
-    elif [ "$(uname -m)" = "aarch64" ]; then \
-        curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.29.0/kind-linux-arm64; \
-    fi && \
-    chmod +x ./kind && \
-    mv ./kind /usr/local/bin/kind
 
 # Install k3d
 RUN if [ "$(uname -m)" = "x86_64" ]; then \
