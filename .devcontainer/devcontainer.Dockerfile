@@ -42,6 +42,16 @@ RUN if [ "$(uname -m)" = "x86_64" ]; then \
     chmod +x k3d-linux-* && \
     mv k3d-linux-* /usr/local/bin/k3d
 
+# Install Helm
+RUN if [ "$(uname -m)" = "x86_64" ]; then \
+        wget https://get.helm.sh/helm-v3.14.0-linux-amd64.tar.gz; \
+    elif [ "$(uname -m)" = "aarch64" ]; then \
+        wget https://get.helm.sh/helm-v3.14.0-linux-arm64.tar.gz; \
+    fi && \
+    tar -zxvf helm-v3.14.0-linux-*.tar.gz && \
+    mv linux-*/helm /usr/local/bin/helm && \
+    rm -rf linux-* helm-v3.14.0-linux-*.tar.gz
+
 # Install k9s
 RUN if [ "$(uname -m)" = "x86_64" ]; then \
         wget https://github.com/derailed/k9s/releases/download/v0.50.9/k9s_linux_amd64.deb && \
