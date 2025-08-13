@@ -7,7 +7,7 @@ USER root
 
 # Application versions
 
-ARG ARGO_VERSION='3.0.0'
+ARG ARGO_VERSION='3.7.0'
 
 RUN apt-get update \
     && apt-get install -y \
@@ -33,7 +33,6 @@ RUN curl -fsSL https://get.pulumi.com | sh
 RUN mv ~/.pulumi/ /home/vscode/.pulumi
 RUN chown -R vscode:vscode /home/vscode/.pulumi
 
-
 # Install k3d
 RUN if [ "$(uname -m)" = "x86_64" ]; then \
         wget https://github.com/k3d-io/k3d/releases/download/v5.8.3/k3d-linux-amd64; \
@@ -43,7 +42,7 @@ RUN if [ "$(uname -m)" = "x86_64" ]; then \
     chmod +x k3d-linux-* && \
     mv k3d-linux-* /usr/local/bin/k3d
 
-# Istall k9s
+# Install k9s
 RUN if [ "$(uname -m)" = "x86_64" ]; then \
         wget https://github.com/derailed/k9s/releases/download/v0.50.9/k9s_linux_amd64.deb && \
         dpkg -i k9s_linux_amd64.deb; \
@@ -70,9 +69,9 @@ RUN HUBBLE_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/hubble/mas
     tar xzvf hubble-linux-${HUBBLE_ARCH}.tar.gz -C /usr/local/bin && \
     rm hubble-linux-*.tar.gz hubble-linux-*.tar.gz.sha256sum
 
-# Install ArgoCD CLI
+# Install Argo Workflows CLI
 ARG ARGO_OS="linux"
-RUN curl -sLO "https://github.com/argoproj/argo-workflows/releases/download/v3.7.0/argo-$ARGO_OS-amd64.gz"
+RUN curl -sLO "https://github.com/argoproj/argo-workflows/releases/download/v$ARGO_VERSION/argo-$ARGO_OS-amd64.gz"
 RUN gunzip "argo-$ARGO_OS-amd64.gz"
 RUN chmod +x "argo-$ARGO_OS-amd64"
 RUN mv "./argo-$ARGO_OS-amd64" /usr/local/bin/argo
