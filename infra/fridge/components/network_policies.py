@@ -35,7 +35,7 @@ class NetworkPolicies(ComponentResource):
                 )
             case K8sEnvironment.K3S:
                 # K3S policies applicable for a local dev environment
-                # These could be used in any vanilla k8s + cillium local cluster
+                # These could be used in any vanilla k8s + Cilium local cluster
                 ConfigFile(
                     "network_policy_k3s",
                     file="./k8s/cilium/k3s.yaml",
