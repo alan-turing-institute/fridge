@@ -22,11 +22,8 @@ RUN apt-get update \
     unzip \
     wget \
     fzf \
+    yq \
     python3.12-venv
-
-# install yq
-RUN wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq &&\
-    chmod +x /usr/local/bin/yq
 
 # install pulumi
 RUN curl -fsSL https://get.pulumi.com | sh
