@@ -5,6 +5,7 @@ from enum import Enum, unique
 class K8sEnvironment(Enum):
     AKS = "AKS"
     DAWN = "Dawn"
+    K3S = "K3S"
 
 
 @unique
