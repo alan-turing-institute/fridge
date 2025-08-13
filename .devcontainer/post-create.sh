@@ -20,25 +20,26 @@ echo "export PATH=\$PATH:/home/vscode/.local/bin" >> /home/vscode/.zshrc
 /usr/local/bin/argo completion zsh > /home/vscode/.config/argo-completions.zsh
 /home/vscode/.pulumi/bin/pulumi gen-completion zsh > /home/vscode/.config/pulumi-completions.zsh
 
-# delete existing plugins line if it exists
+# replace existing plugins line if it exists
 if grep -q "plugins=(" /home/vscode/.zshrc; then
-  sed -i "/plugins=(/d" /home/vscode/.zshrc
+  sed -i "/plugins=(/c\plugins=(git docker docker-compose kubectl fzf-tab)" /home/vscode/.zshrc
 fi
 
 # Create aliases
 cat >> /home/vscode/.zshrc << EOF
 # ~/.zshrc
+
 export PATH=\$PATH:~/.pulumi/bin
 export PATH=\$PATH:/workspace/scripts
 
-autoload -U compinit && compinit
+
+for f in /home/vscode/.config/*-completions.zsh; do
+  source \$f
+done
 
 export CARAPACE_BRIDGES='zsh,fish,bash,inshellisense' # optional
 zstyle ':completion:*' format $'\e[2;37mCompleting %d\e[m'
 source <(carapace _carapace)
-for f in /home/vscode/.config/*-completions.zsh; do
-  source \$f
-done
 
 # k8s aliases
 alias k='kubectl'
@@ -46,8 +47,6 @@ alias ksec='kubectl get secret'
 alias kpods='kubectl get pods'
 alias kdep='kubectl get deployments'
 alias ksvc='kubectl get services'
-
-plugins=(git docker docker-compose kubectl fzf-tab)
 EOF
 
 # set up Docker socket permissions for KInD
