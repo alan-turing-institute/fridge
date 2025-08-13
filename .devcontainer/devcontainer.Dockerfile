@@ -5,9 +5,23 @@ USER root
 
 # Kubectl, helm are enabled as features from the devcontainer.json
 
-# Application versions
+############################################################
+# Version ARGs (override at build-time as needed)
+############################################################
+# Core CLIs
+ARG K3D_VERSION="5.8.3"
+ARG HELM_VERSION="3.14.0"
+ARG K9S_VERSION="0.50.9"
+ARG ARGO_VERSION="3.7.0"
+ARG CARAPACE_VERSION="1.4.0"
+ARG FZF_TAB_REF="master"   # git ref (branch/tag/commit) for fzf-tab plugin
 
-ARG ARGO_VERSION='3.7.0'
+# Cilium & Hubble: use explicit versions; set to "auto" to use upstream stable.txt
+ARG CILIUM_CLI_VERSION="auto"
+ARG HUBBLE_VERSION="auto"
+
+# Helper for arch mapping in RUN steps
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 RUN apt-get update \
     && apt-get install -y \
@@ -31,62 +45,54 @@ RUN mv ~/.pulumi/ /home/vscode/.pulumi
 RUN chown -R vscode:vscode /home/vscode/.pulumi
 
 # Install k3d
-RUN if [ "$(uname -m)" = "x86_64" ]; then \
-        wget https://github.com/k3d-io/k3d/releases/download/v5.8.3/k3d-linux-amd64; \
-    elif [ "$(uname -m)" = "aarch64" ]; then \
-        wget https://github.com/k3d-io/k3d/releases/download/v5.8.3/k3d-linux-arm64; \
-    fi && \
-    chmod +x k3d-linux-* && \
-    mv k3d-linux-* /usr/local/bin/k3d
+RUN ARCH=amd64; [[ "$(uname -m)" == "aarch64" ]] && ARCH=arm64; \
+    wget -q https://github.com/k3d-io/k3d/releases/download/v${K3D_VERSION}/k3d-linux-${ARCH} -O /usr/local/bin/k3d && \
+    chmod +x /usr/local/bin/k3d
 
 # Install Helm
-RUN if [ "$(uname -m)" = "x86_64" ]; then \
-        wget https://get.helm.sh/helm-v3.14.0-linux-amd64.tar.gz; \
-    elif [ "$(uname -m)" = "aarch64" ]; then \
-        wget https://get.helm.sh/helm-v3.14.0-linux-arm64.tar.gz; \
-    fi && \
-    tar -zxvf helm-v3.14.0-linux-*.tar.gz && \
-    mv linux-*/helm /usr/local/bin/helm && \
-    rm -rf linux-* helm-v3.14.0-linux-*.tar.gz
+RUN ARCH=amd64; [[ "$(uname -m)" == "aarch64" ]] && ARCH=arm64; \
+    wget -q https://get.helm.sh/helm-v${HELM_VERSION}-linux-${ARCH}.tar.gz && \
+    tar -zxf helm-v${HELM_VERSION}-linux-${ARCH}.tar.gz && \
+    mv linux-${ARCH}/helm /usr/local/bin/helm && \
+    rm -rf linux-* helm-v${HELM_VERSION}-linux-${ARCH}.tar.gz
 
 # Install k9s
-RUN if [ "$(uname -m)" = "x86_64" ]; then \
-        wget https://github.com/derailed/k9s/releases/download/v0.50.9/k9s_linux_amd64.deb && \
-        dpkg -i k9s_linux_amd64.deb; \
-    elif [ "$(uname -m)" = "aarch64" ]; then \
-        wget https://github.com/derailed/k9s/releases/download/v0.50.9/k9s_linux_arm64.deb && \
-        dpkg -i k9s_linux_arm64.deb; \
-    fi && \
-    rm k9s_linux_*.deb
+RUN ARCH=amd64; [[ "$(uname -m)" == "aarch64" ]] && ARCH=arm64; \
+    wget -q https://github.com/derailed/k9s/releases/download/v${K9S_VERSION}/k9s_linux_${ARCH}.deb && \
+    dpkg -i k9s_linux_${ARCH}.deb && \
+    rm -f k9s_linux_${ARCH}.deb
 
 # Install Cilium CLI
-RUN CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt) && \
-    CLI_ARCH=amd64 && \
-    if [ "$(uname -m)" = "aarch64" ]; then CLI_ARCH=arm64; fi && \
-    curl -L --fail --remote-name-all https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-linux-${CLI_ARCH}.tar.gz{,.sha256sum} && \
-    sha256sum --check cilium-linux-${CLI_ARCH}.tar.gz.sha256sum && \
-    tar xzvf cilium-linux-${CLI_ARCH}.tar.gz -C /usr/local/bin
+RUN VER="${CILIUM_CLI_VERSION}"; \
+    [[ "$VER" == "auto" ]] && VER=$(curl -fsSL https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt); \
+    ARCH=amd64; [[ "$(uname -m)" == "aarch64" ]] && ARCH=arm64; \
+    curl -fsSL -O https://github.com/cilium/cilium-cli/releases/download/${VER}/cilium-linux-${ARCH}.tar.gz -O https://github.com/cilium/cilium-cli/releases/download/${VER}/cilium-linux-${ARCH}.tar.gz.sha256sum && \
+    sha256sum --check cilium-linux-${ARCH}.tar.gz.sha256sum && \
+    tar xzf cilium-linux-${ARCH}.tar.gz -C /usr/local/bin && \
+    rm -f cilium-linux-${ARCH}.tar.gz cilium-linux-${ARCH}.tar.gz.sha256sum
 
 # Install Hubble CLI
-RUN HUBBLE_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/hubble/master/stable.txt) && \
-    HUBBLE_ARCH=amd64 && \
-    if [ "$(uname -m)" = "aarch64" ]; then HUBBLE_ARCH=arm64; fi && \
-    curl -L --fail --remote-name-all https://github.com/cilium/hubble/releases/download/${HUBBLE_VERSION}/hubble-linux-${HUBBLE_ARCH}.tar.gz{,.sha256sum} && \
-    sha256sum --check hubble-linux-${HUBBLE_ARCH}.tar.gz.sha256sum && \
-    tar xzvf hubble-linux-${HUBBLE_ARCH}.tar.gz -C /usr/local/bin && \
-    rm hubble-linux-*.tar.gz hubble-linux-*.tar.gz.sha256sum
+RUN VER="${HUBBLE_VERSION}"; \
+    [[ "$VER" == "auto" ]] && VER=$(curl -fsSL https://raw.githubusercontent.com/cilium/hubble/master/stable.txt); \
+    ARCH=amd64; [[ "$(uname -m)" == "aarch64" ]] && ARCH=arm64; \
+    curl -fsSL -O https://github.com/cilium/hubble/releases/download/${VER}/hubble-linux-${ARCH}.tar.gz -O https://github.com/cilium/hubble/releases/download/${VER}/hubble-linux-${ARCH}.tar.gz.sha256sum && \
+    sha256sum --check hubble-linux-${ARCH}.tar.gz.sha256sum && \
+    tar xzf hubble-linux-${ARCH}.tar.gz -C /usr/local/bin && \
+    rm -f hubble-linux-*.tar.gz hubble-linux-*.tar.gz.sha256sum
 
 # Install Argo Workflows CLI
 ARG ARGO_OS="linux"
-RUN curl -sLO "https://github.com/argoproj/argo-workflows/releases/download/v$ARGO_VERSION/argo-$ARGO_OS-amd64.gz"
-RUN gunzip "argo-$ARGO_OS-amd64.gz"
-RUN chmod +x "argo-$ARGO_OS-amd64"
-RUN mv "./argo-$ARGO_OS-amd64" /usr/local/bin/argo
+RUN ARCH=amd64; [[ "$(uname -m)" == "aarch64" ]] && ARCH=arm64; \
+    curl -fsSL -o argo-${ARGO_OS}-${ARCH}.gz "https://github.com/argoproj/argo-workflows/releases/download/v${ARGO_VERSION}/argo-${ARGO_OS}-${ARCH}.gz" && \
+    gunzip "argo-${ARGO_OS}-${ARCH}.gz" && \
+    chmod +x "argo-${ARGO_OS}-${ARCH}" && \
+    mv "./argo-${ARGO_OS}-${ARCH}" /usr/local/bin/argo
 
 # Install Carapace for shell completions
-RUN curl -sLO "https://github.com/carapace-sh/carapace-bin/releases/download/v1.4.0/carapace-bin_1.4.0_linux_arm64.tar.gz" && \
-    tar -xzf carapace-bin_1.4.0_linux_arm64.tar.gz -C /usr/local/bin && \
-    rm carapace-bin_1.4.0_linux_arm64.tar.gz
+RUN ARCH=amd64; [[ "$(uname -m)" == "aarch64" ]] && ARCH=arm64; \
+    curl -fsSL -o carapace.tar.gz "https://github.com/carapace-sh/carapace-bin/releases/download/v${CARAPACE_VERSION}/carapace-bin_${CARAPACE_VERSION}_linux_${ARCH}.tar.gz" && \
+    tar -xzf carapace.tar.gz -C /usr/local/bin && \
+    rm -f carapace.tar.gz
 
 # use fzf-tab for fzf completions
-RUN git clone --depth 1 https://github.com/Aloxaf/fzf-tab /home/vscode/.oh-my-zsh/custom/plugins/fzf-tab
+RUN git clone --depth 1 --branch ${FZF_TAB_REF} https://github.com/Aloxaf/fzf-tab /home/vscode/.oh-my-zsh/custom/plugins/fzf-tab
