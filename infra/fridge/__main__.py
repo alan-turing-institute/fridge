@@ -42,11 +42,11 @@ try:
 except ValueError:
     raise ValueError(
         f"Invalid k8s environment: {k8s_environment}. "
-        "Supported values are 'AKS' and 'Dawn'."
+        "Supported values are 'AKS', 'Dawn' and 'K3S'."
     )
 
 match k8s_environment:
-    case K8sEnvironment.AKS:
+    case K8sEnvironment.AKS | K8sEnvironment.K3S:
         # Hubble UI
         # Interface for Cilium
         hubble_ui = ConfigFile(
