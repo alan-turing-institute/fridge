@@ -626,11 +626,8 @@ harbor = Release(
                 },
                 "type": "clusterIP",
                 "tls": {
-                    "enabled": "false",
+                    "enabled": False,
                     "certSource": "none",
-                },
-                "secret": {
-                    "secretName": "harbor-ingress-tls",
                 },
             },
             "externalURL": harbor_external_url,
