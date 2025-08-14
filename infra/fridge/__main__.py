@@ -1,9 +1,18 @@
 from string import Template
 
 import pulumi
+
 from pulumi import FileAsset, Output, ResourceOptions
-from pulumi_kubernetes.batch.v1 import CronJobPatch, CronJobSpecPatchArgs
-from pulumi_kubernetes.core.v1 import Namespace, NamespacePatch, Secret, ServiceAccount
+from pulumi_kubernetes.batch.v1 import (
+    CronJobPatch,
+    CronJobSpecPatchArgs,
+)
+from pulumi_kubernetes.core.v1 import (
+    Namespace,
+    NamespacePatch,
+    Secret,
+    ServiceAccount,
+)
 from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs, ObjectMetaPatchArgs
@@ -16,6 +25,7 @@ from pulumi_kubernetes.rbac.v1 import (
     SubjectArgs,
 )
 from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
+from pulumi_random import RandomPassword
 
 import components
 
@@ -181,7 +191,9 @@ cert_manager_issuers = ConfigGroup(
     ),
 )
 
-# Minio
+# MinIO
+
+## Deploy the MinIO operator, which is responsible for managing MinIO tenants
 minio_operator_ns = Namespace(
     "minio-operator-ns",
     metadata=ObjectMetaArgs(
@@ -203,6 +215,7 @@ minio_operator = Chart(
     ),
 )
 
+## Set up the MinIO tenant
 minio_tenant_ns = Namespace(
     "minio-tenant-ns",
     metadata=ObjectMetaArgs(
@@ -246,6 +259,92 @@ minio_env_secret = Secret(
     ),
 )
 
+### MinIO user secrets
+minio_ingress_reader_secret = Secret(
+    "minio-ingress-reader-secret",
+    metadata=ObjectMetaArgs(
+        name="ingress-reader-secret",
+        namespace=minio_tenant_ns.metadata.name,
+    ),
+    type="Opaque",
+    string_data={
+        "CONSOLE_ACCESS_KEY": "ingress-reader",
+        "CONSOLE_SECRET_KEY": RandomPassword(
+            "minio-ingress-reader-password",
+            length=16,
+            special=True,
+            upper=True,
+        ).result,
+    },
+    opts=ResourceOptions(
+        depends_on=[minio_tenant_ns],
+    ),
+)
+
+minio_sensitive_ingress_reader_secret = Secret(
+    "minio-sensitive_ingress-reader-secret",
+    metadata=ObjectMetaArgs(
+        name="sensitive-ingress-reader-secret",
+        namespace=minio_tenant_ns.metadata.name,
+    ),
+    type="Opaque",
+    string_data={
+        "CONSOLE_ACCESS_KEY": "sensitive-ingress-reader",
+        "CONSOLE_SECRET_KEY": RandomPassword(
+            "sensitive-ingress-reader-password",
+            length=16,
+            special=True,
+            upper=True,
+        ).result,
+    },
+    opts=ResourceOptions(
+        depends_on=[minio_tenant_ns],
+    ),
+)
+
+minio_export_for_review_secret = Secret(
+    "minio-export-for-review-secret",
+    metadata=ObjectMetaArgs(
+        name="export-for-review-secret",
+        namespace=minio_tenant_ns.metadata.name,
+    ),
+    type="Opaque",
+    string_data={
+        "CONSOLE_ACCESS_KEY": "export-for-review",
+        "CONSOLE_SECRET_KEY": RandomPassword(
+            "export-writer-password",
+            length=16,
+            special=True,
+            upper=True,
+        ).result,
+    },
+    opts=ResourceOptions(
+        depends_on=[minio_tenant_ns],
+    ),
+)
+
+minio_review_reader_secret = Secret(
+    "minio-review-reader-secrets",
+    metadata=ObjectMetaArgs(
+        name="review-reader-secret",
+        namespace=minio_tenant_ns.metadata.name,
+    ),
+    type="Opaque",
+    string_data={
+        "CONSOLE_ACCESS_KEY": "review-reader",
+        "CONSOLE_SECRET_KEY": RandomPassword(
+            "review-reader-password",
+            length=16,
+            special=True,
+            upper=True,
+        ).result,
+    },
+    opts=ResourceOptions(
+        depends_on=[minio_tenant_ns],
+    ),
+)
+
+## Deploy the MinIO tenant
 minio_tenant = Chart(
     "minio-tenant",
     namespace=minio_tenant_ns.metadata.name,
@@ -260,6 +359,17 @@ minio_tenant = Chart(
             "name": "argo-artifacts",
             "buckets": [
                 {"name": "argo-artifacts"},
+                {"name": "ingress"},
+                {"name": "sensitive-ingress"},
+                {"name": "intermediate-storage"},
+                {"name": "ready-for-review"},
+                {"name": "ready-for-egress"},
+            ],
+            "users": [
+                {"name": "ingress-reader-secret"},
+                {"name": "sensitive-ingress-reader-secret"},
+                {"name": "export-for-review-secret"},
+                {"name": "review-reader-secret"},
             ],
             "certificate": {
                 "requestAutoCert": "false",
@@ -304,7 +414,16 @@ minio_tenant = Chart(
         },
     },
     opts=ResourceOptions(
-        depends_on=[storage_classes, minio_env_secret, minio_operator, minio_tenant_ns],
+        depends_on=[
+            minio_env_secret,
+            minio_ingress_reader_secret,
+            minio_operator,
+            minio_tenant_ns,
+            minio_sensitive_ingress_reader_secret,
+            minio_export_for_review_secret,
+            minio_review_reader_secret,
+            storage_classes,
+        ],
     ),
 )
 
@@ -353,6 +472,22 @@ minio_ingress = Ingress(
     },
     opts=ResourceOptions(
         depends_on=[minio_tenant],
+    ),
+)
+
+# MinIO configuration job
+minio_config = components.MinioConfigJob(
+    name=f"{stack_name}-minio-config-job",
+    args=components.MinioConfigArgs(
+        minio_tenant_ns=minio_tenant_ns,
+        minio_tenant=minio_tenant,
+        minio_credentials={
+            "minio_root_user": config.require_secret("minio_root_user"),
+            "minio_root_password": config.require_secret("minio_root_password"),
+        },
+    ),
+    opts=ResourceOptions(
+        depends_on=[minio_tenant, minio_env_secret, minio_tenant_ns],
     ),
 )
 
@@ -751,6 +886,7 @@ resources = [
     configure_containerd_daemonset,
     harbor,
     ingress_nginx,
+    minio_config,
     minio_ingress,
     minio_operator,
     minio_tenant,
