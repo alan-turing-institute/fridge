@@ -136,7 +136,48 @@ match k8s_environment:
             ),
         )
     case K8sEnvironment.LOCAL:
-        pass
+        # Ingress NGINX (ingress provider)
+        ingress_nginx_ns = Namespace(
+            "ingress-nginx-ns",
+            metadata=ObjectMetaArgs(
+                name="ingress-nginx",
+                labels={} | PodSecurityStandard.RESTRICTED.value,
+            ),
+        )
+
+        ingress_nginx = ConfigFile(
+            "ingress-nginx",
+            file="https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.1/deploy/static/provider/cloud/deploy.yaml",
+            opts=ResourceOptions(
+                depends_on=[ingress_nginx_ns],
+            ),
+        )
+
+        # CertManager (TLS automation)
+        cert_manager_ns = Namespace(
+            "cert-manager-ns",
+            metadata=ObjectMetaArgs(
+                name="cert-manager",
+                labels={} | PodSecurityStandard.RESTRICTED.value,
+            ),
+        )
+
+        cert_manager = Chart(
+            "cert-manager",
+            namespace=cert_manager_ns.metadata.name,
+            chart="cert-manager",
+            version="1.17.1",
+            repository_opts=RepositoryOptsArgs(
+                repo="https://charts.jetstack.io",
+            ),
+            values={
+                "crds": {"enabled": True},
+                "extraArgs": ["--acme-http01-solver-nameservers=8.8.8.8:53,1.1.1.1:53"],
+            },
+            opts=ResourceOptions(
+                depends_on=[cert_manager_ns],
+            ),
+        )
 
 
 # Storage classes
@@ -384,22 +425,6 @@ argo_fqdn = ".".join(
 )
 pulumi.export("argo_fqdn", argo_fqdn)
 
-argo_sso_secret = Secret(
-    "argo-server-sso-secret",
-    metadata=ObjectMetaArgs(
-        name="argo-server-sso",
-        namespace=argo_server_ns.metadata.name,
-    ),
-    type="Opaque",
-    string_data={
-        "client-id": config.require_secret("oidc_client_id"),
-        "client-secret": config.require_secret("oidc_client_secret"),
-    },
-    opts=ResourceOptions(
-        depends_on=[argo_server_ns],
-    ),
-)
-
 argo_minio_secret = Secret(
     "argo-minio-secret",
     metadata=ObjectMetaArgs(
@@ -422,6 +447,8 @@ argo_server_sso_config = {
     "enabled": enable_sso,
 }
 
+argo_server_auth_modes = ["client"]
+
 if enable_sso:
     argo_server_sso_config.update(
         {
@@ -429,6 +456,22 @@ if enable_sso:
             "redirectUrl": Output.concat("https://", argo_fqdn, "/oauth2/callback"),
             "scopes": config.require_object("argo_scopes"),
         }
+    )
+    argo_server_auth_modes.append("sso")
+    argo_sso_secret = Secret(
+        "argo-server-sso-secret",
+        metadata=ObjectMetaArgs(
+            name="argo-server-sso",
+            namespace=argo_server_ns.metadata.name,
+        ),
+        type="Opaque",
+        string_data={
+            "client-id": config.require_secret("oidc_client_id"),
+            "client-secret": config.require_secret("oidc_client_secret"),
+        },
+        opts=ResourceOptions(
+            depends_on=[argo_server_ns],
+        ),
     )
 
 argo_workflows = Chart(
@@ -445,6 +488,7 @@ argo_workflows = Chart(
     values={
         "controller": {"workflowNamespaces": [argo_workflows_ns.metadata.name]},
         "server": {
+            "authModes": argo_server_auth_modes,
             "ingress": {
                 "annotations": {
                     "cert-manager.io/cluster-issuer": tls_issuer_names[tls_environment],
@@ -463,7 +507,6 @@ argo_workflows = Chart(
     opts=ResourceOptions(
         depends_on=[
             argo_minio_secret,
-            argo_sso_secret,
             argo_server_ns,
             argo_workflows_ns,
         ],
@@ -630,6 +673,9 @@ harbor_fqdn = ".".join(
 f"{config.require('harbor_fqdn_prefix')}.{config.require('base_fqdn')}"
 pulumi.export("harbor_fqdn", harbor_fqdn)
 harbor_external_url = f"https://{harbor_fqdn}"
+harbor_access_mode = (
+    "ReadWriteOnce" if k8s_environment is K8sEnvironment.LOCAL else "ReadWriteMany"
+)
 
 harbor = Release(
     "harbor",
@@ -647,11 +693,8 @@ harbor = Release(
                 },
                 "type": "clusterIP",
                 "tls": {
-                    "enabled": "false",
+                    "enabled": False,
                     "certSource": "none",
-                },
-                "secret": {
-                    "secretName": "harbor-ingress-tls",
                 },
             },
             "externalURL": harbor_external_url,
@@ -660,12 +703,12 @@ harbor = Release(
                 "persistentVolumeClaim": {
                     "registry": {
                         "storageClass": storage_classes.rwm_class_name,
-                        "accessMode": "ReadWriteMany",
+                        "accessMode": harbor_access_mode,
                     },
                     "jobservice": {
                         "jobLog": {
                             "storageClass": storage_classes.rwm_class_name,
-                            "accessMode": "ReadWriteMany",
+                            "accessMode": harbor_access_mode,
                         }
                     },
                 },
