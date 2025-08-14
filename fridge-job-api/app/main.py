@@ -13,7 +13,10 @@ from typing import Annotated, Any, Union
 if os.getenv("KUBERNETES_SERVICE_HOST"):
     FRIDGE_API_ADMIN = os.getenv("FRIDGE_API_ADMIN")
     FRIDGE_API_PASSWORD = os.getenv("FRIDGE_API_PASSWORD")
-    ARGO_SERVER = "https://argo-workflows-server.argo-server.svc.cluster.local:2746"
+    ARGO_SERVER_NS = os.getenv("ARGO_SERVER_NS")
+    ARGO_SERVER = (
+        f"https://argo-workflows-server.{ARGO_SERVER_NS}.svc.cluster.local:2746"
+    )
 else:
     # Load environment variables from .env file
     load_dotenv()
