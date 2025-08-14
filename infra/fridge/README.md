@@ -10,6 +10,10 @@ It does not deploy the Kubernetes cluster itself; instead, it assumes that a Kub
 
 For an example of deploying a Kubernetes cluster on Azure Kubernetes Service using Pulumi, see the `infra/aks` directory.
 
+For local development, you can use a local Kubernetes cluster such as [K3s](https://k3s.io/). For a suggested setup, see the `infra/local` directory.
+
+Note that container-based Kubernetes environments such as K3d or Kind are not supported, as Longhorn is not compatible with those environments.
+
 ## Prerequisites
 
 You will need the following tools installed on your local machine to deploy FRIDGE:
