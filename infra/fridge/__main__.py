@@ -457,6 +457,15 @@ argo_workflows = Chart(
     ),
 )
 
+argo_example = ConfigFile(
+    "argo-example",
+    file="./k8s/argo_workflows/examples/workflow_template.yaml",
+    opts=ResourceOptions(
+        depends_on=[
+            argo_workflows,
+        ]
+    ),
+)
 
 # Define argo workflows service accounts and roles
 # See https://argo-workflows.readthedocs.io/en/latest/security/
