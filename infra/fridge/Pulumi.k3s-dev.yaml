@@ -1,0 +1,32 @@
+encryptionsalt: v1:Hwh+izANJrk=:v1:T9sC2lic+KCUJvGN:fo8KgWHVuxt7Vur+1BjYgwmuLHkhLQ==
+config:
+  fridge:argo_scopes:
+    - https://graph.microsoft.com/User.Read
+    - https://graph.microsoft.com/Group.Read.All
+    - email
+  fridge:argo_fqdn_prefix: argo
+  fridge:base_fqdn: fridge.internal
+  fridge:harbor_admin_password:
+    secure: v1:NXEEZITEVCQLdeJH:V7AzhWWVfmWmwHneevmZmxxIUC/MtCpOBwSZ
+  fridge:harbor_ip: 10.43.50.50 # Static IP should be within the Cluster IP range
+  fridge:harbor_fqdn_prefix: harbor
+  fridge:lets_encrypt_email: safehavendevs@turing.ac.uk
+  fridge:minio_root_user:
+    secure: v1:GJhskzuefaC1bctT:KZIMHaxV0993OrXMPQdbqO130DSs
+  fridge:minio_root_password:
+    secure: v1:KRf1tyukXNsK0/Hy:Fd8LAGdyIA2Jx49C+64UeHhSSIsrbWKDGlE=
+  fridge:minio_fqdn_prefix: minio
+  fridge:minio_pool_size: 20Gi
+  fridge:oidc_client_id:
+    secure: v1:zkGqzC9uIfRPSL+k:GMAzIDFkkHaI7H9eix91Wd6FLqnLdiGox59It6hTOudcYrYiBZ1Z17r6b1mz6kkI8r+XiA==
+  fridge:oidc_client_secret:
+    secure: v1:DiTFZE/Pdvm51/DD:+juPoC6rO0tc7WMJu7ab1/9LEmpnWxFbtoxNRZXD5GU/3xSr+pV268meqaLKOeiccLAvb+EPZUQ=
+  fridge:oidc_admin_group_id:
+    secure: v1:Vczfx7T8XXVQPNrj:mtxa+9IcTcPvOXHp2JBna5F1evvNs06+oCI/0OtT+XmYlqGv41za7qjYTI6r+6BnToQzPA==
+  fridge:sso_issuer_url:
+    secure: v1:0R+wTocgace9skwp:Fpw15+6fRyvPqh3B62fbcla1rIeWRJKsZmVgYlzZoiamgsVjzzeLxypxMfnhhhBS4cf8TwK0urwyq0RBJtChslSSAcrI2l41EH9Cd0EsNZtsYAc00VKwS+1EQg==
+  fridge:tls_environment: staging
+  fridge:k8s_env: K3S
+  pulumi:autonaming:
+    mode: verbatim
+  kubernetes:context: default
