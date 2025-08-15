@@ -110,9 +110,66 @@ class StorageClasses(ComponentResource):
             )
 
             rwm_class_name = storage_class.metadata.name
-        elif k8s_environment == K8sEnvironment.LOCAL:
-            storage_class = StorageClass.get("fridge-storage-class", "local-path")
-            rwm_class_name = "local-path"  # storage_class.metadata.name
+        elif k8s_environment == K8sEnvironment.K3S:
+            longhorn_ns = Namespace(
+                "longhorn-system",
+                metadata=ObjectMetaArgs(
+                    name="longhorn-system",
+                    labels={} | PodSecurityStandard.PRIVILEGED.value,
+                ),
+                opts=child_opts,
+            )
+
+            longhorn = Release(
+                "longhorn",
+                namespace=longhorn_ns.metadata.name,
+                chart="longhorn",
+                version="1.9.0",
+                repository_opts=RepositoryOptsArgs(
+                    repo="https://charts.longhorn.io",
+                ),
+                # Add a toleration for the GPU node, to allow Longhorn to schedule pods/create volumes there
+                values={
+                    "global": {
+                        "tolerations": [
+                            {
+                                "key": "gpu.intel.com/i915",
+                                "operator": "Exists",
+                                "effect": "NoSchedule",
+                            }
+                        ]
+                    },
+                    "defaultSettings": {
+                        "taintToleration": "gpu.intel.com/i915:NoSchedule"
+                    },
+                    "persistence": {"defaultClassReplicaCount": 2},
+                },
+                opts=ResourceOptions.merge(
+                    child_opts,
+                    ResourceOptions(depends_on=[longhorn_ns]),
+                ),
+            )
+
+            storage_class = StorageClass(
+                "fridge_storage_class",
+                allow_volume_expansion=True,
+                metadata=ObjectMetaArgs(
+                    name=STORAGE_CLASS_NAME,
+                ),
+                parameters={
+                    "dataLocality": "best-effort",
+                    "fsType": "ext4",
+                    "numberOfReplicas": "2",
+                    "staleReplicaTimeout": "2880",
+                },
+                provisioner="driver.longhorn.io",
+                opts=ResourceOptions.merge(
+                    child_opts,
+                    ResourceOptions(depends_on=[longhorn]),
+                ),
+            )
+
+            rwm_class_name = storage_class.metadata.name
 
         self.encrypted_storage_class = storage_class
         self.rwm_class_name = rwm_class_name
