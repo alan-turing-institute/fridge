@@ -42,7 +42,7 @@ try:
 except ValueError:
     raise ValueError(
         f"Invalid k8s environment: {k8s_environment}. "
-        "Supported values are 'AKS', 'Dawn', and 'Local'."
+        "Supported values are 'AKS', 'Dawn', and 'K3s'."
     )
 
 match k8s_environment:
@@ -135,7 +135,7 @@ match k8s_environment:
                 }
             ),
         )
-    case K8sEnvironment.LOCAL:
+    case K8sEnvironment.K3S:
         # Ingress NGINX (ingress provider)
         ingress_nginx_ns = Namespace(
             "ingress-nginx-ns",
@@ -441,7 +441,7 @@ argo_minio_secret = Secret(
     ),
 )
 
-enable_sso = k8s_environment is not K8sEnvironment.LOCAL
+enable_sso = k8s_environment is not K8sEnvironment.K3S
 
 argo_server_sso_config = {
     "enabled": enable_sso,
@@ -674,7 +674,7 @@ f"{config.require('harbor_fqdn_prefix')}.{config.require('base_fqdn')}"
 pulumi.export("harbor_fqdn", harbor_fqdn)
 harbor_external_url = f"https://{harbor_fqdn}"
 harbor_access_mode = (
-    "ReadWriteOnce" if k8s_environment is K8sEnvironment.LOCAL else "ReadWriteMany"
+    "ReadWriteOnce" if k8s_environment is K8sEnvironment.K3S else "ReadWriteMany"
 )
 
 harbor = Release(
