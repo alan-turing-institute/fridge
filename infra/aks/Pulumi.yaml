@@ -5,3 +5,14 @@ runtime:
   options:
     toolchain: pip
     virtualenv: venv
+config:
+# Required configuration in the stack config
+# azure-native:location: <Azure region, e.g. uksouth>>
+# azure-native:subscriptionId: <Azure Subscription ID>
+# azure-native:tenantId: <Azure Tenant ID>
+  cluster_name:
+    type: string
+    description: The name of the AKS cluster
+  resource_group_name:
+    type: string
+    description: The name of the resource group where the AKS cluster will be deployed
