@@ -1,6 +1,7 @@
 from string import Template
 
 import pulumi
+
 from pulumi import FileAsset, Output, ResourceOptions
 from pulumi_kubernetes.batch.v1 import CronJobPatch, CronJobSpecPatchArgs
 from pulumi_kubernetes.core.v1 import Namespace, NamespacePatch, Secret, ServiceAccount
@@ -18,7 +19,6 @@ from pulumi_kubernetes.rbac.v1 import (
 from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
 
 import components
-
 from enums import K8sEnvironment, PodSecurityStandard, TlsEnvironment, tls_issuer_names
 
 
@@ -646,14 +646,6 @@ argo_workflows_default_sa_token = Secret(
     ),
 )
 
-api_rbac = components.ApiRbac(
-    name=f"{stack_name}-api-rbac",
-    argo_workflows_ns=argo_workflows_ns.metadata.name,
-    opts=ResourceOptions(
-        depends_on=[argo_workflows_ns],
-    ),
-)
-
 # Harbor
 harbor_ns = Namespace(
     "harbor-ns",
@@ -798,6 +790,30 @@ configure_containerd_daemonset = ConfigGroup(
     yaml=[skip_harbor_tls],
     opts=ResourceOptions(
         depends_on=[harbor],
+    ),
+)
+
+# API Server
+api_server_ns = Namespace(
+    "api-server-ns",
+    metadata=ObjectMetaArgs(
+        name="fridge-api",
+        labels={} | PodSecurityStandard.RESTRICTED.value,
+    ),
+)
+
+api_server = components.ApiServer(
+    name=f"{stack_name}-api-server",
+    args=components.ApiServerArgs(
+        api_server_ns=api_server_ns.metadata.name,
+        argo_server_ns=argo_server_ns.metadata.name,
+        argo_workflows_ns=argo_workflows_ns.metadata.name,
+        fridge_api_admin=config.require_secret("fridge_api_admin"),
+        fridge_api_password=config.require_secret("fridge_api_password"),
+        verify_tls=tls_environment is TlsEnvironment.PRODUCTION,
+    ),
+    opts=ResourceOptions(
+        depends_on=[api_server_ns, argo_workflows_ns],
     ),
 )
 

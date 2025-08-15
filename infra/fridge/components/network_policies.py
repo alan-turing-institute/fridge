@@ -114,3 +114,9 @@ class NetworkPolicies(ComponentResource):
             file="./k8s/cilium/minio-operator.yaml",
             opts=child_opts,
         )
+
+        ConfigFile(
+            "network_policy_fridge_api",
+            file="./k8s/cilium/fridge-api.yaml",
+            opts=child_opts,
+        )
