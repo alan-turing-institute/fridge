@@ -17,6 +17,14 @@ spec:
           - port: "2746"
             protocol: TCP
       # The server offers its web UI on port 2746, which needs to be accessible from the ingress-nginx controller to be served externally
+    - fromEndpoints:
+      - matchLabels:
+          app: fridge-api-server
+          k8s:io.kubernetes.pod.namespace: fridge-api
+      toPorts:
+        - ports:
+          - port: "2746"
+            protocol: TCP
   egress:
     - toEndpoints:
       - matchLabels:
