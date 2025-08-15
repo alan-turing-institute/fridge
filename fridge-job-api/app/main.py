@@ -2,11 +2,20 @@ import json
 import os
 import requests
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, UploadFile, File
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel
 from secrets import compare_digest
 from typing import Annotated, Any, Union
+from app.minio_client import MinioClient
+
+
+# Load environment variables from .env file
+load_dotenv()
+FRIDGE_API_ADMIN = os.getenv("FRIDGE_API_ADMIN")
+FRIDGE_API_PASSWORD = os.getenv("FRIDGE_API_PASSWORD")
+MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY")
+MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY")
 
 # Check if running in the Kubernetes cluster
 # If not in the cluster, load environment variables from .env file
@@ -68,6 +77,9 @@ def argo_token() -> str:
 
 
 security = HTTPBasic()
+
+# Init minio client (insecure enabled for dev)
+minio_client = MinioClient(os.getenv("MINIO_URL"), MINIO_ACCESS_KEY, MINIO_SECRET_KEY)
 
 
 class Workflow(BaseModel):
@@ -324,9 +336,11 @@ async def submit_workflow_from_template(
                 "resourceKind": "WorkflowTemplate",
                 "resourceName": workflow_template.template_name,
                 "submitOptions": {
-                    "parameters": parse_parameters(workflow_template.parameters)
-                    if workflow_template.parameters
-                    else []
+                    "parameters": (
+                        parse_parameters(workflow_template.parameters)
+                        if workflow_template.parameters
+                        else []
+                    )
                 },
             }
         ),
@@ -340,3 +354,50 @@ async def submit_workflow_from_template(
         "status": r.status_code,
         "response": r.json() if verbose else extract_argo_workflows(r.json()),
     }
+
+
+@app.post("/object/{bucket}/upload", tags=["s3"])
+async def object_upload(
+    bucket: str,
+    file: UploadFile = File(...),
+    verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
+        verify_request
+    ),
+):
+    return await minio_client.put_object(bucket, file)
+
+
+@app.get("/object/{bucket}/{file_name}", tags=["s3"])
+def object_get(
+    bucket: str,
+    file_name: str,
+    target_file: str,
+    version: str = None,
+    verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
+        verify_request
+    ),
+):
+    return minio_client.get_object(bucket, file_name, target_file, version)
+
+
+@app.post("/object/bucket", tags=["s3"])
+async def create_bucket(
+    bucket_name: str,
+    versioning: bool = False,
+    verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
+        verify_request
+    ),
+):
+    return minio_client.create_bucket(bucket_name, versioning)
+
+
+@app.delete("/object/{bucket}/{file_name}", tags=["s3"])
+async def create_bucket(
+    bucket: str,
+    file_name: str,
+    version: str = None,
+    verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
+        verify_request
+    ),
+):
+    return minio_client.delete_object(bucket, file_name, version)
