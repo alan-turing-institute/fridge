@@ -404,7 +404,9 @@ argo_server_sso_config = {
     "enabled": enable_sso,
 }
 
-argo_server_auth_modes = ["client"]
+argo_server_auth_modes = [
+    "client"
+]  # Default list is client only, as it is required for the FRIDGE API server
 
 if enable_sso:
     argo_server_sso_config.update(
@@ -431,7 +433,9 @@ if enable_sso:
         ),
     )
 else:
-    argo_server_auth_modes.append("server")
+    argo_server_auth_modes.append(
+        "server"
+    )  # Only for non-SSO environments (effectively no auth)
 
 argo_workflows = Chart(
     "argo-workflows",
