@@ -40,8 +40,12 @@ class NetworkPolicies(ComponentResource):
                     file="./k8s/cilium/longhorn.yaml",
                     opts=child_opts,
                 )
-            case K8sEnvironment.LOCAL:
-                pass
+            case K8sEnvironment.K3S:
+                ConfigFile(
+                    "network_policy_k3s",
+                    file="./k8s/cilium/k3s.yaml",
+                    opts=child_opts,
+                )
 
         ConfigFile(
             "network_policy_argo_workflows",
