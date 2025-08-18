@@ -572,38 +572,38 @@ if enable_sso:
         ),
     )
 
-# The admin service account above does not give permission to access the server workspace,
-# so the default service account below allows them to get sufficient access to use the UI
-# without being able to run workflows in the server namespace
-argo_workflows_default_sa = ServiceAccount(
-    "argo-workflows-default-sa",
-    metadata=ObjectMetaArgs(
-        name="user-default-login",
-        namespace=argo_server_ns.metadata.name,
-        annotations={
-            "workflows.argoproj.io/rbac-rule": "true",
-            "workflows.argoproj.io/rbac-rule-precedence": "0",
-        },
-    ),
-    opts=ResourceOptions(
-        depends_on=[argo_workflows],
-    ),
-)
+    # The admin service account above does not give permission to access the server workspace,
+    # so the default service account below allows them to get sufficient access to use the UI
+    # without being able to run workflows in the server namespace
+    argo_workflows_default_sa = ServiceAccount(
+        "argo-workflows-default-sa",
+        metadata=ObjectMetaArgs(
+            name="user-default-login",
+            namespace=argo_server_ns.metadata.name,
+            annotations={
+                "workflows.argoproj.io/rbac-rule": "true",
+                "workflows.argoproj.io/rbac-rule-precedence": "0",
+            },
+        ),
+        opts=ResourceOptions(
+            depends_on=[argo_workflows],
+        ),
+    )
 
-argo_workflows_default_sa_token = Secret(
-    "argo-workflows-default-sa-token",
-    metadata=ObjectMetaArgs(
-        name="user-default-login.service-account-token",
-        namespace=argo_server_ns.metadata.name,
-        annotations={
-            "kubernetes.io/service-account.name": argo_workflows_default_sa.metadata.name,
-        },
-    ),
-    type="kubernetes.io/service-account-token",
-    opts=ResourceOptions(
-        depends_on=[argo_workflows_default_sa],
-    ),
-)
+    argo_workflows_default_sa_token = Secret(
+        "argo-workflows-default-sa-token",
+        metadata=ObjectMetaArgs(
+            name="user-default-login.service-account-token",
+            namespace=argo_server_ns.metadata.name,
+            annotations={
+                "kubernetes.io/service-account.name": argo_workflows_default_sa.metadata.name,
+            },
+        ),
+        type="kubernetes.io/service-account-token",
+        opts=ResourceOptions(
+            depends_on=[argo_workflows_default_sa],
+        ),
+    )
 
 # Harbor
 harbor_ns = Namespace(
