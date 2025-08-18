@@ -46,13 +46,14 @@ except ValueError:
     )
 
 match k8s_environment:
-    case K8sEnvironment.AKS:
+    case K8sEnvironment.AKS | K8sEnvironment.K3S:
         # Hubble UI
         # Interface for Cilium
-        hubble_ui = ConfigFile(
-            "hubble-ui",
-            file="./k8s/hubble/hubble_ui.yaml",
-        )
+        if K8sEnvironment.AKS == k8s_environment:
+            hubble_ui = ConfigFile(
+                "hubble-ui",
+                file="./k8s/hubble/hubble_ui.yaml",
+            )
 
         # Ingress NGINX (ingress provider)
         ingress_nginx_ns = Namespace(
@@ -135,50 +136,6 @@ match k8s_environment:
                 }
             ),
         )
-    case K8sEnvironment.K3S:
-        # Ingress NGINX (ingress provider)
-        ingress_nginx_ns = Namespace(
-            "ingress-nginx-ns",
-            metadata=ObjectMetaArgs(
-                name="ingress-nginx",
-                labels={} | PodSecurityStandard.RESTRICTED.value,
-            ),
-        )
-
-        ingress_nginx = ConfigFile(
-            "ingress-nginx",
-            file="https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.1/deploy/static/provider/cloud/deploy.yaml",
-            opts=ResourceOptions(
-                depends_on=[ingress_nginx_ns],
-            ),
-        )
-
-        # CertManager (TLS automation)
-        cert_manager_ns = Namespace(
-            "cert-manager-ns",
-            metadata=ObjectMetaArgs(
-                name="cert-manager",
-                labels={} | PodSecurityStandard.RESTRICTED.value,
-            ),
-        )
-
-        cert_manager = Chart(
-            "cert-manager",
-            namespace=cert_manager_ns.metadata.name,
-            chart="cert-manager",
-            version="1.17.1",
-            repository_opts=RepositoryOptsArgs(
-                repo="https://charts.jetstack.io",
-            ),
-            values={
-                "crds": {"enabled": True},
-                "extraArgs": ["--acme-http01-solver-nameservers=8.8.8.8:53,1.1.1.1:53"],
-            },
-            opts=ResourceOptions(
-                depends_on=[cert_manager_ns],
-            ),
-        )
-
 
 # Storage classes
 storage_classes = components.StorageClasses(
@@ -473,6 +430,8 @@ if enable_sso:
             depends_on=[argo_server_ns],
         ),
     )
+else:
+    argo_server_auth_modes.append("server")
 
 argo_workflows = Chart(
     "argo-workflows",
