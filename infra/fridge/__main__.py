@@ -629,9 +629,12 @@ harbor_fqdn = ".".join(
 f"{config.require('harbor_fqdn_prefix')}.{config.require('base_fqdn')}"
 pulumi.export("harbor_fqdn", harbor_fqdn)
 harbor_external_url = f"https://{harbor_fqdn}"
-harbor_access_mode = (
-    "ReadWriteOnce" if k8s_environment is K8sEnvironment.K3S else "ReadWriteMany"
-)
+harbor_storage_settings = {
+    "storageClass": storage_classes.standard_storage_name,
+    "accessMode": "ReadWriteMany"
+    if storage_classes.standard_supports_rwm
+    else "ReadWriteOnce",
+}
 
 harbor = Release(
     "harbor",
@@ -657,15 +660,9 @@ harbor = Release(
             "harborAdminPassword": config.require_secret("harbor_admin_password"),
             "persistence": {
                 "persistentVolumeClaim": {
-                    "registry": {
-                        "storageClass": storage_classes.rwm_class_name,
-                        "accessMode": harbor_access_mode,
-                    },
+                    "registry": harbor_storage_settings,
                     "jobservice": {
-                        "jobLog": {
-                            "storageClass": storage_classes.rwm_class_name,
-                            "accessMode": harbor_access_mode,
-                        }
+                        "jobLog": harbor_storage_settings,
                     },
                 },
             },

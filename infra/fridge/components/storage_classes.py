@@ -50,8 +50,9 @@ class StorageClasses(ComponentResource):
                     opts=child_opts,
                 )
 
-                rwm_class_name = "azurefile"
-            case K8sEnvironment.DAWN | K8sEnvironment.K3S:
+                standard_storage_name = "azurefile"
+                standard_supports_rwm = True
+            case K8sEnvironment.DAWN:
                 longhorn_ns = Namespace(
                     "longhorn-system",
                     metadata=ObjectMetaArgs(
@@ -110,7 +111,13 @@ class StorageClasses(ComponentResource):
                     ),
                 )
 
-                rwm_class_name = storage_class.metadata.name
+                standard_storage_name = storage_class.metadata.name
+                standard_supports_rwm = True
+            case K8sEnvironment.K3S:
+                storage_class = StorageClass.get("fridge-storage-class", "local-path")
+                standard_storage_name = storage_class.metadata.name
+                standard_supports_rwm = False
 
         self.encrypted_storage_class = storage_class
-        self.rwm_class_name = rwm_class_name
+        self.standard_storage_name = standard_storage_name
+        self.standard_supports_rwm = standard_supports_rwm
