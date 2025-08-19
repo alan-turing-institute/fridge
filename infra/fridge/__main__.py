@@ -36,7 +36,6 @@ config = pulumi.Config()
 tls_environment = TlsEnvironment(config.require("tls_environment"))
 stack_name = pulumi.get_stack()
 
-
 try:
     k8s_environment = K8sEnvironment(config.get("k8s_env"))
 except ValueError:
@@ -45,7 +44,6 @@ except ValueError:
         f"Supported values are {', '.join([item.value for item in K8sEnvironment])}."
     )
 
-
 # Hubble UI
 # Interface for Cilium
 if k8s_environment == K8sEnvironment.AKS:
@@ -53,7 +51,6 @@ if k8s_environment == K8sEnvironment.AKS:
         "hubble-ui",
         file="./k8s/hubble/hubble_ui.yaml",
     )
-
 
 match k8s_environment:
     case K8sEnvironment.AKS | K8sEnvironment.K3S:
@@ -166,7 +163,6 @@ storage_classes = components.StorageClasses(
 standard_namespaces = ["default", "kube-node-lease", "kube-public"]
 for namespace in standard_namespaces:
     patch_namespace(namespace, PodSecurityStandard.RESTRICTED)
-
 
 cluster_issuer_config = Template(
     open("k8s/cert_manager/clusterissuer.yaml", "r").read()
