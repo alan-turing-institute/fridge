@@ -45,16 +45,17 @@ except ValueError:
         "Supported values are 'AKS', 'Dawn', and 'K3s'."
     )
 
+# Hubble UI
+# Interface for Cilium
+if k8s_environment == K8sEnvironment.AKS:
+    hubble_ui = ConfigFile(
+        "hubble-ui",
+        file="./k8s/hubble/hubble_ui.yaml",
+    )
+
+
 match k8s_environment:
     case K8sEnvironment.AKS | K8sEnvironment.K3S:
-        # Hubble UI
-        # Interface for Cilium
-        if K8sEnvironment.AKS == k8s_environment:
-            hubble_ui = ConfigFile(
-                "hubble-ui",
-                file="./k8s/hubble/hubble_ui.yaml",
-            )
-
         # Ingress NGINX (ingress provider)
         ingress_nginx_ns = Namespace(
             "ingress-nginx-ns",
