@@ -169,6 +169,3 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
-
-# Local stored minio data
-minio_local_data
