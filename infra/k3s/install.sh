@@ -39,15 +39,6 @@ cilium install \
 cilium status --wait
 cilium hubble enable
 
-# Longhorn
-# See: https://longhorn.io/docs/1.9.1/deploy/install/#installing-open-iscsi
-echo 'Installing Longon and dependencies...'
-
-curl -sSfL -o longhornctl https://github.com/longhorn/cli/releases/download/v1.9.1/longhornctl-linux-${ARCH}
-chmod +x longhornctl
-./longhornctl install preflight
-./longhornctl check preflight
-
 echo 'K3s cluster is now ready for FRIDGE deployment'
 echo
 echo '** Run the following command for KUBECONFIG to take effect in this shell session'

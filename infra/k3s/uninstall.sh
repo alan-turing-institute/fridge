@@ -2,10 +2,6 @@
 
 echo 'Uninstalling K3 cluster...'
 
-# Make sure to set the Longhorn delete-confirmation flag to 'true' before
-# shutting down the K3s cluster (set value field to "true")
-kubectl -n longhorn-system edit settings.longhorn.io deleting-confirmation-flag
-
 # Unistall Cilium (recommended)
 cilium uninstall
 
