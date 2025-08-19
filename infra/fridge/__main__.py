@@ -627,7 +627,6 @@ harbor_fqdn = ".".join(
     )
 )
 
-f"{config.require('harbor_fqdn_prefix')}.{config.require('base_fqdn')}"
 pulumi.export("harbor_fqdn", harbor_fqdn)
 harbor_external_url = f"https://{harbor_fqdn}"
 harbor_storage_settings = {
