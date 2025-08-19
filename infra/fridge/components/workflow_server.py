@@ -12,9 +12,11 @@ class WorkflowServerArgs:
         self,
         config: pulumi.config.Config,
         tls_environment: TlsEnvironment,
+        enable_sso: bool,
     ):
         self.config = config
         self.tls_environment = tls_environment
+        self.enable_sso = enable_sso
 
 
 class WorkflowServer(ComponentResource):
@@ -49,22 +51,44 @@ class WorkflowServer(ComponentResource):
             )
         )
 
-        argo_sso_secret = Secret(
-            "argo-server-sso-secret",
-            metadata=ObjectMetaArgs(
-                name="argo-server-sso",
-                namespace=argo_server_ns.metadata.name,
-            ),
-            type="Opaque",
-            string_data={
-                "client-id": args.config.require_secret("oidc_client_id"),
-                "client-secret": args.config.require_secret("oidc_client_secret"),
-            },
-            opts=ResourceOptions.merge(
-                child_opts,
-                ResourceOptions(depends_on=[argo_server_ns]),
-            ),
-        )
+        argo_server_sso_config = {
+            "enabled": args.enable_sso,
+        }
+
+        argo_server_auth_modes = [
+            "client"
+        ]  # Default list is client only, as it is required for the FRIDGE API server
+
+        if args.enable_sso:
+            argo_server_sso_config.update(
+                {
+                    "issuer": args.config.require_secret("sso_issuer_url"),
+                    "redirectUrl": Output.concat(
+                        "https://", argo_fqdn, "/oauth2/callback"
+                    ),
+                    "scopes": args.config.require_object("argo_scopes"),
+                }
+            )
+            argo_server_auth_modes.append("sso")
+            argo_sso_secret = Secret(
+                "argo-server-sso-secret",
+                metadata=ObjectMetaArgs(
+                    name="argo-server-sso",
+                    namespace=argo_server_ns.metadata.name,
+                ),
+                type="Opaque",
+                string_data={
+                    "client-id": args.config.require_secret("oidc_client_id"),
+                    "client-secret": args.config.require_secret("oidc_client_secret"),
+                },
+                opts=ResourceOptions(
+                    depends_on=[argo_server_ns],
+                ),
+            )
+        else:
+            argo_server_auth_modes.append(
+                "server"
+            )  # Only for non-SSO environments (effectively no auth)
 
         argo_minio_secret = Secret(
             "argo-minio-secret",
@@ -111,14 +135,7 @@ class WorkflowServer(ComponentResource):
                             }
                         ],
                     },
-                    "sso": {
-                        "enabled": True,
-                        "issuer": args.config.require_secret("sso_issuer_url"),
-                        "redirectUrl": Output.concat(
-                            "https://", argo_fqdn, "/oauth2/callback"
-                        ),
-                        "scopes": args.config.require_object("argo_scopes"),
-                    },
+                    "sso": argo_server_sso_config,
                 },
             },
             opts=ResourceOptions.merge(

@@ -13,7 +13,10 @@ from pulumi_kubernetes.rbac.v1 import (
 
 class WorkflowUiRbacArgs:
     def __init__(
-        self, argo_server_ns: str, argo_workflows_ns: str, config: pulumi.config.Config
+        self,
+        argo_server_ns: str,
+        argo_workflows_ns: str,
+        config: pulumi.config.Config,
     ) -> None:
         self.argo_server_ns = argo_server_ns
         self.argo_workflows_ns = argo_workflows_ns

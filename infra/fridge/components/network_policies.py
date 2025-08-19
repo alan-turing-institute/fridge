@@ -34,6 +34,19 @@ class NetworkPolicies(ComponentResource):
                     opts=child_opts,
                 )
 
+                # Longhorn is used on Dawn for RWX volume provision
+                ConfigFile(
+                    "network_policy_longhorn",
+                    file="./k8s/cilium/longhorn.yaml",
+                    opts=child_opts,
+                )
+            case K8sEnvironment.K3S:
+                ConfigFile(
+                    "network_policy_k3s",
+                    file="./k8s/cilium/k3s.yaml",
+                    opts=child_opts,
+                )
+
         ConfigFile(
             "network_policy_argo_workflows",
             file="./k8s/cilium/argo_workflows.yaml",
@@ -95,12 +108,6 @@ class NetworkPolicies(ComponentResource):
         )
 
         ConfigFile(
-            "network_policy_longhorn",
-            file="./k8s/cilium/longhorn.yaml",
-            opts=child_opts,
-        )
-
-        ConfigFile(
             "network_policy_minio_tenant",
             file="./k8s/cilium/minio-tenant.yaml",
             opts=child_opts,
@@ -109,5 +116,11 @@ class NetworkPolicies(ComponentResource):
         ConfigFile(
             "network_policy_minio_operator",
             file="./k8s/cilium/minio-operator.yaml",
+            opts=child_opts,
+        )
+
+        ConfigFile(
+            "network_policy_fridge_api",
+            file="./k8s/cilium/fridge-api.yaml",
             opts=child_opts,
         )

@@ -1,6 +1,7 @@
 from string import Template
 
 import pulumi
+
 from pulumi import ResourceOptions
 from pulumi_kubernetes.batch.v1 import CronJobPatch, CronJobSpecPatchArgs
 from pulumi_kubernetes.core.v1 import Namespace, NamespacePatch
@@ -11,7 +12,6 @@ from pulumi_kubernetes.meta.v1 import ObjectMetaArgs, ObjectMetaPatchArgs
 from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
 
 import components
-
 from enums import K8sEnvironment, PodSecurityStandard, TlsEnvironment, tls_issuer_names
 
 
@@ -35,18 +35,20 @@ try:
 except ValueError:
     raise ValueError(
         f"Invalid k8s environment: {k8s_environment}. "
-        "Supported values are 'AKS' and 'Dawn'."
+        "Supported values are 'AKS', 'Dawn', and 'K3s'."
     )
 
-match k8s_environment:
-    case K8sEnvironment.AKS:
-        # Hubble UI
-        # Interface for Cilium
-        hubble_ui = ConfigFile(
-            "hubble-ui",
-            file="./k8s/hubble/hubble_ui.yaml",
-        )
+# Hubble UI
+# Interface for Cilium
+if k8s_environment == K8sEnvironment.AKS:
+    hubble_ui = ConfigFile(
+        "hubble-ui",
+        file="./k8s/hubble/hubble_ui.yaml",
+    )
 
+
+match k8s_environment:
+    case K8sEnvironment.AKS | K8sEnvironment.K3S:
         # Ingress NGINX (ingress provider)
         ingress_nginx_ns = Namespace(
             "ingress-nginx-ns",
@@ -193,11 +195,15 @@ minio = components.ObjectStorage(
 )
 
 # Argo Workflows
+
+enable_sso = k8s_environment is not K8sEnvironment.K3S
+
 argo_workflows = components.WorkflowServer(
     "argo-workflows",
     args=components.WorkflowServerArgs(
         config=config,
         tls_environment=tls_environment,
+        enable_sso=enable_sso,
     ),
     opts=ResourceOptions(
         depends_on=[
@@ -208,26 +214,18 @@ argo_workflows = components.WorkflowServer(
     ),
 )
 
-
-argo_workflows_rbac = components.WorkflowUiRbac(
-    "argo-workflows-rbac",
-    args=components.WorkflowUiRbacArgs(
-        config=config,
-        argo_workflows_ns=argo_workflows.argo_workflows_ns,
-        argo_server_ns=argo_workflows.argo_server_ns,
-    ),
-    opts=ResourceOptions(
-        depends_on=[argo_workflows],
-    ),
-)
-
-api_rbac = components.ApiRbac(
-    name=f"{stack_name}-api-rbac",
-    argo_workflows_ns=argo_workflows.argo_workflows_ns,
-    opts=ResourceOptions(
-        depends_on=[argo_workflows],
-    ),
-)
+if enable_sso:
+    argo_workflows_rbac = components.WorkflowUiRbac(
+        "argo-workflows-rbac",
+        args=components.WorkflowUiRbacArgs(
+            config=config,
+            argo_workflows_ns=argo_workflows.argo_workflows_ns,
+            argo_server_ns=argo_workflows.argo_server_ns,
+        ),
+        opts=ResourceOptions(
+            depends_on=[argo_workflows],
+        ),
+    )
 
 # Harbor
 harbor = components.ContainerRegistry(
@@ -241,6 +239,7 @@ harbor = components.ContainerRegistry(
         depends_on=[ingress_nginx, cert_manager, cert_manager_issuers, storage_classes],
     ),
 )
+
 
 # Create a daemonset to skip TLS verification for the harbor registry
 # This is needed while using staging/self-signed certificates for Harbor
@@ -272,6 +271,22 @@ configure_containerd_daemonset = ConfigGroup(
     yaml=[skip_harbor_tls],
     opts=ResourceOptions(
         depends_on=[harbor],
+    ),
+)
+
+# API Server
+
+api_server = components.ApiServer(
+    name=f"{stack_name}-api-server",
+    args=components.ApiServerArgs(
+        argo_server_ns=argo_workflows.argo_server_ns,
+        argo_workflows_ns=argo_workflows.argo_workflows_ns,
+        fridge_api_admin=config.require_secret("fridge_api_admin"),
+        fridge_api_password=config.require_secret("fridge_api_password"),
+        verify_tls=tls_environment is TlsEnvironment.PRODUCTION,
+    ),
+    opts=ResourceOptions(
+        depends_on=[argo_workflows],
     ),
 )
 

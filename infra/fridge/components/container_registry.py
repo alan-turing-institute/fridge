@@ -46,6 +46,12 @@ class ContainerRegistry(ComponentResource):
         )
 
         harbor_external_url = f"https://{harbor_fqdn}"
+        harbor_storage_settings = {
+            "storageClass": args.storage_classes.standard_storage_name,
+            "accessMode": "ReadWriteMany"
+            if args.storage_classes.standard_supports_rwm
+            else "ReadWriteOnce",
+        }
 
         harbor = Release(
             "harbor",
@@ -73,15 +79,9 @@ class ContainerRegistry(ComponentResource):
                     ),
                     "persistence": {
                         "persistentVolumeClaim": {
-                            "registry": {
-                                "storageClass": args.storage_classes.rwm_class_name,
-                                "accessMode": "ReadWriteMany",
-                            },
+                            "registry": harbor_storage_settings,
                             "jobservice": {
-                                "jobLog": {
-                                    "storageClass": args.storage_classes.rwm_class_name,
-                                    "accessMode": "ReadWriteMany",
-                                }
+                                "jobLog": harbor_storage_settings,
                             },
                         },
                     },
