@@ -45,15 +45,18 @@ except ValueError:
         f"Supported values are {', '.join([item.value for item in K8sEnvironment])}."
     )
 
+
+# Hubble UI
+# Interface for Cilium
+if k8s_environment == K8sEnvironment.AKS:
+    hubble_ui = ConfigFile(
+        "hubble-ui",
+        file="./k8s/hubble/hubble_ui.yaml",
+    )
+
+
 match k8s_environment:
     case K8sEnvironment.AKS | K8sEnvironment.K3S:
-        # Hubble UI
-        # Interface for Cilium
-        hubble_ui = ConfigFile(
-            "hubble-ui",
-            file="./k8s/hubble/hubble_ui.yaml",
-        )
-
         # Ingress NGINX (ingress provider)
         ingress_nginx_ns = Namespace(
             "ingress-nginx-ns",
@@ -381,22 +384,6 @@ argo_fqdn = ".".join(
 )
 pulumi.export("argo_fqdn", argo_fqdn)
 
-argo_sso_secret = Secret(
-    "argo-server-sso-secret",
-    metadata=ObjectMetaArgs(
-        name="argo-server-sso",
-        namespace=argo_server_ns.metadata.name,
-    ),
-    type="Opaque",
-    string_data={
-        "client-id": config.require_secret("oidc_client_id"),
-        "client-secret": config.require_secret("oidc_client_secret"),
-    },
-    opts=ResourceOptions(
-        depends_on=[argo_server_ns],
-    ),
-)
-
 argo_minio_secret = Secret(
     "argo-minio-secret",
     metadata=ObjectMetaArgs(
@@ -413,6 +400,45 @@ argo_minio_secret = Secret(
     ),
 )
 
+enable_sso = k8s_environment is not K8sEnvironment.K3S
+
+argo_server_sso_config = {
+    "enabled": enable_sso,
+}
+
+argo_server_auth_modes = [
+    "client"
+]  # Default list is client only, as it is required for the FRIDGE API server
+
+if enable_sso:
+    argo_server_sso_config.update(
+        {
+            "issuer": config.require_secret("sso_issuer_url"),
+            "redirectUrl": Output.concat("https://", argo_fqdn, "/oauth2/callback"),
+            "scopes": config.require_object("argo_scopes"),
+        }
+    )
+    argo_server_auth_modes.append("sso")
+    argo_sso_secret = Secret(
+        "argo-server-sso-secret",
+        metadata=ObjectMetaArgs(
+            name="argo-server-sso",
+            namespace=argo_server_ns.metadata.name,
+        ),
+        type="Opaque",
+        string_data={
+            "client-id": config.require_secret("oidc_client_id"),
+            "client-secret": config.require_secret("oidc_client_secret"),
+        },
+        opts=ResourceOptions(
+            depends_on=[argo_server_ns],
+        ),
+    )
+else:
+    argo_server_auth_modes.append(
+        "server"
+    )  # Only for non-SSO environments (effectively no auth)
+
 argo_workflows = Chart(
     "argo-workflows",
     namespace=argo_server_ns.metadata.name,
@@ -427,6 +453,7 @@ argo_workflows = Chart(
     values={
         "controller": {"workflowNamespaces": [argo_workflows_ns.metadata.name]},
         "server": {
+            "authModes": argo_server_auth_modes,
             "ingress": {
                 "annotations": {
                     "cert-manager.io/cluster-issuer": tls_issuer_names[tls_environment],
@@ -439,156 +466,150 @@ argo_workflows = Chart(
                     }
                 ],
             },
-            "sso": {
-                "enabled": True,
-                "issuer": config.require_secret("sso_issuer_url"),
-                "redirectUrl": Output.concat("https://", argo_fqdn, "/oauth2/callback"),
-                "scopes": config.require_object("argo_scopes"),
-            },
+            "sso": argo_server_sso_config,
         },
     },
     opts=ResourceOptions(
         depends_on=[
             argo_minio_secret,
-            argo_sso_secret,
             argo_server_ns,
             argo_workflows_ns,
         ],
     ),
 )
 
-
-# Define argo workflows service accounts and roles
-# See https://argo-workflows.readthedocs.io/en/latest/security/
-# The admin service account gives users in the admin entra group
-# permission to run workflows in the Argo Workflows namespace
-argo_workflows_admin_role = Role(
-    "argo-workflows-admin-role",
-    metadata=ObjectMetaArgs(
-        name="argo-workflows-admin-role",
-        namespace=argo_workflows_ns.metadata.name,
-    ),
-    rules=[
-        PolicyRuleArgs(
-            api_groups=[""],
-            resources=["events", "pods", "pods/log"],
-            verbs=["get", "list", "watch"],
-        ),
-        PolicyRuleArgs(
-            api_groups=["argoproj.io"],
-            resources=[
-                "cronworkflows",
-                "eventsources",
-                "workflows",
-                "workflows/finalizers",
-                "workflowtaskresults",
-                "workflowtemplates",
-                "clusterworkflowtemplates",
-            ],
-            verbs=[
-                "create",
-                "delete",
-                "deletecollection",
-                "get",
-                "list",
-                "patch",
-                "watch",
-                "update",
-            ],
-        ),
-    ],
-    opts=ResourceOptions(
-        depends_on=[argo_workflows],
-    ),
-)
-
-argo_workflows_admin_sa = ServiceAccount(
-    "argo-workflows-admin-sa",
-    metadata=ObjectMetaArgs(
-        name="argo-workflows-admin-sa",
-        namespace=argo_workflows_ns.metadata.name,
-        annotations={
-            "workflows.argoproj.io/rbac-rule": Output.concat(
-                "'", config.require_secret("oidc_admin_group_id"), "'", " in groups"
-            ),
-            "workflows.argoproj.io/rbac-rule-precedence": "2",
-        },
-    ),
-    opts=ResourceOptions(
-        depends_on=[argo_workflows],
-    ),
-)
-
-argo_workflows_admin_sa_token = Secret(
-    "argo-workflows-admin-sa-token",
-    metadata=ObjectMetaArgs(
-        name="argo-workflows-admin-sa.service-account-token",
-        namespace=argo_workflows_ns.metadata.name,
-        annotations={
-            "kubernetes.io/service-account.name": argo_workflows_admin_sa.metadata.name,
-        },
-    ),
-    type="kubernetes.io/service-account-token",
-    opts=ResourceOptions(
-        depends_on=[argo_workflows_admin_sa],
-    ),
-)
-
-argo_workflows_admin_role_binding = RoleBinding(
-    "argo-workflows-admin-role-binding",
-    metadata=ObjectMetaArgs(
-        name="argo-workflows-admin-role-binding",
-        namespace=argo_workflows_ns.metadata.name,
-    ),
-    role_ref=RoleRefArgs(
-        api_group="rbac.authorization.k8s.io",
-        kind="Role",
-        name=argo_workflows_admin_role.metadata.name,
-    ),
-    subjects=[
-        SubjectArgs(
-            kind="ServiceAccount",
-            name=argo_workflows_admin_sa.metadata.name,
+if enable_sso:
+    # Define argo workflows service accounts and roles
+    # See https://argo-workflows.readthedocs.io/en/latest/security/
+    # The admin service account gives users in the admin entra group
+    # permission to run workflows in the Argo Workflows namespace
+    argo_workflows_admin_role = Role(
+        "argo-workflows-admin-role",
+        metadata=ObjectMetaArgs(
+            name="argo-workflows-admin-role",
             namespace=argo_workflows_ns.metadata.name,
-        )
-    ],
-    opts=ResourceOptions(
-        depends_on=[argo_workflows_admin_role],
-    ),
-)
+        ),
+        rules=[
+            PolicyRuleArgs(
+                api_groups=[""],
+                resources=["events", "pods", "pods/log"],
+                verbs=["get", "list", "watch"],
+            ),
+            PolicyRuleArgs(
+                api_groups=["argoproj.io"],
+                resources=[
+                    "cronworkflows",
+                    "eventsources",
+                    "workflows",
+                    "workflows/finalizers",
+                    "workflowtaskresults",
+                    "workflowtemplates",
+                    "clusterworkflowtemplates",
+                ],
+                verbs=[
+                    "create",
+                    "delete",
+                    "deletecollection",
+                    "get",
+                    "list",
+                    "patch",
+                    "watch",
+                    "update",
+                ],
+            ),
+        ],
+        opts=ResourceOptions(
+            depends_on=[argo_workflows],
+        ),
+    )
 
-# The admin service account above does not give permission to access the server workspace,
-# so the default service account below allows them to get sufficient access to use the UI
-# without being able to run workflows in the server namespace
-argo_workflows_default_sa = ServiceAccount(
-    "argo-workflows-default-sa",
-    metadata=ObjectMetaArgs(
-        name="user-default-login",
-        namespace=argo_server_ns.metadata.name,
-        annotations={
-            "workflows.argoproj.io/rbac-rule": "true",
-            "workflows.argoproj.io/rbac-rule-precedence": "0",
-        },
-    ),
-    opts=ResourceOptions(
-        depends_on=[argo_workflows],
-    ),
-)
+    argo_workflows_admin_sa = ServiceAccount(
+        "argo-workflows-admin-sa",
+        metadata=ObjectMetaArgs(
+            name="argo-workflows-admin-sa",
+            namespace=argo_workflows_ns.metadata.name,
+            annotations={
+                "workflows.argoproj.io/rbac-rule": Output.concat(
+                    "'", config.require_secret("oidc_admin_group_id"), "'", " in groups"
+                ),
+                "workflows.argoproj.io/rbac-rule-precedence": "2",
+            },
+        ),
+        opts=ResourceOptions(
+            depends_on=[argo_workflows],
+        ),
+    )
 
-argo_workflows_default_sa_token = Secret(
-    "argo-workflows-default-sa-token",
-    metadata=ObjectMetaArgs(
-        name="user-default-login.service-account-token",
-        namespace=argo_server_ns.metadata.name,
-        annotations={
-            "kubernetes.io/service-account.name": argo_workflows_default_sa.metadata.name,
-        },
-    ),
-    type="kubernetes.io/service-account-token",
-    opts=ResourceOptions(
-        depends_on=[argo_workflows_default_sa],
-    ),
-)
+    argo_workflows_admin_sa_token = Secret(
+        "argo-workflows-admin-sa-token",
+        metadata=ObjectMetaArgs(
+            name="argo-workflows-admin-sa.service-account-token",
+            namespace=argo_workflows_ns.metadata.name,
+            annotations={
+                "kubernetes.io/service-account.name": argo_workflows_admin_sa.metadata.name,
+            },
+        ),
+        type="kubernetes.io/service-account-token",
+        opts=ResourceOptions(
+            depends_on=[argo_workflows_admin_sa],
+        ),
+    )
+
+    argo_workflows_admin_role_binding = RoleBinding(
+        "argo-workflows-admin-role-binding",
+        metadata=ObjectMetaArgs(
+            name="argo-workflows-admin-role-binding",
+            namespace=argo_workflows_ns.metadata.name,
+        ),
+        role_ref=RoleRefArgs(
+            api_group="rbac.authorization.k8s.io",
+            kind="Role",
+            name=argo_workflows_admin_role.metadata.name,
+        ),
+        subjects=[
+            SubjectArgs(
+                kind="ServiceAccount",
+                name=argo_workflows_admin_sa.metadata.name,
+                namespace=argo_workflows_ns.metadata.name,
+            )
+        ],
+        opts=ResourceOptions(
+            depends_on=[argo_workflows_admin_role],
+        ),
+    )
+
+    # The admin service account above does not give permission to access the server workspace,
+    # so the default service account below allows them to get sufficient access to use the UI
+    # without being able to run workflows in the server namespace
+    argo_workflows_default_sa = ServiceAccount(
+        "argo-workflows-default-sa",
+        metadata=ObjectMetaArgs(
+            name="user-default-login",
+            namespace=argo_server_ns.metadata.name,
+            annotations={
+                "workflows.argoproj.io/rbac-rule": "true",
+                "workflows.argoproj.io/rbac-rule-precedence": "0",
+            },
+        ),
+        opts=ResourceOptions(
+            depends_on=[argo_workflows],
+        ),
+    )
+
+    argo_workflows_default_sa_token = Secret(
+        "argo-workflows-default-sa-token",
+        metadata=ObjectMetaArgs(
+            name="user-default-login.service-account-token",
+            namespace=argo_server_ns.metadata.name,
+            annotations={
+                "kubernetes.io/service-account.name": argo_workflows_default_sa.metadata.name,
+            },
+        ),
+        type="kubernetes.io/service-account-token",
+        opts=ResourceOptions(
+            depends_on=[argo_workflows_default_sa],
+        ),
+    )
 
 # Harbor
 harbor_ns = Namespace(
@@ -609,6 +630,12 @@ harbor_fqdn = ".".join(
 f"{config.require('harbor_fqdn_prefix')}.{config.require('base_fqdn')}"
 pulumi.export("harbor_fqdn", harbor_fqdn)
 harbor_external_url = f"https://{harbor_fqdn}"
+harbor_storage_settings = {
+    "storageClass": storage_classes.standard_storage_name,
+    "accessMode": "ReadWriteMany"
+    if storage_classes.standard_supports_rwm
+    else "ReadWriteOnce",
+}
 
 harbor = Release(
     "harbor",
@@ -634,15 +661,9 @@ harbor = Release(
             "harborAdminPassword": config.require_secret("harbor_admin_password"),
             "persistence": {
                 "persistentVolumeClaim": {
-                    "registry": {
-                        "storageClass": storage_classes.rwm_class_name,
-                        "accessMode": "ReadWriteMany",
-                    },
+                    "registry": harbor_storage_settings,
                     "jobservice": {
-                        "jobLog": {
-                            "storageClass": storage_classes.rwm_class_name,
-                            "accessMode": "ReadWriteMany",
-                        }
+                        "jobLog": harbor_storage_settings,
                     },
                 },
             },

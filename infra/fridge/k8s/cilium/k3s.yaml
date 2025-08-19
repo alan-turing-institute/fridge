@@ -29,27 +29,33 @@ spec:
   # The metrics-server collects realtime metrics from kubelets
   # and provides them to the Kubernetes API server for use in autoscaling
   # https://kubernetes-sigs.github.io/metrics-server/
-  ingress:
-    - fromEntities:
-        - remote-node
-      toPorts:
-        - ports:
-          - port : "10250"
-            protocol: TCP
   egress:
     - toEntities:
-        - host
-        - remote-node
+        - kube-apiserver
       toPorts:
         - ports:
-            - port: "10250"
-              protocol: TCP
+          - port: "6443"
+            protocol: ANY
+    - toEntities:
+        - host
+      toPorts:
+        - ports:
+          - port: "10250"
+            protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: local-path-provisioner
+  namespace: kube-system
+spec:
+  endpointSelector:
+    matchLabels:
+      app: local-path-provisioner
+  egress:
     - toEntities:
         - kube-apiserver
-    - toEndpoints:
-        - matchLabels:
-            k8s-app: kube-dns
       toPorts:
         - ports:
-            - port: "53"
-              protocol: ANY
+          - port: "6443"
+            protocol: ANY
