@@ -33,15 +33,6 @@ class NetworkPolicies(ComponentResource):
                     file="./k8s/cilium/prometheus.yaml",
                     opts=child_opts,
                 )
-            case K8sEnvironment.K3S:
-                # K3S policies applicable for a local dev environment
-                # These could be used in any vanilla k8s + Cilium local cluster
-                ConfigFile(
-                    "network_policy_k3s",
-                    file="./k8s/cilium/k3s.yaml",
-                    opts=child_opts,
-                )
-
                 # Longhorn is used on Dawn for RWX volume provision
                 ConfigFile(
                     "network_policy_longhorn",
@@ -49,6 +40,8 @@ class NetworkPolicies(ComponentResource):
                     opts=child_opts,
                 )
             case K8sEnvironment.K3S:
+                # K3S policies applicable for a local dev environment
+                # These could be used in any vanilla k8s + Cilium local cluster
                 ConfigFile(
                     "network_policy_k3s",
                     file="./k8s/cilium/k3s.yaml",
