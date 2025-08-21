@@ -77,7 +77,9 @@ def argo_token() -> str:
 security = HTTPBasic()
 
 # Init minio client (insecure enabled for dev)
-minio_client = MinioClient(os.getenv("MINIO_URL"), os.getenv("MINIO_ACCESS_KEY"), os.getenv("MINIO_SECRET_KEY"))
+minio_client = MinioClient(
+    os.getenv("MINIO_URL"), os.getenv("MINIO_ACCESS_KEY"), os.getenv("MINIO_SECRET_KEY")
+)
 
 
 class Workflow(BaseModel):
