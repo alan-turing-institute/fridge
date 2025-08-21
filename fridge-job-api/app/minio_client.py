@@ -1,4 +1,5 @@
 from fastapi import File, UploadFile
+from fastapi.responses import StreamingResponse
 from minio import Minio, versioningconfig, commonconfig
 from io import BytesIO
 from minio.error import S3Error
@@ -29,9 +30,9 @@ class MinioClient:
                     name, versioningconfig.VersioningConfig(commonconfig.ENABLED)
                 )
         except S3Error as error:
-            self.handle_minio_error(error)
+            return self.handle_minio_error(error)
         except ValueError as error:
-            self.handle_500_error("Unable to create bucket")
+            return self.handle_500_error("Unable to create bucket")
 
         return {"response": name, "status": 201}
 
@@ -48,7 +49,7 @@ class MinioClient:
         except S3Error as error:
             return self.handle_minio_error(error)
         except Exception as error:
-            self.handle_500_error("Unable to upload object")
+            return self.handle_500_error("Unable to upload object")
 
         return {
             "status": 201,
@@ -58,13 +59,18 @@ class MinioClient:
 
     def get_object(self, bucket, file_name, target_file, version=None):
         try:
-            result = self.client.fget_object(bucket, file_name, target_file, version)
+            result = self.client.get_object(bucket, file_name, target_file, version)
+            return StreamingResponse(
+                result,
+                media_type="application/octet-stream",
+                headers={
+                    "Content-Disposition": f'attachment; filename="{target_file}"'
+                }
+            )
         except S3Error as error:
             return self.handle_minio_error(error)
         except Exception as error:
-            self.handle_500_error("Unable to get object from bucket")
-
-        return {"response": target_file, "version": result.version_id}
+            return self.handle_500_error("Unable to get object from bucket")
 
     def check_object_exists(self, bucket, file_name, version=None):
         try:
@@ -88,6 +94,6 @@ class MinioClient:
         except S3Error as error:
             return self.handle_minio_error(error)
         except Exception as error:
-            self.handle_500_error("Unable to delete object from bucket")
+            return self.handle_500_error("Unable to delete object from bucket")
 
         return {"status": 200, "response": file_name, "version": version}
