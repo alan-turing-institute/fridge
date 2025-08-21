@@ -53,6 +53,7 @@ and submit workflows based on templates.
 
 app = FastAPI(title="FRIDGE API", description=description, version="0.2.0")
 
+
 # On the Kubernetes cluster, the Argo token is stored in a service account token file on a projected volume
 # The token expires after one hour; the file on the volume is updated automatically by Kubernetes
 # Reading the token from the file when required ensures that we always use a valid token

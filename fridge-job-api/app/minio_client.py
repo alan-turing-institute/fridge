@@ -65,7 +65,7 @@ class MinioClient:
                 media_type="application/octet-stream",
                 headers={
                     "Content-Disposition": f'attachment; filename="{target_file}"'
-                }
+                },
             )
         except S3Error as error:
             return self.handle_minio_error(error)
