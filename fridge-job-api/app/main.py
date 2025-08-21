@@ -358,7 +358,7 @@ async def submit_workflow_from_template(
 
 
 @app.post("/object/{bucket}/upload", tags=["s3"])
-async def object_upload(
+async def upload_object(
     bucket: str,
     file: UploadFile = File(...),
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
@@ -369,7 +369,7 @@ async def object_upload(
 
 
 @app.get("/object/{bucket}/{file_name}", tags=["s3"])
-def object_get(
+async def get_object(
     bucket: str,
     file_name: str,
     target_file: str,
@@ -393,7 +393,7 @@ async def create_bucket(
 
 
 @app.delete("/object/{bucket}/{file_name}", tags=["s3"])
-async def create_bucket(
+async def delete_object(
     bucket: str,
     file_name: str,
     version: str = None,
