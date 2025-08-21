@@ -14,8 +14,6 @@ from app.minio_client import MinioClient
 load_dotenv()
 FRIDGE_API_ADMIN = os.getenv("FRIDGE_API_ADMIN")
 FRIDGE_API_PASSWORD = os.getenv("FRIDGE_API_PASSWORD")
-MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY")
-MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY")
 
 # Check if running in the Kubernetes cluster
 # If not in the cluster, load environment variables from .env file
@@ -79,7 +77,9 @@ def argo_token() -> str:
 security = HTTPBasic()
 
 # Init minio client (insecure enabled for dev)
-minio_client = MinioClient(os.getenv("MINIO_URL"), MINIO_ACCESS_KEY, MINIO_SECRET_KEY)
+minio_client = MinioClient(os.getenv("MINIO_URL"), 
+    MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY"),
+    MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY"))
 
 
 class Workflow(BaseModel):
