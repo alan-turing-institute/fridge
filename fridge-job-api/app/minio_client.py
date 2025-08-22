@@ -57,7 +57,9 @@ class MinioClient:
             "version": result.version_id,
         }
 
-    def get_object(self, bucket, file_name, target_file, version=None):
+    def get_object(self, bucket, file_name, target_file=None, version=None):
+        if not target_file:
+            target_file = file_name
         try:
             result = self.client.get_object(bucket, file_name, target_file, version)
             return StreamingResponse(

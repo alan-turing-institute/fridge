@@ -372,7 +372,7 @@ async def upload_object(
 async def get_object(
     bucket: str,
     file_name: str,
-    target_file: str,
+    target_file: str = None,
     version: str = None,
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
