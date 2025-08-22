@@ -38,6 +38,9 @@ class ApiServerArgs:
         argo_workflows_ns: str,
         fridge_api_admin: str,
         fridge_api_password: str,
+        minio_url: str,
+        minio_access_key: str,
+        minio_secret_key: str,
         verify_tls: bool = True,
     ) -> None:
         self.api_server_ns = api_server_ns
@@ -45,6 +48,9 @@ class ApiServerArgs:
         self.argo_workflows_ns = argo_workflows_ns
         self.fridge_api_admin = fridge_api_admin
         self.fridge_api_password = fridge_api_password
+        self.minio_url = minio_url
+        self.minio_access_key = minio_access_key
+        self.minio_secret_key = minio_secret_key
         self.verify_tls = verify_tls
 
 
@@ -115,6 +121,9 @@ class ApiServer(ComponentResource):
                 "ARGO_SERVER_NS": args.argo_server_ns,
                 "FRIDGE_API_ADMIN": args.fridge_api_admin,
                 "FRIDGE_API_PASSWORD": args.fridge_api_password,
+                "MINIO_URL": args.minio_url,
+                "MINIO_ACCESS_KEY": args.minio_access_key,
+                "MINIO_SECRET_KEY": args.minio_secret_key,
                 "VERIFY_TLS": str(args.verify_tls),
             },
             opts=child_opts,
