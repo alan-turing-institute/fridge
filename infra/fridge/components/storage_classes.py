@@ -117,6 +117,19 @@ class StorageClasses(ComponentResource):
                 storage_class = StorageClass.get("fridge-storage-class", "local-path")
                 standard_storage_name = storage_class.metadata.name
                 standard_supports_rwm = False
+            case K8sEnvironment.OKE:
+                # use OCI OKE native storage classes oci-bv
+                storage_class = StorageClass(
+                    "fridge-storage_class",
+                    allow_volume_expansion=True,
+                    metadata=ObjectMetaArgs(
+                        name=STORAGE_CLASS_NAME,
+                    ),
+                    provisioner="blockvolume.csi.oraclecloud.com",
+                    opts=child_opts,
+                )
+                standard_storage_name = "oci-bv"
+                standard_supports_rwm = True
 
         self.encrypted_storage_class = storage_class
         self.standard_storage_name = standard_storage_name
