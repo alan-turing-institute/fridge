@@ -53,7 +53,7 @@ if k8s_environment == K8sEnvironment.AKS:
     )
 
 match k8s_environment:
-    case K8sEnvironment.AKS | K8sEnvironment.K3S:
+    case K8sEnvironment.AKS | K8sEnvironment.K3S | K8sEnvironment.OKE:
         # Ingress NGINX (ingress provider)
         ingress_nginx_ns = Namespace(
             "ingress-nginx-ns",
@@ -396,7 +396,10 @@ argo_minio_secret = Secret(
     ),
 )
 
-enable_sso = k8s_environment is not K8sEnvironment.K3S
+enable_sso = (
+    k8s_environment is not K8sEnvironment.K3S
+    or not k8s_environment is K8sEnvironment.OKE
+)
 
 argo_server_sso_config = {
     "enabled": enable_sso,
