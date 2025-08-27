@@ -6,6 +6,7 @@ class K8sEnvironment(Enum):
     AKS = "AKS"
     DAWN = "Dawn"
     K3S = "K3s"
+    OKE = "OKE"
 
 
 @unique
