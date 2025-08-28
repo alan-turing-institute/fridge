@@ -1,3 +1,8 @@
+import base64
+from calendar import c
+from datetime import datetime
+import email
+from encodings.base64_codec import base64_encode
 from string import Template
 
 import pulumi
@@ -20,6 +25,10 @@ from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
 
 import components
 from enums import K8sEnvironment, PodSecurityStandard, TlsEnvironment, tls_issuer_names
+
+# import infra.fridge.crds.python.pulumi_crds.cert_manager.v1
+import pulumi_crds.cert_manager.v1 as CertManagerCRDS
+from pulumi_crds.cert_manager.v1 import *
 
 
 def patch_namespace(name: str, pss: PodSecurityStandard) -> NamespacePatch:
@@ -135,6 +144,109 @@ match k8s_environment:
                 }
             ),
         )
+
+
+# if we're using TLS development generate and install a self-signed certificate
+
+# New implementation using cryptography.x509
+from cryptography import x509
+from cryptography.x509.oid import NameOID
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+import datetime
+
+
+def cert_gen(
+    emailAddress=config.require("lets_encrypt_email"),
+    commonName=config.require("base_fqdn"),
+    country="UK",
+    locality="AAIR",
+    organization="FRIDGE",
+    validity_start=None,
+    validity_end=None,
+    KEY_FILE="private.key",
+    CERT_FILE="certificate.crt",
+) -> tuple[str, str]:
+    if validity_start is None:
+        validity_start = datetime.datetime.now(datetime.UTC)
+    if validity_end is None:
+        validity_end = validity_start + datetime.timedelta(days=365)
+
+    # Generate private key
+    private_key = rsa.generate_private_key(
+        public_exponent=65537,
+        key_size=2048,
+    )
+
+    # Build subject and issuer (self-signed CA)
+    subject = issuer = x509.Name(
+        [
+            x509.NameAttribute(NameOID.COUNTRY_NAME, country),
+            x509.NameAttribute(NameOID.LOCALITY_NAME, locality),
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, organization),
+            x509.NameAttribute(NameOID.COMMON_NAME, commonName),
+            x509.NameAttribute(NameOID.EMAIL_ADDRESS, emailAddress),
+        ]
+    )
+
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(subject)
+        .issuer_name(issuer)
+        .public_key(private_key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(validity_start)
+        .not_valid_after(validity_end)
+        .add_extension(
+            x509.BasicConstraints(ca=True, path_length=None),
+            critical=True,
+        )
+        .sign(private_key, hashes.SHA256())
+    )
+
+    # Return PEM-encoded private key and certificate
+    private_key_pem = private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.TraditionalOpenSSL,
+        encryption_algorithm=serialization.NoEncryption(),
+    )
+    cert_pem = cert.public_bytes(serialization.Encoding.PEM)
+    return private_key_pem, cert_pem
+
+
+if tls_environment == TlsEnvironment.DEVELOPMENT:
+    key_bytes, cert_bytes = cert_gen()
+    key_b64 = base64.b64encode(key_bytes).decode("utf-8")
+    cert_b64 = base64.b64encode(cert_bytes).decode("utf-8")
+
+    self_signed_cert = Secret(
+        "self-signed-cert",
+        metadata=ObjectMetaArgs(
+            name="self-signed-cert",
+            namespace="cert-manager",
+        ),
+        type="kubernetes.io/tls",
+        data={
+            "tls.crt": cert_b64,
+            "tls.key": key_b64,
+        },
+    )
+    cert_manager_dev_issuer = CertManagerCRDS.ClusterIssuer(
+        resource_name="self-signed",
+        metadata=ObjectMetaArgs(
+            name="self-signed",
+        ),
+        spec=CertManagerCRDS.ClusterIssuerSpecArgs(
+            ca=CertManagerCRDS.ClusterIssuerSpecCaArgs(
+                secretName="self-signed-cert",
+                issuing_certificate_urls=[
+                    f"https://{domain}." + config.require("base_fqdn")
+                    for domain in ["argo", "minio", "harbor"]
+                ],
+            )
+        ),
+    )
+
 
 # Storage classes
 storage_classes = components.StorageClasses(
