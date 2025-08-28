@@ -218,7 +218,7 @@ minio_fqdn = ".".join(
 )
 pulumi.export("minio_fqdn", minio_fqdn)
 
-minio_cluster_url = f"minio.{minio_tenant_ns.metadata.name}.svc.cluster.local"
+minio_cluster_url = pulumi.Output.concat("minio.", minio_tenant_ns.metadata.name, ".svc.cluster.local")
 minio_config_env = Output.format(
     (
         "export MINIO_BROWSER_REDIRECT_URL=https://{0}\n"
