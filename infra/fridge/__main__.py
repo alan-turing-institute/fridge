@@ -218,7 +218,9 @@ minio_fqdn = ".".join(
 )
 pulumi.export("minio_fqdn", minio_fqdn)
 
-minio_cluster_url = pulumi.Output.concat("minio.", minio_tenant_ns.metadata.name, ".svc.cluster.local")
+minio_cluster_url = pulumi.Output.concat(
+    "minio.", minio_tenant_ns.metadata.name, ".svc.cluster.local"
+)
 minio_config_env = Output.format(
     (
         "export MINIO_BROWSER_REDIRECT_URL=https://{0}\n"
@@ -629,9 +631,9 @@ pulumi.export("harbor_fqdn", harbor_fqdn)
 harbor_external_url = f"https://{harbor_fqdn}"
 harbor_storage_settings = {
     "storageClass": storage_classes.standard_storage_name,
-    "accessMode": "ReadWriteMany"
-    if storage_classes.standard_supports_rwm
-    else "ReadWriteOnce",
+    "accessMode": (
+        "ReadWriteMany" if storage_classes.standard_supports_rwm else "ReadWriteOnce"
+    ),
 }
 
 harbor = Release(
