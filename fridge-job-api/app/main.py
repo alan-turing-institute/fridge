@@ -79,7 +79,9 @@ security = HTTPBasic()
 
 # Init minio client (insecure enabled for dev)
 minio_client = MinioClient(
-    os.getenv("MINIO_URL"), os.getenv("MINIO_ACCESS_KEY"), os.getenv("MINIO_SECRET_KEY")
+    endpoint=os.getenv("MINIO_URL"),
+    access_key=os.getenv("MINIO_ACCESS_KEY"),
+    secret_key=os.getenv("MINIO_SECRET_KEY"),
 )
 
 
