@@ -218,14 +218,16 @@ minio_fqdn = ".".join(
 )
 pulumi.export("minio_fqdn", minio_fqdn)
 
+minio_cluster_url = f"minio.{minio_tenant_ns.metadata.name}.svc.cluster.local"
 minio_config_env = Output.format(
     (
         "export MINIO_BROWSER_REDIRECT_URL=https://{0}\n"
-        "export MINIO_SERVER_URL=http://minio.argo-artifacts.svc.cluster.local\n"
-        "export MINIO_ROOT_USER={1}\n"
-        "export MINIO_ROOT_PASSWORD={2}"
+        "export MINIO_SERVER_URL=http://{1}\n"
+        "export MINIO_ROOT_USER={2}\n"
+        "export MINIO_ROOT_PASSWORD={3}"
     ),
     minio_fqdn,
+    minio_cluster_url,
     config.require_secret("minio_root_user"),
     config.require_secret("minio_root_password"),
 )
@@ -277,7 +279,7 @@ minio_tenant = Chart(
                     "console": minio_fqdn,
                     "minio": [
                         Output.concat(minio_fqdn, "/api"),
-                        "minio.argo-artifacts.svc.cluster.local",
+                        minio_cluster_url,
                     ],
                 }
             },
@@ -767,7 +769,7 @@ api_server = components.ApiServer(
         argo_workflows_ns=argo_workflows_ns.metadata.name,
         fridge_api_admin=config.require_secret("fridge_api_admin"),
         fridge_api_password=config.require_secret("fridge_api_password"),
-        minio_url="minio.argo-artifacts.svc.cluster.local",
+        minio_url=minio_cluster_url,
         minio_access_key=config.require_secret("minio_root_user"),
         minio_secret_key=config.require_secret("minio_root_password"),
         verify_tls=tls_environment is TlsEnvironment.PRODUCTION,
