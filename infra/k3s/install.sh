@@ -37,7 +37,7 @@ cilium install \
   --set k8sServicePort=6443
 
 cilium status --wait
-cilium hubble enable
+cilium hubble enable --ui
 
 echo 'K3s cluster is now ready for FRIDGE deployment'
 echo
