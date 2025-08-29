@@ -1,0 +1,27 @@
+issuer: http://$HOST_IP:5556/dex
+
+storage:
+  type: sqlite3
+  config:
+    file: /tmp/dex.db
+
+web:
+  http: $HOST_IP:5556
+
+oauth2:
+  skipApprovalScreen: true
+
+staticClients:
+  - id: argo-workflows
+    redirectURIs:
+      - 'https://argo.fridge.internal/oauth2/callback'
+    name: 'Argo Workflows'
+    secret: argo-workflows-secret
+
+enablePasswordDB: true
+
+staticPasswords:
+  - email: "admin@fridge.internal"
+    hash: "$2a$10$2b2cU8CPhOTaGrs1HRQuAueS7JTT5ZHsHSzYiFPm1leZck7Mc8T4W" # = 'password'
+    username: "FRIDGE Admin"
+    userID: "fridgeadmin"
