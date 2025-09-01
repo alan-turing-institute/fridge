@@ -74,14 +74,19 @@ class ObjectStorage(ComponentResource):
             )
         )
 
+        minio_cluster_url = pulumi.Output.concat(
+            "minio.", minio_tenant_ns.metadata.name, ".svc.cluster.local"
+        )
+
         minio_config_env = Output.format(
             (
                 "export MINIO_BROWSER_REDIRECT_URL=https://{0}\n"
-                "export MINIO_SERVER_URL=http://minio.argo-artifacts.svc.cluster.local\n"
-                "export MINIO_ROOT_USER={1}\n"
-                "export MINIO_ROOT_PASSWORD={2}"
+                "export MINIO_SERVER_URL=http://{1}\n"
+                "export MINIO_ROOT_USER={2}\n"
+                "export MINIO_ROOT_PASSWORD={3}"
             ),
             minio_fqdn,
+            minio_cluster_url,
             args.config.require_secret("minio_root_user"),
             args.config.require_secret("minio_root_password"),
         )
@@ -134,7 +139,7 @@ class ObjectStorage(ComponentResource):
                             "console": minio_fqdn,
                             "minio": [
                                 Output.concat(minio_fqdn, "/api"),
-                                "minio.argo-artifacts.svc.cluster.local",
+                                minio_cluster_url,
                             ],
                         }
                     },
@@ -219,9 +224,9 @@ class ObjectStorage(ComponentResource):
         )
 
         self.minio_fqdn = minio_fqdn
+        self.minio_cluster_url = minio_cluster_url
         self.register_outputs(
             {
-                "minio_fqdn": self.minio_fqdn,
                 "minio_ingress": minio_ingress,
                 "minio_tenant": minio_tenant,
                 "minio_operator": minio_operator,

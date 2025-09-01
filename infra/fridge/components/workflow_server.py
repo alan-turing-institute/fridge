@@ -86,6 +86,7 @@ class WorkflowServer(ComponentResource):
                 ),
             )
         else:
+            argo_sso_secret = None
             argo_server_auth_modes.append(
                 "server"
             )  # Only for non-SSO environments (effectively no auth)
@@ -106,6 +107,14 @@ class WorkflowServer(ComponentResource):
                 ResourceOptions(depends_on=[argo_server_ns]),
             ),
         )
+
+        argo_depends_on = [
+            argo_minio_secret,
+            argo_server_ns,
+            argo_workflows_ns,
+        ]
+        if argo_sso_secret is not None:
+            argo_depends_on.append(argo_sso_secret)
 
         argo_workflows = Chart(
             "argo-workflows",
@@ -141,25 +150,21 @@ class WorkflowServer(ComponentResource):
             opts=ResourceOptions.merge(
                 child_opts,
                 ResourceOptions(
-                    depends_on=[
-                        argo_sso_secret,
-                        argo_minio_secret,
-                        argo_server_ns,
-                        argo_workflows_ns,
-                    ]
+                    depends_on=argo_depends_on,
                 ),
             ),
         )
 
+        outputs = {
+            "argo_workflows": argo_workflows,
+            "argo_minio_secret": argo_minio_secret,
+            "argo_server_ns": argo_server_ns,
+            "argo_workflows_ns": argo_workflows_ns,
+        }
+        if argo_sso_secret is not None:
+            outputs["argo_sso_secret"] = argo_sso_secret
+
         self.argo_fqdn = argo_fqdn
         self.argo_server_ns = argo_server_ns.metadata.name
         self.argo_workflows_ns = argo_workflows_ns.metadata.name
-        self.register_outputs(
-            {
-                "argo_workflows": argo_workflows,
-                "argo_sso_secret": argo_sso_secret,
-                "argo_minio_secret": argo_minio_secret,
-                "argo_server_ns": argo_server_ns,
-                "argo_workflows_ns": argo_workflows_ns,
-            }
-        )
+        self.register_outputs(outputs)

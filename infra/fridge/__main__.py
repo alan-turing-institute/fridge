@@ -29,13 +29,12 @@ config = pulumi.Config()
 tls_environment = TlsEnvironment(config.require("tls_environment"))
 stack_name = pulumi.get_stack()
 
-
 try:
     k8s_environment = K8sEnvironment(config.get("k8s_env"))
 except ValueError:
     raise ValueError(
-        f"Invalid k8s environment: {k8s_environment}. "
-        "Supported values are 'AKS', 'Dawn', and 'K3s'."
+        f"Invalid k8s environment: {config.get('k8s_env')}. "
+        f"Supported values are {', '.join([item.value for item in K8sEnvironment])}."
     )
 
 # Hubble UI
@@ -45,7 +44,6 @@ if k8s_environment == K8sEnvironment.AKS:
         "hubble-ui",
         file="./k8s/hubble/hubble_ui.yaml",
     )
-
 
 match k8s_environment:
     case K8sEnvironment.AKS | K8sEnvironment.K3S:
@@ -159,7 +157,6 @@ standard_namespaces = ["default", "kube-node-lease", "kube-public"]
 for namespace in standard_namespaces:
     patch_namespace(namespace, PodSecurityStandard.RESTRICTED)
 
-
 cluster_issuer_config = Template(
     open("k8s/cert_manager/clusterissuer.yaml", "r").read()
 ).substitute(
@@ -195,7 +192,6 @@ minio = components.ObjectStorage(
 )
 
 # Argo Workflows
-
 enable_sso = k8s_environment is not K8sEnvironment.K3S
 
 argo_workflows = components.WorkflowServer(
@@ -275,7 +271,6 @@ configure_containerd_daemonset = ConfigGroup(
 )
 
 # API Server
-
 api_server = components.ApiServer(
     name=f"{stack_name}-api-server",
     args=components.ApiServerArgs(
@@ -283,6 +278,9 @@ api_server = components.ApiServer(
         argo_workflows_ns=argo_workflows.argo_workflows_ns,
         fridge_api_admin=config.require_secret("fridge_api_admin"),
         fridge_api_password=config.require_secret("fridge_api_password"),
+        minio_url=minio.minio_cluster_url,
+        minio_access_key=config.require_secret("minio_root_user"),
+        minio_secret_key=config.require_secret("minio_root_password"),
         verify_tls=tls_environment is TlsEnvironment.PRODUCTION,
     ),
     opts=ResourceOptions(
