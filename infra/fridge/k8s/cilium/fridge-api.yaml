@@ -13,7 +13,7 @@ spec:
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
 metadata:
-  name: allow-argo-server-traffic
+  name: allow-server-traffic
   namespace: fridge-api
 spec:
   endpointSelector:
