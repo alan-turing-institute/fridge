@@ -83,16 +83,6 @@ class Monitoring(ComponentResource):
                     opts=child_opts,
                 )
 
-                # Add service monitor to allow Prometheus to scrape the metrics
-                # Note: Pulumi has no native support for ServiceMonitor,
-                # so using ConfigFile to deploy
-                ConfigFile(
-                    "argo-workflows-service-monitor",
-                    file="./k8s/argo_workflows/prometheus.yaml",
-                    opts=ResourceOptions(
-                        depends_on=[argo_workflows_metrics_svc],
-                    ),
-                )
             case K8sEnvironment.K3S:
                 monitoring_ns = Namespace(
                     "monitoring-system",
@@ -116,6 +106,39 @@ class Monitoring(ComponentResource):
                         },
                         namespace=monitoring_ns.metadata.name,  # Compatibility with Dawn
                         create_namespace=False,
+                        values={
+                            "alertmanager": {
+                                "alertmanagerSpec": {
+                                    "retention": "168h",
+                                    "storage": {
+                                        "volumeClaimTemplate": {
+                                            "spec": {
+                                                "accessMode": ["ReadWriteOnce"],
+                                                "resources": {
+                                                    "requests": {"storage": "3Gi"}
+                                                },
+                                            }
+                                        }
+                                    },
+                                }
+                            },
+                            "prometheus": {
+                                "prometheusSpec": {
+                                    "retention": "4d",
+                                    "retentionSize": "2GiB",
+                                    "storageSpec": {
+                                        "volumeClaimTemplate": {
+                                            "spec": {
+                                                "accessModes": ["ReadWriteOnce"],
+                                                "resources": {
+                                                    "requests": {"storage": "3Gi"}
+                                                },
+                                            }
+                                        }
+                                    },
+                                }
+                            },
+                        },
                     ),
                     opts=child_opts,
                 )
@@ -134,8 +157,44 @@ class Monitoring(ComponentResource):
                     opts=child_opts,
                 )
 
+        # Add service for metrics endpoint for Argo Workflows
+        argo_workflows_metrics_svc = Service(
+            "argo-workflows-metrics-svc",
+            metadata=ObjectMetaArgs(
+                name="workflow-controller-metrics",
+                namespace=args.argo_server_ns,
+                labels={"app": "workflow-controller"},
+            ),
+            spec=ServiceSpecArgs(
+                cluster_ip=None,
+                ports=[
+                    ServicePortArgs(
+                        name="metrics",
+                        port=9090,
+                        protocol="TCP",
+                        target_port=9090,
+                    ),
+                ],
+                selector={"app": "workflow-controller"},
+            ),
+            opts=child_opts,
+        )
+
+        # Add service monitor to allow Prometheus to scrape the metrics
+        # Note: Pulumi has no native support for ServiceMonitor,
+        # so using ConfigFile to deploy
+        argo_workflows_svc_monitor = ConfigFile(
+            "argo-workflows-service-monitor",
+            file="./k8s/argo_workflows/prometheus.yaml",
+            opts=ResourceOptions(
+                depends_on=[argo_workflows_metrics_svc],
+            ),
+        )
+
         self.register_outputs(
             {
+                "argo_workflows_metrics_svc": argo_workflows_metrics_svc,
+                "argo_workflows_svc_monitor": argo_workflows_svc_monitor,
                 "namespace": monitoring_ns.metadata.name,
                 "grafana_loki": grafana_loki,
                 "prometheus_operator": prometheus_operator,
