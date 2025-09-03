@@ -37,7 +37,7 @@ class Monitoring(ComponentResource):
                 # Start by deploying the monitoring stack for AKS
                 # 1. Prometheus Operator
                 # 2. Grafana
-                Release(
+                prometheus_operator = Release(
                     "monitoring-operator",
                     ReleaseArgs(
                         chart="kube-prometheus-stack",
@@ -87,3 +87,36 @@ class Monitoring(ComponentResource):
                         depends_on=[argo_workflows_metrics_svc],
                     ),
                 )
+            case K8sEnvironment.K3S:
+                monitoring_ns = Namespace(
+                    "monitoring-system",
+                    metadata=ObjectMetaArgs(
+                        name="monitoring-system",
+                        labels={"name": "monitoring-system"},
+                    ),
+                    opts=child_opts,
+                )
+
+                # Start by deploying the monitoring stack for AKS
+                # 1. Prometheus Operator
+                # 2. Grafana
+                prometheus_operator = Release(
+                    "monitoring-operator",
+                    ReleaseArgs(
+                        chart="kube-prometheus-stack",
+                        version="75.15.1",
+                        repository_opts={
+                            "repo": "https://prometheus-community.github.io/helm-charts"
+                        },
+                        namespace=monitoring_ns.metadata.name,  # Compatibility with Dawn
+                        create_namespace=False,
+                    ),
+                    opts=child_opts,
+                )
+
+        self.register_outputs(
+            {
+                "namespace": monitoring_ns.metadata.name,
+                "prometheus_operator": prometheus_operator,
+            }
+        )
