@@ -42,9 +42,6 @@ workflow:
     create: true
 server:
   secure: true
-  authModes:
-    - sso
-    - client
   ingress:
     enabled: true
     annotations:
@@ -58,14 +55,6 @@ server:
   securityContext:
     seccompProfile:
       type: RuntimeDefault
-  sso:
-    enabled: true
-    clientId:
-      name: argo-server-sso
-      key: client-id
-    clientSecret:
-      name: argo-server-sso
-      key: client-secret
   extraEnv:
     - name: SSO_DELEGATE_RBAC_TO_NAMESPACE
       value: "true"

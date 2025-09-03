@@ -2,30 +2,16 @@ from string import Template
 
 import pulumi
 
-from components.api_rbac import ApiRbac
-from components.monitoring import Monitoring, MonitoringArgs
-from components.network_policies import NetworkPolicies
-from pulumi import FileAsset, Output, ResourceOptions
+from pulumi import ResourceOptions
 from pulumi_kubernetes.batch.v1 import CronJobPatch, CronJobSpecPatchArgs
-from pulumi_kubernetes.core.v1 import (
-    Namespace,
-    NamespacePatch,
-    Secret,
-)
-from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs
+from pulumi_kubernetes.core.v1 import Namespace, NamespacePatch
+from pulumi_kubernetes.helm.v3 import Release
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs, ObjectMetaPatchArgs
-from pulumi_kubernetes.networking.v1 import Ingress
-from pulumi_kubernetes.rbac.v1 import (
-    PolicyRuleArgs,
-    Role,
-    RoleBinding,
-    RoleRefArgs,
-    SubjectArgs,
-)
-from pulumi_kubernetes.storage.v1 import StorageClass
+
 from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
 
+import components
 from enums import K8sEnvironment, PodSecurityStandard, TlsEnvironment, tls_issuer_names
 
 
@@ -43,24 +29,24 @@ config = pulumi.Config()
 tls_environment = TlsEnvironment(config.require("tls_environment"))
 stack_name = pulumi.get_stack()
 
-
 try:
     k8s_environment = K8sEnvironment(config.get("k8s_env"))
 except ValueError:
     raise ValueError(
-        f"Invalid k8s environment: {k8s_environment}. "
-        "Supported values are 'AKS' and 'Dawn'."
+        f"Invalid k8s environment: {config.get('k8s_env')}. "
+        f"Supported values are {', '.join([item.value for item in K8sEnvironment])}."
+    )
+
+# Hubble UI
+# Interface for Cilium
+if k8s_environment == K8sEnvironment.AKS:
+    hubble_ui = ConfigFile(
+        "hubble-ui",
+        file="./k8s/hubble/hubble_ui.yaml",
     )
 
 match k8s_environment:
-    case K8sEnvironment.AKS:
-        # Hubble UI
-        # Interface for Cilium
-        hubble_ui = ConfigFile(
-            "hubble-ui",
-            file="./k8s/hubble/hubble_ui.yaml",
-        )
-
+    case K8sEnvironment.AKS | K8sEnvironment.K3S:
         # Ingress NGINX (ingress provider)
         ingress_nginx_ns = Namespace(
             "ingress-nginx-ns",
@@ -143,65 +129,33 @@ match k8s_environment:
             ),
         )
 
+# Storage classes
+storage_classes = components.StorageClasses(
+    "storage_classes",
+    components.StorageClassesArgs(
+        k8s_environment=k8s_environment,
+        azure_disk_encryption_set=(
+            config.require("azure_disk_encryption_set")
+            if k8s_environment is K8sEnvironment.AKS
+            else None
+        ),
+        azure_resource_group=(
+            config.require("azure_resource_group")
+            if k8s_environment is K8sEnvironment.AKS
+            else None
+        ),
+        azure_subscription_id=(
+            config.require("azure_subscription_id")
+            if k8s_environment is K8sEnvironment.AKS
+            else None
+        ),
+    ),
+)
+
 # Use patches for standard namespaces rather then trying to create them, so Pulumi does not try to delete them on teardown
 standard_namespaces = ["default", "kube-node-lease", "kube-public"]
 for namespace in standard_namespaces:
     patch_namespace(namespace, PodSecurityStandard.RESTRICTED)
-
-# Longhorn
-longhorn_ns = Namespace(
-    "longhorn-system",
-    metadata=ObjectMetaArgs(
-        name="longhorn-system",
-        labels={} | PodSecurityStandard.PRIVILEGED.value,
-    ),
-)
-
-longhorn = Release(
-    "longhorn",
-    namespace=longhorn_ns.metadata.name,
-    chart="longhorn",
-    version="1.9.0",
-    repository_opts=RepositoryOptsArgs(
-        repo="https://charts.longhorn.io",
-    ),
-    # Add a toleration for the GPU node, to allow Longhorn to schedule pods/create volumes there
-    values={
-        "global": {
-            "tolerations": [
-                {
-                    "key": "gpu.intel.com/i915",
-                    "operator": "Exists",
-                    "effect": "NoSchedule",
-                }
-            ]
-        },
-        "defaultSettings": {"taintToleration": "gpu.intel.com/i915:NoSchedule"},
-        "persistence": {"defaultClassReplicaCount": 2},
-    },
-    opts=ResourceOptions(
-        depends_on=[longhorn_ns],
-    ),
-)
-
-longhorn_storage_class = StorageClass(
-    "longhorn-storage",
-    allow_volume_expansion=True,
-    metadata=ObjectMetaArgs(
-        name="longhorn-storage",
-    ),
-    parameters={
-        "dataLocality": "best-effort",
-        "fsType": "ext4",
-        "numberOfReplicas": "2",
-        "staleReplicaTimeout": "2880",
-    },
-    provisioner="driver.longhorn.io",
-    opts=ResourceOptions(
-        depends_on=[longhorn],
-    ),
-)
-
 
 cluster_issuer_config = Template(
     open("k8s/cert_manager/clusterissuer.yaml", "r").read()
@@ -220,569 +174,103 @@ cert_manager_issuers = ConfigGroup(
 )
 
 # Minio
-minio_operator_ns = Namespace(
-    "minio-operator-ns",
-    metadata=ObjectMetaArgs(
-        name="minio-operator",
-        labels={} | PodSecurityStandard.RESTRICTED.value,
-    ),
-)
-
-minio_operator = Chart(
-    "minio-operator",
-    namespace=minio_operator_ns.metadata.name,
-    chart="operator",
-    repository_opts=RepositoryOptsArgs(
-        repo="https://operator.min.io",
-    ),
-    version="7.1.1",
-    opts=ResourceOptions(
-        depends_on=[minio_operator_ns],
-    ),
-)
-
-minio_tenant_ns = Namespace(
-    "minio-tenant-ns",
-    metadata=ObjectMetaArgs(
-        name="argo-artifacts",
-        labels={} | PodSecurityStandard.RESTRICTED.value,
-    ),
-)
-
-minio_fqdn = ".".join(
-    (
-        config.require("minio_fqdn_prefix"),
-        config.require("base_fqdn"),
-    )
-)
-pulumi.export("minio_fqdn", minio_fqdn)
-
-minio_config_env = Output.format(
-    (
-        "export MINIO_BROWSER_REDIRECT_URL=https://{0}\n"
-        "export MINIO_SERVER_URL=http://minio.argo-artifacts.svc.cluster.local\n"
-        "export MINIO_ROOT_USER={1}\n"
-        "export MINIO_ROOT_PASSWORD={2}"
-    ),
-    minio_fqdn,
-    config.require_secret("minio_root_user"),
-    config.require_secret("minio_root_password"),
-)
-
-minio_env_secret = Secret(
-    "minio-env-secret",
-    metadata=ObjectMetaArgs(
-        name="argo-artifacts-env-configuration",
-        namespace=minio_tenant_ns.metadata.name,
-    ),
-    type="Opaque",
-    string_data={
-        "config.env": minio_config_env,
-    },
-    opts=ResourceOptions(
-        depends_on=[minio_tenant_ns],
-    ),
-)
-
-minio_tenant = Chart(
-    "minio-tenant",
-    namespace=minio_tenant_ns.metadata.name,
-    chart="tenant",
-    name="argo-artifacts",
-    version="7.1.1",
-    repository_opts=RepositoryOptsArgs(
-        repo="https://operator.min.io",
-    ),
-    values={
-        "tenant": {
-            "name": "argo-artifacts",
-            "buckets": [
-                {"name": "argo-artifacts"},
-            ],
-            "certificate": {
-                "requestAutoCert": "false",
-            },
-            "configuration": {
-                "name": "argo-artifacts-env-configuration",
-            },
-            "configSecret": {
-                "name": "argo-artifacts-env-configuration",
-                "accessKey": None,
-                "secretKey": None,
-                "existingSecret": "true",
-            },
-            "features": {
-                "domains": {
-                    "console": minio_fqdn,
-                    "minio": [
-                        Output.concat(minio_fqdn, "/api"),
-                        "minio.argo-artifacts.svc.cluster.local",
-                    ],
-                }
-            },
-            "pools": [
-                {
-                    "servers": 1,
-                    "name": "argo-artifacts-pool-0",
-                    "size": config.require("minio_pool_size"),
-                    "volumesPerServer": 1,
-                    "storageClassName": longhorn_storage_class.metadata.name,
-                    "containerSecurityContext": {
-                        "runAsUser": 1000,
-                        "runAsGroup": 1000,
-                        "runAsNonRoot": True,
-                        "allowPrivilegeEscalation": False,
-                        "capabilities": {"drop": ["ALL"]},
-                        "seccompProfile": {
-                            "type": "RuntimeDefault",
-                        },
-                    },
-                },
-            ],
-        },
-    },
-    opts=ResourceOptions(
-        depends_on=[longhorn, minio_env_secret, minio_operator, minio_tenant_ns],
-    ),
-)
-
-minio_ingress = Ingress(
-    "minio-ingress",
-    metadata=ObjectMetaArgs(
-        name="minio-ingress",
-        namespace=minio_tenant_ns.metadata.name,
-        annotations={
-            "nginx.ingress.kubernetes.io/proxy-body-size": "0",
-            "nginx.ingress.kubernetes.io/force-ssl-redirect": "true",
-            "cert-manager.io/cluster-issuer": tls_issuer_names[tls_environment],
-        },
-    ),
-    spec={
-        "ingress_class_name": "nginx",
-        "tls": [
-            {
-                "hosts": [
-                    minio_fqdn,
-                ],
-                "secret_name": "argo-artifacts-tls",
-            }
-        ],
-        "rules": [
-            {
-                "host": minio_fqdn,
-                "http": {
-                    "paths": [
-                        {
-                            "path": "/",
-                            "path_type": "Prefix",
-                            "backend": {
-                                "service": {
-                                    "name": "argo-artifacts-console",
-                                    "port": {
-                                        "number": 9090,
-                                    },
-                                }
-                            },
-                        }
-                    ]
-                },
-            }
-        ],
-    },
-    opts=ResourceOptions(
-        depends_on=[minio_tenant],
-    ),
-)
-
-# Argo Workflows
-argo_server_ns = Namespace(
-    "argo-server-ns",
-    metadata=ObjectMetaArgs(
-        name="argo-server",
-        labels={} | PodSecurityStandard.RESTRICTED.value,
-    ),
-)
-
-argo_workflows_ns = Namespace(
-    "argo-workflows-ns",
-    metadata=ObjectMetaArgs(
-        name="argo-workflows",
-        labels={} | PodSecurityStandard.RESTRICTED.value,
-    ),
-)
-
-argo_fqdn = ".".join(
-    (
-        config.require("argo_fqdn_prefix"),
-        config.require("base_fqdn"),
-    )
-)
-pulumi.export("argo_fqdn", argo_fqdn)
-
-argo_sso_secret = Secret(
-    "argo-server-sso-secret",
-    metadata=ObjectMetaArgs(
-        name="argo-server-sso",
-        namespace=argo_server_ns.metadata.name,
-    ),
-    type="Opaque",
-    string_data={
-        "client-id": config.require_secret("oidc_client_id"),
-        "client-secret": config.require_secret("oidc_client_secret"),
-    },
-    opts=ResourceOptions(
-        depends_on=[argo_server_ns],
-    ),
-)
-
-argo_minio_secret = Secret(
-    "argo-minio-secret",
-    metadata=ObjectMetaArgs(
-        name="argo-artifacts-minio",
-        namespace=argo_workflows_ns.metadata.name,
-    ),
-    type="Opaque",
-    string_data={
-        "accesskey": config.require_secret("minio_root_user"),
-        "secretkey": config.require_secret("minio_root_password"),
-    },
-    opts=ResourceOptions(
-        depends_on=[argo_server_ns],
-    ),
-)
-
-argo_workflows = Chart(
-    "argo-workflows",
-    namespace=argo_server_ns.metadata.name,
-    chart="argo-workflows",
-    version="0.45.12",
-    repository_opts=RepositoryOptsArgs(
-        repo="https://argoproj.github.io/argo-helm",
-    ),
-    value_yaml_files=[
-        FileAsset("./k8s/argo_workflows/values.yaml"),
-    ],
-    values={
-        "controller": {"workflowNamespaces": [argo_workflows_ns.metadata.name]},
-        "server": {
-            "ingress": {
-                "annotations": {
-                    "cert-manager.io/cluster-issuer": tls_issuer_names[tls_environment],
-                },
-                "hosts": [argo_fqdn],
-                "tls": [
-                    {
-                        "secretName": "argo-ingress-tls-letsencrypt",
-                        "hosts": [argo_fqdn],
-                    }
-                ],
-            },
-            "sso": {
-                "enabled": True,
-                "issuer": config.require_secret("sso_issuer_url"),
-                "redirectUrl": Output.concat("https://", argo_fqdn, "/oauth2/callback"),
-                "scopes": config.require_object("argo_scopes"),
-            },
-        },
-    },
-    opts=ResourceOptions(
-        depends_on=[
-            argo_minio_secret,
-            argo_sso_secret,
-            argo_server_ns,
-            argo_workflows_ns,
-        ],
-    ),
-)
-
-
-# Define argo workflows service accounts and roles
-# See https://argo-workflows.readthedocs.io/en/latest/security/
-# The admin service account gives users in the admin entra group
-# permission to run workflows in the Argo Workflows namespace
-argo_workflows_admin_role = Role(
-    "argo-workflows-admin-role",
-    metadata=ObjectMetaArgs(
-        name="argo-workflows-admin-role",
-        namespace=argo_workflows_ns.metadata.name,
-    ),
-    rules=[
-        PolicyRuleArgs(
-            api_groups=[""],
-            resources=["events", "pods", "pods/log"],
-            verbs=["get", "list", "watch"],
-        ),
-        PolicyRuleArgs(
-            api_groups=["argoproj.io"],
-            resources=[
-                "cronworkflows",
-                "eventsources",
-                "workflows",
-                "workflows/finalizers",
-                "workflowtaskresults",
-                "workflowtemplates",
-                "clusterworkflowtemplates",
-            ],
-            verbs=[
-                "create",
-                "delete",
-                "deletecollection",
-                "get",
-                "list",
-                "patch",
-                "watch",
-                "update",
-            ],
-        ),
-    ],
-    opts=ResourceOptions(
-        depends_on=[argo_workflows],
-    ),
-)
-
-argo_workflows_admin_sa = ServiceAccount(
-    "argo-workflows-admin-sa",
-    metadata=ObjectMetaArgs(
-        name="argo-workflows-admin-sa",
-        namespace=argo_workflows_ns.metadata.name,
-        annotations={
-            "workflows.argoproj.io/rbac-rule": Output.concat(
-                "'", config.require_secret("oidc_admin_group_id"), "'", " in groups"
-            ),
-            "workflows.argoproj.io/rbac-rule-precedence": "2",
-        },
-    ),
-    opts=ResourceOptions(
-        depends_on=[argo_workflows],
-    ),
-)
-
-argo_workflows_admin_sa_token = Secret(
-    "argo-workflows-admin-sa-token",
-    metadata=ObjectMetaArgs(
-        name="argo-workflows-admin-sa.service-account-token",
-        namespace=argo_workflows_ns.metadata.name,
-        annotations={
-            "kubernetes.io/service-account.name": argo_workflows_admin_sa.metadata.name,
-        },
-    ),
-    type="kubernetes.io/service-account-token",
-    opts=ResourceOptions(
-        depends_on=[argo_workflows_admin_sa],
-    ),
-)
-
-argo_workflows_admin_role_binding = RoleBinding(
-    "argo-workflows-admin-role-binding",
-    metadata=ObjectMetaArgs(
-        name="argo-workflows-admin-role-binding",
-        namespace=argo_workflows_ns.metadata.name,
-    ),
-    role_ref=RoleRefArgs(
-        api_group="rbac.authorization.k8s.io",
-        kind="Role",
-        name=argo_workflows_admin_role.metadata.name,
-    ),
-    subjects=[
-        SubjectArgs(
-            kind="ServiceAccount",
-            name=argo_workflows_admin_sa.metadata.name,
-            namespace=argo_workflows_ns.metadata.name,
-        )
-    ],
-    opts=ResourceOptions(
-        depends_on=[argo_workflows_admin_role],
-    ),
-)
-
-# The admin service account above does not give permission to access the server workspace,
-# so the default service account below allows them to get sufficient access to use the UI
-# without being able to run workflows in the server namespace
-argo_workflows_default_sa = ServiceAccount(
-    "argo-workflows-default-sa",
-    metadata=ObjectMetaArgs(
-        name="user-default-login",
-        namespace=argo_server_ns.metadata.name,
-        annotations={
-            "workflows.argoproj.io/rbac-rule": "true",
-            "workflows.argoproj.io/rbac-rule-precedence": "0",
-        },
-    ),
-    opts=ResourceOptions(
-        depends_on=[argo_workflows],
-    ),
-)
-
-argo_workflows_default_sa_token = Secret(
-    "argo-workflows-default-sa-token",
-    metadata=ObjectMetaArgs(
-        name="user-default-login.service-account-token",
-        namespace=argo_server_ns.metadata.name,
-        annotations={
-            "kubernetes.io/service-account.name": argo_workflows_default_sa.metadata.name,
-        },
-    ),
-    type="kubernetes.io/service-account-token",
-    opts=ResourceOptions(
-        depends_on=[argo_workflows_default_sa],
-    ),
-)
-
-# Set up monitoring
-
-monitoring_system = Monitoring(
-    name=f"{stack_name}-monitoring-system",
-    args=MonitoringArgs(
-        k8s_environment=k8s_environment,
-        argo_server_ns=argo_server_ns.metadata.name,
+minio = components.ObjectStorage(
+    "minio",
+    args=components.ObjectStorageArgs(
+        config=config,
+        tls_environment=tls_environment,
+        storage_classes=storage_classes,
     ),
     opts=ResourceOptions(
         depends_on=[
             ingress_nginx,
             cert_manager,
             cert_manager_issuers,
-            longhorn,
-            longhorn_storage_class,
-            minio_operator,
-            minio_tenant,
-            minio_ingress,
-            argo_workflows,
-        ],
+            storage_classes,
+        ]
     ),
 )
 
+# Argo Workflows
+enable_sso = k8s_environment is not K8sEnvironment.K3S
 
-api_rbac = ApiRbac(
-    name=f"{stack_name}-api-rbac",
-    argo_workflows_ns=argo_workflows_ns.metadata.name,
+argo_workflows = components.WorkflowServer(
+    "argo-workflows",
+    args=components.WorkflowServerArgs(
+        config=config,
+        tls_environment=tls_environment,
+        enable_sso=enable_sso,
+    ),
     opts=ResourceOptions(
-        depends_on=[argo_workflows_ns],
+        depends_on=[
+            ingress_nginx,
+            cert_manager,
+            cert_manager_issuers,
+        ]
+    ),
+)
+
+if enable_sso:
+    argo_workflows_rbac = components.WorkflowUiRbac(
+        "argo-workflows-rbac",
+        args=components.WorkflowUiRbacArgs(
+            config=config,
+            argo_workflows_ns=argo_workflows.argo_workflows_ns,
+            argo_server_ns=argo_workflows.argo_server_ns,
+        ),
+        opts=ResourceOptions(
+            depends_on=[argo_workflows],
+        ),
+    )
+
+# Set up monitoring
+monitoring_system = components.Monitoring(
+    name=f"{stack_name}-monitoring-system",
+    args=MonitoringArgs(
+        k8s_environment=k8s_environment,
+        argo_server_ns=argo_workflows.argo_server_ns,
+    ),
+    opts=ResourceOptions(
+        depends_on=[
+            argo_workflows,
+            ingress_nginx,
+            cert_manager,
+            cert_manager_issuers,
+            minio,
+            storage_classes,
+        ],
     ),
 )
 
 # Harbor
-harbor_ns = Namespace(
-    "harbor-ns",
-    metadata=ObjectMetaArgs(
-        name="harbor",
-        labels={} | PodSecurityStandard.RESTRICTED.value,
-    ),
-)
-
-harbor_fqdn = ".".join(
-    (
-        config.require("harbor_fqdn_prefix"),
-        config.require("base_fqdn"),
-    )
-)
-
-f"{config.require('harbor_fqdn_prefix')}.{config.require('base_fqdn')}"
-pulumi.export("harbor_fqdn", harbor_fqdn)
-harbor_external_url = f"https://{harbor_fqdn}"
-
-harbor = Release(
+harbor = components.ContainerRegistry(
     "harbor",
-    ReleaseArgs(
-        chart="harbor",
-        namespace="harbor",
-        version="1.17.1",
-        repository_opts=RepositoryOptsArgs(
-            repo="https://helm.goharbor.io",
-        ),
-        value_yaml_files=[FileAsset("./k8s/harbor/values.yaml")],
-        values={
-            "expose": {
-                "clusterIP": {
-                    "staticClusterIP": config.require("harbor_ip"),
-                }
-            },
-            "externalURL": harbor_external_url,
-            "harborAdminPassword": config.require_secret("harbor_admin_password"),
-        },
+    components.ContainerRegistryArgs(
+        config=config,
+        tls_environment=tls_environment,
+        storage_classes=storage_classes,
     ),
     opts=ResourceOptions(
-        depends_on=[harbor_ns, longhorn, longhorn_storage_class],
+        depends_on=[ingress_nginx, cert_manager, cert_manager_issuers, storage_classes],
     ),
 )
 
-harbor_ingress = Ingress(
-    "harbor-ingress",
-    metadata=ObjectMetaArgs(
-        name="harbor-ingress",
-        namespace=harbor_ns.metadata.name,
-        annotations={
-            "nginx.ingress.kubernetes.io/force-ssl-redirect": "true",
-            "nginx.ingress.kubernetes.io/proxy-body-size": "0",
-            "cert-manager.io/cluster-issuer": tls_issuer_names[tls_environment],
-        },
-    ),
-    spec={
-        "ingress_class_name": "nginx",
-        "tls": [
-            {
-                "hosts": [
-                    harbor_fqdn,
-                ],
-                "secret_name": "harbor-ingress-tls",
-            }
-        ],
-        "rules": [
-            {
-                "host": harbor_fqdn,
-                "http": {
-                    "paths": [
-                        {
-                            "path": "/",
-                            "path_type": "Prefix",
-                            "backend": {
-                                "service": {
-                                    "name": "harbor",
-                                    "port": {
-                                        "number": 80,
-                                    },
-                                }
-                            },
-                        }
-                    ]
-                },
-            }
-        ],
-    },
-    opts=ResourceOptions(
-        depends_on=[harbor],
-    ),
-)
 
-# Create a daemonset to skip TLS verification for the harbor registry
-# This is needed while using staging/self-signed certificates for Harbor
-# A daemonset is used to run the configuration on all nodes in the cluster
-
-containerd_config_ns = Namespace(
-    "containerd-config-ns",
-    metadata=ObjectMetaArgs(
-        name="containerd-config",
-        labels={} | PodSecurityStandard.PRIVILEGED.value,
+# API Server
+api_server = components.ApiServer(
+    name=f"{stack_name}-api-server",
+    args=components.ApiServerArgs(
+        argo_server_ns=argo_workflows.argo_server_ns,
+        argo_workflows_ns=argo_workflows.argo_workflows_ns,
+        fridge_api_admin=config.require_secret("fridge_api_admin"),
+        fridge_api_password=config.require_secret("fridge_api_password"),
+        minio_url=minio.minio_cluster_url,
+        minio_access_key=config.require_secret("minio_root_user"),
+        minio_secret_key=config.require_secret("minio_root_password"),
+        verify_tls=tls_environment is TlsEnvironment.PRODUCTION,
     ),
     opts=ResourceOptions(
-        depends_on=[harbor],
-    ),
-)
-
-skip_harbor_tls = Template(
-    open("k8s/harbor/skip_harbor_tls_verification.yaml", "r").read()
-).substitute(
-    namespace="containerd-config",
-    harbor_fqdn=harbor_fqdn,
-    harbor_url=harbor_external_url,
-    harbor_ip=config.require("harbor_ip"),
-    harbor_internal_url="http://" + config.require("harbor_ip"),
-)
-
-configure_containerd_daemonset = ConfigGroup(
-    "configure-containerd-daemon",
-    yaml=[skip_harbor_tls],
-    opts=ResourceOptions(
-        depends_on=[harbor],
+        depends_on=[argo_workflows],
     ),
 )
 
@@ -792,19 +280,22 @@ configure_containerd_daemonset = ConfigGroup(
 
 resources = [
     argo_workflows,
-    configure_containerd_daemonset,
+    harbor.configure_containerd_daemonset,
     harbor,
     ingress_nginx,
-    longhorn,
-    minio_ingress,
-    minio_operator,
-    minio_tenant,
+    minio,
+    storage_classes,
 ]
 
-network_policies = NetworkPolicies(
+network_policies = components.NetworkPolicies(
     name=f"{stack_name}-network-policies",
     k8s_environment=k8s_environment,
     opts=ResourceOptions(
         depends_on=resources,
     ),
 )
+
+# Pulumi exports
+pulumi.export("argo_fqdn", argo_workflows.argo_fqdn)
+pulumi.export("harbor_fqdn", harbor.harbor_fqdn)
+pulumi.export("minio_fqdn", minio.minio_fqdn)
