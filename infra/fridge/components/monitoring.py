@@ -53,6 +53,12 @@ class Monitoring(ComponentResource):
             case K8sEnvironment.DAWN:
                 # The namespace is already created on Dawn
                 monitoring_ns = Namespace.get("monitoring-ns", "monitoring-system")
+                prometheus_operator = Release.get(
+                    "monitoring-operator", "monitoring-system/kube-prometheus-stack"
+                )
+                grafana_loki = Release.get(
+                    "grafana-loki", "monitoring-system/loki-stack"
+                )
 
                 # Add service for metrics endpoint for Argo Workflows
                 argo_workflows_metrics_svc = Service(
