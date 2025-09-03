@@ -97,9 +97,9 @@ class Monitoring(ComponentResource):
                     opts=child_opts,
                 )
 
-                # Start by deploying the monitoring stack for AKS
+                # Start by deploying the monitoring stack
                 # 1. Prometheus Operator
-                # 2. Grafana
+                # 2. Grafana Loki
                 prometheus_operator = Release(
                     "monitoring-operator",
                     ReleaseArgs(
@@ -114,9 +114,24 @@ class Monitoring(ComponentResource):
                     opts=child_opts,
                 )
 
+                grafana_loki = Release(
+                    "grafana-loki",
+                    ReleaseArgs(
+                        chart="loki-stack",
+                        version="2.10.2",
+                        repository_opts={
+                            "repo": "https://grafana.github.io/helm-charts"
+                        },
+                        namespace=monitoring_ns.metadata.name,
+                        create_namespace=False,
+                    ),
+                    opts=child_opts,
+                )
+
         self.register_outputs(
             {
                 "namespace": monitoring_ns.metadata.name,
+                "grafana_loki": grafana_loki,
                 "prometheus_operator": prometheus_operator,
             }
         )
