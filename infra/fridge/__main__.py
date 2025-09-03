@@ -226,7 +226,7 @@ if enable_sso:
 # Set up monitoring
 monitoring_system = components.Monitoring(
     name=f"{stack_name}-monitoring-system",
-    args=MonitoringArgs(
+    args=components.MonitoringArgs(
         k8s_environment=k8s_environment,
         argo_server_ns=argo_workflows.argo_server_ns,
     ),
