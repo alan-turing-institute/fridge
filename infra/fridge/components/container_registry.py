@@ -1,9 +1,12 @@
+from string import Template
+
 import pulumi
 from pulumi import ComponentResource, ResourceOptions
 from pulumi_kubernetes.core.v1 import Namespace
 from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.networking.v1 import Ingress
+from pulumi_kubernetes.yaml import ConfigGroup
 
 from .storage_classes import StorageClasses
 
@@ -148,11 +151,47 @@ class ContainerRegistry(ComponentResource):
             ),
         )
 
+        # Create a daemonset to skip TLS verification for the harbor registry
+        # This is needed while using staging/self-signed certificates for Harbor
+        # A daemonset is used to run the configuration on all nodes in the cluster
+
+        containerd_config_ns = Namespace(
+            "containerd-config-ns",
+            metadata=ObjectMetaArgs(
+                name="containerd-config",
+                labels={} | PodSecurityStandard.PRIVILEGED.value,
+            ),
+            opts=ResourceOptions(
+                depends_on=[harbor],
+            ),
+        )
+
+        skip_harbor_tls = Template(
+            open("k8s/harbor/skip_harbor_tls_verification.yaml", "r").read()
+        ).substitute(
+            namespace="containerd-config",
+            harbor_fqdn=harbor_fqdn,
+            harbor_url=harbor_external_url,
+            harbor_ip=args.config.require("harbor_ip"),
+            harbor_internal_url="http://" + args.config.require("harbor_ip"),
+        )
+
+        configure_containerd_daemonset = ConfigGroup(
+            "configure-containerd-daemon",
+            yaml=[skip_harbor_tls],
+            opts=ResourceOptions(
+                depends_on=[harbor],
+            ),
+        )
+
         self.harbor_fqdn = harbor_fqdn
         self.harbor_external_url = harbor_external_url
+        self.configure_containerd_daemonset = configure_containerd_daemonset
 
         self.register_outputs(
             {
+                "configure_containerd_daemonset": configure_containerd_daemonset,
+                "containerd_config_ns": containerd_config_ns,
                 "harbor": harbor,
                 "harbor_ingress": harbor_ingress,
                 "harbor_ns": harbor_ns,

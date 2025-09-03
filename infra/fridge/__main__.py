@@ -237,39 +237,6 @@ harbor = components.ContainerRegistry(
 )
 
 
-# Create a daemonset to skip TLS verification for the harbor registry
-# This is needed while using staging/self-signed certificates for Harbor
-# A daemonset is used to run the configuration on all nodes in the cluster
-
-containerd_config_ns = Namespace(
-    "containerd-config-ns",
-    metadata=ObjectMetaArgs(
-        name="containerd-config",
-        labels={} | PodSecurityStandard.PRIVILEGED.value,
-    ),
-    opts=ResourceOptions(
-        depends_on=[harbor],
-    ),
-)
-
-skip_harbor_tls = Template(
-    open("k8s/harbor/skip_harbor_tls_verification.yaml", "r").read()
-).substitute(
-    namespace="containerd-config",
-    harbor_fqdn=harbor.harbor_fqdn,
-    harbor_url=harbor.harbor_external_url,
-    harbor_ip=config.require("harbor_ip"),
-    harbor_internal_url="http://" + config.require("harbor_ip"),
-)
-
-configure_containerd_daemonset = ConfigGroup(
-    "configure-containerd-daemon",
-    yaml=[skip_harbor_tls],
-    opts=ResourceOptions(
-        depends_on=[harbor],
-    ),
-)
-
 # API Server
 api_server = components.ApiServer(
     name=f"{stack_name}-api-server",
@@ -294,7 +261,7 @@ api_server = components.ApiServer(
 
 resources = [
     argo_workflows,
-    configure_containerd_daemonset,
+    harbor.configure_containerd_daemonset,
     harbor,
     ingress_nginx,
     minio,
