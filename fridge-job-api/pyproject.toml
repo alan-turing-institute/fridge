@@ -8,5 +8,9 @@ dependencies = [
     "dotenv>=0.9.9",
     "fastapi[standard]>=0.115.14",
     "kubernetes>=33.1.0",
+    "minio>=7.2.16",
     "requests>=2.32.4",
 ]
+
+[dependency-groups]
+dev = []

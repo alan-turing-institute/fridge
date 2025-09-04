@@ -5,6 +5,7 @@ from pulumi_kubernetes.core.v1 import (
     ContainerArgs,
     ContainerPortArgs,
     EnvFromSourceArgs,
+    Namespace,
     PodSpecArgs,
     PodTemplateSpecArgs,
     ProjectedVolumeSourceArgs,
@@ -27,24 +28,30 @@ from pulumi_kubernetes.rbac.v1 import (
     SubjectArgs,
 )
 
+from enums import PodSecurityStandard
+
 API_SERVER_IMAGE = "ghcr.io/alan-turing-institute/fridge:main"
 
 
 class ApiServerArgs:
     def __init__(
         self,
-        api_server_ns: str,
         argo_server_ns: str,
         argo_workflows_ns: str,
         fridge_api_admin: str,
         fridge_api_password: str,
+        minio_url: str,
+        minio_access_key: str,
+        minio_secret_key: str,
         verify_tls: bool = True,
     ) -> None:
-        self.api_server_ns = api_server_ns
         self.argo_server_ns = argo_server_ns
         self.argo_workflows_ns = argo_workflows_ns
         self.fridge_api_admin = fridge_api_admin
         self.fridge_api_password = fridge_api_password
+        self.minio_url = minio_url
+        self.minio_access_key = minio_access_key
+        self.minio_secret_key = minio_secret_key
         self.verify_tls = verify_tls
 
 
@@ -57,6 +64,15 @@ class ApiServer(ComponentResource):
     ) -> None:
         super().__init__("fridge:ApiServer", name, {}, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
+
+        api_server_ns = Namespace(
+            "api-server-ns",
+            metadata=ObjectMetaArgs(
+                name="fridge-api",
+                labels={} | PodSecurityStandard.RESTRICTED.value,
+            ),
+            opts=child_opts,
+        )
 
         # Define argo workflows service accounts and roles
         # See https://argo-workflows.readthedocs.io/en/latest/security/
@@ -100,7 +116,7 @@ class ApiServer(ComponentResource):
             "fridge-api-sa",
             metadata=ObjectMetaArgs(
                 name="fridge-api-sa",
-                namespace=args.api_server_ns,
+                namespace=api_server_ns.metadata.name,
             ),
             opts=child_opts,
         )
@@ -109,12 +125,15 @@ class ApiServer(ComponentResource):
             "fridge-api-config",
             metadata=ObjectMetaArgs(
                 name="fridge-api-config",
-                namespace=args.api_server_ns,
+                namespace=api_server_ns.metadata.name,
             ),
             string_data={
                 "ARGO_SERVER_NS": args.argo_server_ns,
                 "FRIDGE_API_ADMIN": args.fridge_api_admin,
                 "FRIDGE_API_PASSWORD": args.fridge_api_password,
+                "MINIO_URL": args.minio_url,
+                "MINIO_ACCESS_KEY": args.minio_access_key,
+                "MINIO_SECRET_KEY": args.minio_secret_key,
                 "VERIFY_TLS": str(args.verify_tls),
             },
             opts=child_opts,
@@ -135,7 +154,7 @@ class ApiServer(ComponentResource):
                 SubjectArgs(
                     kind="ServiceAccount",
                     name=fridge_api_sa.metadata.name,
-                    namespace=args.api_server_ns,
+                    namespace=api_server_ns.metadata.name,
                 )
             ],
             opts=ResourceOptions.merge(
@@ -148,7 +167,7 @@ class ApiServer(ComponentResource):
             "fridge-api-server",
             metadata=ObjectMetaArgs(
                 name="fridge-api-server",
-                namespace=args.api_server_ns,
+                namespace=api_server_ns.metadata.name,
             ),
             spec=DeploymentSpecArgs(
                 replicas=1,
@@ -215,6 +234,7 @@ class ApiServer(ComponentResource):
 
         self.register_outputs(
             {
+                "api_server_ns": api_server_ns,
                 "argo_workflows_api_role": argo_workflows_api_role,
                 "argo_workflows_api_rolebinding": argo_workflows_api_rolebinding,
                 "fridge_api_config": fridge_api_config,
