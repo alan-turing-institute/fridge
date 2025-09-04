@@ -149,6 +149,7 @@ match k8s_environment:
 
 # if we're using TLS development use a self-signed issuer for the certificate
 if tls_environment == TlsEnvironment.DEVELOPMENT:
+    cert_manager_secretName = "dev-certificate"
     cert_manager_dev_issuer_self_signed = CustomResource(
         resource_name="cert-manager-dev-self-signed-issuer",
         api_version="cert-manager.io/v1",
@@ -168,7 +169,7 @@ if tls_environment == TlsEnvironment.DEVELOPMENT:
             namespace="cert-manager",
         ),
         spec={
-            "secretName": "dev-certificate",
+            "secretName": cert_manager_secretName,
             "privateKey": {"algorithm": "ECDSA", "size": 256},
             "issuerRef": {
                 "name": "self-signed-issuer",
@@ -191,13 +192,7 @@ if tls_environment == TlsEnvironment.DEVELOPMENT:
             name="dev-issuer",
             namespace="cert-manager",
         ),
-        spec={
-            "CA": {
-                "secretName": cert_manager_dev_certificate.spec.secretName,
-                "duration": "24h",
-                "renewBefore": "1h",
-            }
-        },
+        spec={"CA": {"secretName": cert_manager_secretName}},
         opts=ResourceOptions(depends_on=[cert_manager_dev_certificate]),
     )
 
