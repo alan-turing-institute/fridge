@@ -223,6 +223,25 @@ if enable_sso:
         ),
     )
 
+# Set up monitoring
+monitoring_system = components.Monitoring(
+    name=f"{stack_name}-monitoring-system",
+    args=components.MonitoringArgs(
+        k8s_environment=k8s_environment,
+        argo_server_ns=argo_workflows.argo_server_ns,
+    ),
+    opts=ResourceOptions(
+        depends_on=[
+            argo_workflows,
+            ingress_nginx,
+            cert_manager,
+            cert_manager_issuers,
+            minio,
+            storage_classes,
+        ],
+    ),
+)
+
 # Harbor
 harbor = components.ContainerRegistry(
     "harbor",
