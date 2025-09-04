@@ -7,7 +7,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel
 from secrets import compare_digest
 from typing import Annotated, Any, Union
-from app.minio_client import MinioClient
+from app.minio_client import MinioClient, MinioTenant
 
 
 # Check if running in the Kubernetes cluster
@@ -72,16 +72,17 @@ def argo_token() -> str:
             )
     return ARGO_TOKEN
 
-
 security = HTTPBasic()
 
 # Init minio client (insecure enabled for dev)
+minio_tenant_namespace = os.getenv("MINIO_TENANT_NAMESPACE")
 minio_client = MinioClient(
-    endpoint=os.getenv("MINIO_URL"),
-    access_key=os.getenv("MINIO_ACCESS_KEY"),
-    secret_key=os.getenv("MINIO_SECRET_KEY"),
+    tenant=MinioTenant(
+        url=os.getenv("MINIO_TENANT_URL", f"minio.{minio_tenant_namespace}.svc.cluster.local"),
+        namespace=minio_tenant_namespace
+    ),
+    sts_endpoint=os.getenv("MINIO_STS_URL", "https://sts.minio-operator.svc.cluster.local:4223/sts"),
 )
-
 
 class Workflow(BaseModel):
     name: str

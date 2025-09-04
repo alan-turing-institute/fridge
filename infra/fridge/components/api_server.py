@@ -15,6 +15,9 @@ from pulumi_kubernetes.core.v1 import (
     SecurityContextArgs,
     ServiceAccount,
     ServiceAccountTokenProjectionArgs,
+    SecretProjectionArgs,
+    Sequence,
+    KeyToPath,
     VolumeArgs,
     VolumeMountArgs,
     VolumeProjectionArgs,
@@ -27,6 +30,7 @@ from pulumi_kubernetes.rbac.v1 import (
     RoleRefArgs,
     SubjectArgs,
 )
+from pulumi_kubernetes.yaml import ConfigFile
 
 from enums import PodSecurityStandard
 
@@ -131,9 +135,12 @@ class ApiServer(ComponentResource):
                 "ARGO_SERVER_NS": args.argo_server_ns,
                 "FRIDGE_API_ADMIN": args.fridge_api_admin,
                 "FRIDGE_API_PASSWORD": args.fridge_api_password,
-                "MINIO_URL": args.minio_url,
-                "MINIO_ACCESS_KEY": args.minio_access_key,
-                "MINIO_SECRET_KEY": args.minio_secret_key,
+                "AWS_WEB_IDENTITY_TOKEN_FILE": "/service-account/token",
+                "MINIO_STS_CA_CERT_FILE": "",
+                "MINIO_TENANT_NAMESPACE": "argo-artifacts",
+                # "MINIO_URL": args.minio_url,
+                # "MINIO_ACCESS_KEY": args.minio_access_key,
+                # "MINIO_SECRET_KEY": args.minio_secret_key,
                 "VERIFY_TLS": str(args.verify_tls),
             },
             opts=child_opts,
@@ -206,7 +213,12 @@ class ApiServer(ComponentResource):
                                         name="token-vol",
                                         mount_path="/service-account",
                                         read_only=True,
-                                    )
+                                    ),
+                                    VolumeMountArgs(
+                                        name="minio-tls",
+                                        mount_path="/certs",
+                                        read_only=True,
+                                    ),
                                 ],
                             )
                         ],
@@ -218,8 +230,28 @@ class ApiServer(ComponentResource):
                                     sources=[
                                         VolumeProjectionArgs(
                                             service_account_token=ServiceAccountTokenProjectionArgs(
+                                                audience="sts.min.io",
                                                 expiration_seconds=3600,
                                                 path="token",
+                                            )
+                                        )
+                                    ]
+                                ),
+                            ),
+                            VolumeArgs(
+                                name="minio-tls",
+                                projected=ProjectedVolumeSourceArgs(
+                                    sources=[
+                                        VolumeProjectionArgs(
+                                            secret=SecretProjectionArgs(
+                                                name="minio-tls",
+                                                optional=False,
+                                                items=Sequence[
+                                                    KeyToPath(
+                                                        key="ca.crt",
+                                                        path="minio.crt"
+                                                    ),
+                                                ]
                                             )
                                         )
                                     ]
@@ -229,6 +261,13 @@ class ApiServer(ComponentResource):
                     ),
                 ),
             ),
+            opts=child_opts,
+        )
+
+        # Policy binding for fridge-api -> minio tenant
+        ConfigFile(
+            "minio_sa_policy_binding",
+            file="./k8s/minio/policy_binding.yaml",
             opts=child_opts,
         )
 

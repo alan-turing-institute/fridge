@@ -3,13 +3,47 @@ from fastapi.responses import StreamingResponse
 from minio import Minio, versioningconfig, commonconfig
 from io import BytesIO
 from minio.error import S3Error
+from minio.credentials import IamAwsProvider
+from pydantic import BaseModel
 
+import os
+import ssl
+import urllib3
+from urllib.parse import urlparse
+
+class MinioTenant(BaseModel):
+    namespace: str
+    url: str
 
 class MinioClient:
-    def __init__(self, endpoint: str, access_key: str, secret_key: str):
-        self.client = Minio(
-            endpoint, access_key=access_key, secret_key=secret_key, secure=False
-        )
+    def __init__(self, tenant: MinioTenant, sts_endpoint: str=None, access_key: str=None, secret_key: str=None):
+        if os.getenv("AWS_WEB_IDENTITY_TOKEN_FILE") and sts_endpoint:
+            # Authenticate using STS if SA token exists
+            credentials = self.handle_minio_credentials(tenant.namespace, sts_endpoint)
+
+            self.client = Minio(
+                tenant.url, credentials=credentials, secure=False
+            )
+        else:
+            self.client = Minio(
+                tenant.url, access_key=access_key, secret_key=secret_key, secure=False
+            )
+
+    def handle_minio_credentials(self, tenant_namespace: str, sts_endpoint: str):
+        # Verify TOKEN env var exists
+        if not os.path.isfile(os.getenv("AWS_WEB_IDENTITY_TOKEN_FILE")):
+            raise Exception("AWS_WEB_IDENTITY_TOKEN_FILE does not exist")
+
+        ssl_cacert_file = os.getenv("MINIO_STS_CA_CERT_FILE")
+        custom_ssl_context = ssl.create_default_context(cafile=ssl_cacert_file)
+
+        https_transport = urllib3.PoolManager(ssl_context=custom_ssl_context)
+
+        sts_url = urlparse(f"https://{sts_endpoint}/{tenant_namespace}")
+        provider = IamAwsProvider(sts_url.geturl(), http_client=https_transport)
+
+        return provider.retrieve()
+
 
     def handle_minio_error(self, error: S3Error):
         status = 500
