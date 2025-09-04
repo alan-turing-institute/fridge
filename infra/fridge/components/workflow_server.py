@@ -130,6 +130,7 @@ class WorkflowServer(ComponentResource):
             values={
                 "controller": {"workflowNamespaces": [argo_workflows_ns.metadata.name]},
                 "server": {
+                    "authModes": argo_server_auth_modes,
                     "ingress": {
                         "annotations": {
                             "cert-manager.io/cluster-issuer": tls_issuer_names[
