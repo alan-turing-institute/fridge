@@ -1,0 +1,15 @@
+services:
+  devcontainer:
+    build:
+      context: .
+      dockerfile: devcontainer.Dockerfile
+
+    container_name: fridge-devcontainer
+    volumes:
+      - ..:/workspace:cached
+      - k8s-config:/kubeconfig:cached
+    command: /bin/sh -c "while sleep 1000; do :; done"
+
+    user: vscode
+volumes:
+  k8s-config: {}
