@@ -192,7 +192,7 @@ if tls_environment == TlsEnvironment.DEVELOPMENT:
             name="dev-issuer",
             namespace="cert-manager",
         ),
-        spec={"CA": {"secretName": cert_manager_secretName}},
+        spec={"ca": {"secretName": cert_manager_secretName}},
         opts=ResourceOptions(depends_on=[cert_manager_dev_certificate]),
     )
 
