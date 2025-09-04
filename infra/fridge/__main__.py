@@ -157,6 +157,7 @@ if tls_environment == TlsEnvironment.DEVELOPMENT:
             name="self-signed",
         ),
         spec={"selfSigned": {}},
+        opts=ResourceOptions(depends_on=[cert_manager]),
     )
     cert_manager_dev_certificate = CustomResource(
         resource_name="cert-manager-dev-certificate",
