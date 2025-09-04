@@ -1,8 +1,3 @@
-import base64
-from calendar import c
-from datetime import datetime
-import email
-from encodings.base64_codec import base64_encode
 from string import Template
 
 import pulumi
@@ -26,10 +21,6 @@ from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
 
 import components
 from enums import K8sEnvironment, PodSecurityStandard, TlsEnvironment, tls_issuer_names
-
-# import infra.fridge.crds.python.pulumi_crds.cert_manager.v1
-# import pulumi_crds.cert_manager.v1 as CertManagerCRDS
-# from pulumi_crds.cert_manager.v1 import *
 
 
 def patch_namespace(name: str, pss: PodSecurityStandard) -> NamespacePatch:
@@ -63,7 +54,7 @@ if k8s_environment == K8sEnvironment.AKS:
     )
 
 match k8s_environment:
-    case K8sEnvironment.AKS | K8sEnvironment.K3S | K8sEnvironment.OKE:
+    case K8sEnvironment.AKS | K8sEnvironment.K3S:
         # Ingress NGINX (ingress provider)
         ingress_nginx_ns = Namespace(
             "ingress-nginx-ns",
@@ -169,6 +160,7 @@ if tls_environment == TlsEnvironment.DEVELOPMENT:
             namespace="cert-manager",
         ),
         spec={
+            "isCA": True,
             "secretName": cert_manager_secretName,
             "privateKey": {"algorithm": "ECDSA", "size": 256},
             "issuerRef": {
@@ -176,7 +168,7 @@ if tls_environment == TlsEnvironment.DEVELOPMENT:
                 "kind": "ClusterIssuer",
                 "group": "cert-manager.io",
             },
-            "commonName": "dev.example.com",
+            "commonName": config.require("base_fqdn"),
             "dnsNames": [
                 config.require("base_fqdn"),
                 f"*.{config.require('base_fqdn')}",
@@ -457,10 +449,7 @@ argo_minio_secret = Secret(
     ),
 )
 
-enable_sso = (
-    k8s_environment is not K8sEnvironment.K3S
-    or not k8s_environment is K8sEnvironment.OKE
-)
+enable_sso = k8s_environment is not K8sEnvironment.K3S
 
 argo_server_sso_config = {
     "enabled": enable_sso,
