@@ -172,7 +172,7 @@ if tls_environment == TlsEnvironment.DEVELOPMENT:
             "secretName": cert_manager_secretName,
             "privateKey": {"algorithm": "ECDSA", "size": 256},
             "issuerRef": {
-                "name": "self-signed-issuer",
+                "name": "self-signed",
                 "kind": "ClusterIssuer",
                 "group": "cert-manager.io",
             },
