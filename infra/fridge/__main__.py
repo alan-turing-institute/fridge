@@ -92,6 +92,11 @@ storage_classes = components.StorageClasses(
             if k8s_environment is K8sEnvironment.AKS
             else None
         ),
+        oracle_kms_key_id=(
+            config.require("oracle_kms_key_id")
+            if k8s_environment is K8sEnvironment.OKE
+            else None
+        ),
     ),
 )
 
