@@ -17,11 +17,13 @@ class StorageClassesArgs:
         azure_disk_encryption_set: str | None = None,
         azure_resource_group: str | None = None,
         azure_subscription_id: str | None = None,
+        oracle_kms_key_id: str | None = None,
     ) -> None:
         self.k8s_environment = k8s_environment
         self.azure_disk_encryption_set = azure_disk_encryption_set
         self.azure_resource_group = azure_resource_group
         self.azure_subscription_id = azure_subscription_id
+        self.oracle_kms_key_id = oracle_kms_key_id
 
 
 class StorageClasses(ComponentResource):
@@ -113,6 +115,25 @@ class StorageClasses(ComponentResource):
 
                 standard_storage_name = storage_class.metadata.name
                 standard_supports_rwm = True
+            case k8s_environment.OKE:
+                storage_class = StorageClass(
+                    "fridge_storage_class",
+                    allow_volume_expansion=True,
+                    metadata=ObjectMetaArgs(
+                        name=STORAGE_CLASS_NAME,
+                        annotations={
+                            "storageclass.kubernetes.io/is-default-class": "true"
+                        },
+                    ),
+                    parameters={
+                        "attachment-type": "paravirtualized",
+                        "kms-key-id": args.oracle_kms_key_id,
+                    },
+                    provisioner="blockvolume.csi.oraclecloud.com",
+                    reclaim_policy="Delete",
+                    volume_binding_mode="Immediate",
+                    opts=child_opts,
+                )
             case K8sEnvironment.K3S:
                 storage_class = StorageClass.get("fridge-storage-class", "local-path")
                 standard_storage_name = storage_class.metadata.name
