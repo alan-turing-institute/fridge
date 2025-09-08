@@ -3,8 +3,8 @@ description: FRIDGE deployment on K8s
 runtime:
   name: python
   options:
-    toolchain: pip
-    virtualenv: venv
+    toolchain: uv
+    virtualenv: ../../.venv
 config:
   argo_scopes:
     type: array
@@ -29,6 +29,11 @@ config:
     default: ""
     type: string
     description: Azure Subscription ID for the FRIDGE deployment - use a dummy value when not deploying to AKS
+  oracle_kms_key_id:
+    default: ""
+    type: string
+    description: Oracle KMS Key OCID - use a dummy value when not deploying to OKE
+    secret: true
   fridge_api_admin:
     type: string
     description: Admin username for the FRIDGE API
