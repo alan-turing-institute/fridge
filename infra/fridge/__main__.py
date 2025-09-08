@@ -8,7 +8,7 @@ from pulumi_kubernetes.core.v1 import Namespace, NamespacePatch
 from pulumi_kubernetes.helm.v3 import Release
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs, ObjectMetaPatchArgs
-
+from pulumi_kubernetes.apiextensions import CustomResource
 from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
 
 import components
@@ -128,6 +128,58 @@ match k8s_environment:
                 }
             ),
         )
+
+
+# if we're using TLS development use a self-signed issuer for the certificate
+if tls_environment == TlsEnvironment.DEVELOPMENT:
+    cert_manager_secretName = "dev-certificate"
+    cert_manager_dev_issuer_self_signed = CustomResource(
+        resource_name="cert-manager-dev-self-signed-issuer",
+        api_version="cert-manager.io/v1",
+        kind="ClusterIssuer",
+        metadata=ObjectMetaArgs(
+            name="self-signed",
+        ),
+        spec={"selfSigned": {}},
+        opts=ResourceOptions(depends_on=[cert_manager]),
+    )
+    cert_manager_dev_certificate = CustomResource(
+        resource_name="cert-manager-dev-certificate",
+        api_version="cert-manager.io/v1",
+        kind="Certificate",
+        metadata=ObjectMetaArgs(
+            name="dev-certificate",
+            namespace="cert-manager",
+        ),
+        spec={
+            "isCA": True,
+            "secretName": cert_manager_secretName,
+            "privateKey": {"algorithm": "ECDSA", "size": 256},
+            "issuerRef": {
+                "name": "self-signed",
+                "kind": "ClusterIssuer",
+                "group": "cert-manager.io",
+            },
+            "commonName": config.require("base_fqdn"),
+            "dnsNames": [
+                config.require("base_fqdn"),
+                f"*.{config.require('base_fqdn')}",
+            ],
+        },
+        opts=ResourceOptions(depends_on=[cert_manager_dev_issuer_self_signed]),
+    )
+    cert_manager_dev_issuer = CustomResource(
+        resource_name="cert-manager-dev-issuer",
+        api_version="cert-manager.io/v1",
+        kind="ClusterIssuer",
+        metadata=ObjectMetaArgs(
+            name="dev-issuer",
+            namespace="cert-manager",
+        ),
+        spec={"ca": {"secretName": cert_manager_secretName}},
+        opts=ResourceOptions(depends_on=[cert_manager_dev_certificate]),
+    )
+
 
 # Storage classes
 storage_classes = components.StorageClasses(
