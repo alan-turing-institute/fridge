@@ -1,5 +1,7 @@
+from string import Template
+
 import pulumi
-from fridge.infra.fridge.components.container_registry import Template
+
 from pulumi import ComponentResource, ResourceOptions
 from pulumi_kubernetes.apiextensions import CustomResource
 from pulumi_kubernetes.core.v1 import Namespace
