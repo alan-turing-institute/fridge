@@ -54,43 +54,26 @@ cert_manager = components.CertManager(
     ),
 )
 
-match k8s_environment:
-    case K8sEnvironment.AKS | K8sEnvironment.K3S:
-        # Get public IP address and ports of Ingress Nginx loadbalancer service
-        # Note that this relies on Ingress-Nginx being installed as for AKS
-        # On Dawn it is installed using a Helm chart and has different properties.
-        # pulumi.export(
-        #     "ingress_ip",
-        #     ingress_nginx.resources["v1/Service:ingress-nginx/ingress-nginx-controller"]
-        #     .status.load_balancer.ingress[0]
-        #     .ip,
-        # )
-        # pulumi.export(
-        #     "ingress_ports",
-        #     ingress_nginx.resources[
-        #         "v1/Service:ingress-nginx/ingress-nginx-controller"
-        #     ].spec.ports.apply(lambda ports: [item.port for item in ports]),
-        # )
-        pass
-    case K8sEnvironment.DAWN:
-        dawn_managed_namespaces = ["cert-manager", "ingress-nginx"]
-        for namespace in dawn_managed_namespaces:
-            patch_namespace(namespace, PodSecurityStandard.RESTRICTED)
+if k8s_environment == K8sEnvironment.DAWN:
+    dawn_managed_namespaces = ["cert-manager", "ingress-nginx"]
+    for namespace in dawn_managed_namespaces:
+        patch_namespace(namespace, PodSecurityStandard.RESTRICTED)
 
-        # Add label to etcd-defrag jobs to allow Cilium to permit them to communicate with the API server
-        # These jobs are installed automatically on DAWN using Helm, and do not otherwise have a consistent label
-        # so cannot be selected by Cilium.
-        CronJobPatch(
-            "etcd-defrag-cronjob-label",
-            metadata=ObjectMetaPatchArgs(name="etcd-defrag", namespace="kube-system"),
-            spec=CronJobSpecPatchArgs(
-                job_template={
-                    "spec": {
-                        "template": {"metadata": {"labels": {"etcd-defrag": "true"}}}
-                    }
-                }
-            ),
-        )
+    # Add label to etcd-defrag jobs to allow Cilium to permit them to communicate with the API server
+    # These jobs are installed automatically on DAWN using Helm, and do not otherwise have a consistent label
+    # so cannot be selected by Cilium.
+    CronJobPatch(
+        "etcd-defrag-cronjob-label",
+        metadata=ObjectMetaPatchArgs(name="etcd-defrag", namespace="kube-system"),
+        spec=CronJobSpecPatchArgs(
+            job_template={
+                "spec": {"template": {"metadata": {"labels": {"etcd-defrag": "true"}}}}
+            }
+        ),
+    )
+
+pulumi.export("ingress_ip", ingress_nginx.ingress_ip)
+pulumi.export("ingress_ports", ingress_nginx.ingress_ports)
 
 # Storage classes
 storage_classes = components.StorageClasses(
