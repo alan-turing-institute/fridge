@@ -1,5 +1,6 @@
 from .api_server import ApiServer, ApiServerArgs
 from .container_registry import ContainerRegistry, ContainerRegistryArgs
+from .ingress import Ingress, IngressArgs
 from .network_policies import NetworkPolicies
 from .object_storage import ObjectStorage, ObjectStorageArgs
 from .storage_classes import StorageClasses, StorageClassesArgs
