@@ -1,17 +1,13 @@
-from string import Template
-
 import pulumi
 
 from pulumi import ResourceOptions
 from pulumi_kubernetes.batch.v1 import CronJobPatch, CronJobSpecPatchArgs
-from pulumi_kubernetes.core.v1 import Namespace, NamespacePatch
-from pulumi_kubernetes.helm.v3 import Release
-from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
-from pulumi_kubernetes.meta.v1 import ObjectMetaArgs, ObjectMetaPatchArgs
+from pulumi_kubernetes.core.v1 import NamespacePatch
+from pulumi_kubernetes.meta.v1 import ObjectMetaPatchArgs
 from pulumi_kubernetes.yaml import ConfigFile
 
 import components
-from enums import K8sEnvironment, PodSecurityStandard, TlsEnvironment, tls_issuer_names
+from enums import K8sEnvironment, PodSecurityStandard, TlsEnvironment
 
 
 def patch_namespace(name: str, pss: PodSecurityStandard) -> NamespacePatch:
