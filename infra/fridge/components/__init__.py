@@ -1,4 +1,5 @@
 from .api_server import ApiServer, ApiServerArgs
+from .cert_manager import CertManager, CertManagerArgs
 from .container_registry import ContainerRegistry, ContainerRegistryArgs
 from .ingress import Ingress, IngressArgs
 from .network_policies import NetworkPolicies
