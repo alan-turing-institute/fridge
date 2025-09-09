@@ -14,6 +14,7 @@ class IngressArgs:
 class Ingress(ComponentResource):
     def __init__(self, name: str, args: IngressArgs, opts: ResourceOptions = None):
         super().__init__("fridge:k8s:Ingress", name, {}, opts)
+        child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
         k8s_environment = args.k8s_environment
 
@@ -25,6 +26,7 @@ class Ingress(ComponentResource):
                         name="ingress-nginx",
                         labels={} | PodSecurityStandard.RESTRICTED.value,
                     ),
+                    opts=child_opts,
                 )
             case K8sEnvironment.DAWN:
                 # Dawn specific configuration
@@ -52,7 +54,9 @@ class Ingress(ComponentResource):
                             },
                         },
                     ),
-                    opts=ResourceOptions(parent=self),
+                    opts=ResourceOptions.merge(
+                        child_opts, ResourceOptions(depends_on=ingress_nginx_ns)
+                    ),
                 )
             case K8sEnvironment.AKS:
                 ingress_nginx = Release(
@@ -74,7 +78,9 @@ class Ingress(ComponentResource):
                             },
                         },
                     ),
-                    opts=ResourceOptions(parent=self),
+                    opts=ResourceOptions.merge(
+                        child_opts, ResourceOptions(depends_on=ingress_nginx_ns)
+                    ),
                 )
 
         self.register_outputs(
