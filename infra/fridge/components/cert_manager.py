@@ -4,12 +4,15 @@ from pulumi_kubernetes.helm.v3 import Release
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 
-from enums import K8sEnvironment, PodSecurityStandard
+from enums import K8sEnvironment, PodSecurityStandard, TlsEnvironment
 
 
 class CertManagerArgs:
-    def __init__(self, k8s_environment: K8sEnvironment, cert_manager_ns: Namespace):
+    def __init__(
+        self, k8s_environment: K8sEnvironment, tls_environment: TlsEnvironment
+    ):
         self.k8s_environment = k8s_environment
+        self.tls_environment = tls_environment
 
 
 class CertManager(ComponentResource):
