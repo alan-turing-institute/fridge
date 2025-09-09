@@ -1,5 +1,5 @@
-from pulumi import ComponentResource, ResourceOptions
-from pulumi_kubernetes.core.v1 import Namespace
+from pulumi import ComponentResource, Output, ResourceOptions
+from pulumi_kubernetes.core.v1 import Namespace, Service
 from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 
@@ -82,6 +82,23 @@ class Ingress(ComponentResource):
                         child_opts, ResourceOptions(depends_on=ingress_nginx_ns)
                     ),
                 )
+
+        controller_name = Output.concat(
+            ingress_nginx_ns.metadata.name,
+            "/",
+            ingress_nginx.status.name,
+            "-controller",
+        )
+
+        ingress_service = Service.get(
+            "ingress-nginx-controller-service",
+            controller_name,
+        )
+
+        self.ingress_ip = ingress_service.status.load_balancer.ingress[0].ip
+        self.ingress_ports = ingress_service.spec.ports.apply(
+            lambda ports: [item.port for item in ports]
+        )
 
         self.register_outputs(
             {"ingress_nginx_ns": ingress_nginx_ns, "ingress_nginx": ingress_nginx}
