@@ -72,9 +72,6 @@ if k8s_environment == K8sEnvironment.DAWN:
         ),
     )
 
-pulumi.export("ingress_ip", ingress_nginx.ingress_ip)
-pulumi.export("ingress_ports", ingress_nginx.ingress_ports)
-
 # Storage classes
 storage_classes = components.StorageClasses(
     "storage_classes",
@@ -208,3 +205,5 @@ network_policies = components.NetworkPolicies(
 pulumi.export("argo_fqdn", argo_workflows.argo_fqdn)
 pulumi.export("harbor_fqdn", harbor.harbor_fqdn)
 pulumi.export("minio_fqdn", minio.minio_fqdn)
+pulumi.export("ingress_ip", ingress_nginx.ingress_ip)
+pulumi.export("ingress_ports", ingress_nginx.ingress_ports)
