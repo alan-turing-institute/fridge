@@ -34,6 +34,14 @@ config:
     type: string
     description: Oracle KMS Key OCID - use a dummy value when not deploying to OKE
     secret: true
+  oracle_region:
+    default: ""
+    type: string
+    description: Oracle Cloud region - use a dummy value when not deploying to OKE
+  oracle_ffs_volume_subnet_id:
+    default: ""
+    type: string
+    description: Oracle Cloud File Storage Service subnet OCID - use a dummy value when not deploying to OKE
   fridge_api_admin:
     type: string
     description: Admin username for the FRIDGE API
