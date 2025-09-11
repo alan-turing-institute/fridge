@@ -1,6 +1,6 @@
 import pulumi
 
-from pulumi import ResourceOptions
+from pulumi import ResourceOptions, Output
 from pulumi_kubernetes.batch.v1 import CronJobPatch, CronJobSpecPatchArgs
 from pulumi_kubernetes.core.v1 import NamespacePatch
 from pulumi_kubernetes.meta.v1 import ObjectMetaPatchArgs
@@ -94,6 +94,16 @@ storage_classes = components.StorageClasses(
         ),
         oracle_kms_key_id=(
             config.require("oracle_kms_key_id")
+            if k8s_environment is K8sEnvironment.OKE
+            else None
+        ),
+        oracle_region=(
+            config.require("oracle_region")
+            if k8s_environment is K8sEnvironment.OKE
+            else None
+        ),
+        oracle_ffs_volume_subnet_id=(
+            config.require("oracle_ffs_volume_subnet_id")
             if k8s_environment is K8sEnvironment.OKE
             else None
         ),
