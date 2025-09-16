@@ -12,7 +12,9 @@ class IngressArgs:
 
 
 class Ingress(ComponentResource):
-    def __init__(self, name: str, args: IngressArgs, opts: ResourceOptions = None):
+    def __init__(
+        self, name: str, args: IngressArgs, opts: ResourceOptions | None = None
+    ):
         super().__init__("fridge:k8s:Ingress", name, {}, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 

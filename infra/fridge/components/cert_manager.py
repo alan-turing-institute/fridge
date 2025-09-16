@@ -23,7 +23,9 @@ class CertManagerArgs:
 
 
 class CertManager(ComponentResource):
-    def __init__(self, name: str, args: CertManagerArgs, opts: ResourceOptions = None):
+    def __init__(
+        self, name: str, args: CertManagerArgs, opts: ResourceOptions | None = None
+    ):
         super().__init__("fridge:k8s:CertManager", name, {}, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
