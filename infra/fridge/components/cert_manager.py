@@ -1,5 +1,3 @@
-from string import Template
-
 import pulumi
 
 from pulumi import ComponentResource, ResourceOptions
@@ -8,7 +6,6 @@ from pulumi_kubernetes.core.v1 import Namespace
 from pulumi_kubernetes.helm.v3 import Release
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
-from pulumi_kubernetes.yaml import ConfigGroup
 
 from enums import K8sEnvironment, PodSecurityStandard, TlsEnvironment, tls_issuer_names
 
