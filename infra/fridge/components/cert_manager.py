@@ -134,19 +134,31 @@ class CertManager(ComponentResource):
                 "cert_manager_dev_issuer": cert_manager_dev_issuer,
             }
         else:
-            cluster_issuer_config = Template(
-                open("k8s/cert_manager/clusterissuer.yaml", "r").read()
-            ).substitute(
-                lets_encrypt_email=args.config.require("lets_encrypt_email"),
-                issuer_name_staging=tls_issuer_names[TlsEnvironment.STAGING],
-                issuer_name_production=tls_issuer_names[TlsEnvironment.PRODUCTION],
-            )
-            cert_manager_issuers = ConfigGroup(
-                "cert-manager-issuers",
-                yaml=[cluster_issuer_config],
+            cert_manager_issuers = CustomResource(
+                "cert-manager-issuer",
+                api_version="cert-manager.io/v1",
+                kind="ClusterIssuer",
+                metadata=ObjectMetaArgs(
+                    name=tls_issuer_names[args.tls_environment],
+                ),
+                spec={
+                    "acme": {
+                        "email": args.config.require("lets_encrypt_email"),
+                        "server": "https://acme-v02.api.letsencrypt.org/directory"
+                        if args.tls_environment == TlsEnvironment.PRODUCTION
+                        else "https://acme-staging-v02.api.letsencrypt.org/directory",
+                        "privateKeySecretRef": {"name": "letsencrypt-private-key"},
+                        "solvers": [
+                            {
+                                "http01": {
+                                    "ingress": {"class": "nginx"},
+                                }
+                            }
+                        ],
+                    }
+                },
                 opts=ResourceOptions.merge(
-                    child_opts,
-                    ResourceOptions(depends_on=[cert_manager]),
+                    child_opts, ResourceOptions(depends_on=[cert_manager])
                 ),
             )
             issuer_outputs = {
