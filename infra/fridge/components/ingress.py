@@ -28,60 +28,34 @@ class Ingress(ComponentResource):
                     ),
                     opts=child_opts,
                 )
+
+                ingress_nginx = Release(
+                    "ingress-nginx",
+                    ReleaseArgs(
+                        chart="ingress-nginx",
+                        version="4.13.2",
+                        repository_opts={
+                            "repo": "https://kubernetes.github.io/ingress-nginx"
+                        },
+                        namespace=ingress_nginx_ns.metadata.name,
+                        create_namespace=False,
+                        values={
+                            "controller": {
+                                "nodeSelector": {"kubernetes.io/os": "linux"},
+                                "service": {
+                                    "externalTrafficPolicy": "Local",
+                                },
+                            }
+                        },
+                    ),
+                    opts=ResourceOptions.merge(
+                        child_opts, ResourceOptions(depends_on=ingress_nginx_ns)
+                    ),
+                )
             case K8sEnvironment.DAWN:
                 # Dawn specific configuration
                 ingress_nginx_ns = Namespace.get("ingress-nginx-ns", "ingress-nginx")
                 ingress_nginx = Release.get("ingress-nginx", "ingress-nginx")
-
-        match k8s_environment:
-            case K8sEnvironment.K3S:
-                ingress_nginx = Release(
-                    "ingress-nginx",
-                    ReleaseArgs(
-                        chart="ingress-nginx",
-                        version="4.13.2",
-                        repository_opts={
-                            "repo": "https://kubernetes.github.io/ingress-nginx"
-                        },
-                        namespace=ingress_nginx_ns.metadata.name,
-                        create_namespace=False,
-                        values={
-                            "controller": {
-                                "metrics": {
-                                    "enabled": True,
-                                    "serviceMonitor": {"enabled": True},
-                                }
-                            },
-                        },
-                    ),
-                    opts=ResourceOptions.merge(
-                        child_opts, ResourceOptions(depends_on=ingress_nginx_ns)
-                    ),
-                )
-            case K8sEnvironment.AKS:
-                ingress_nginx = Release(
-                    "ingress-nginx",
-                    ReleaseArgs(
-                        chart="ingress-nginx",
-                        version="4.13.2",
-                        repository_opts={
-                            "repo": "https://kubernetes.github.io/ingress-nginx"
-                        },
-                        namespace=ingress_nginx_ns.metadata.name,
-                        create_namespace=False,
-                        values={
-                            "controller": {
-                                "metrics": {
-                                    "enabled": True,
-                                    "serviceMonitor": {"enabled": True},
-                                }
-                            },
-                        },
-                    ),
-                    opts=ResourceOptions.merge(
-                        child_opts, ResourceOptions(depends_on=ingress_nginx_ns)
-                    ),
-                )
 
         controller_name = Output.concat(
             ingress_nginx_ns.metadata.name,
