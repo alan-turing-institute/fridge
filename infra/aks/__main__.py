@@ -1,5 +1,6 @@
 import base64
 
+import components
 import pulumi
 import pulumi_random as random
 import pulumi_tls as tls
@@ -194,6 +195,20 @@ managed_cluster = containerservice.ManagedCluster(
 
 admin_credentials = containerservice.list_managed_cluster_admin_credentials_output(
     resource_group_name=resource_group.name, resource_name=managed_cluster.name
+)
+
+# Create access cluster
+
+# This is a public facing cluster that contains proxies to the private cluster
+
+access_cluster = components.Cluster(
+    "access-cluster",
+    components.ClusterArgs(
+        config=config,
+        resource_group_name=resource_group.name,
+        cluster_name=f"{config.require('cluster_name')}-access",
+        use_private_cluster=False,
+    ),
 )
 
 kubeconfig = admin_credentials.kubeconfigs.apply(get_kubeconfig)
