@@ -1,44 +1,61 @@
 import pulumi
+import pulumi_tls as tls
 
 from pulumi import ComponentResource, ResourceOptions
 from pulumi_azure_native import (
-    authorization,
     compute,
-    containerservice,
-    keyvault,
     managedidentity,
-    resources,
+)
+from pulumi_azure_native.containerservice import (
+    AdvancedNetworkingArgs,
+    AdvancedNetworkingObservabilityArgs,
+    ContainerServiceLinuxProfileArgs,
+    ContainerServiceSshConfigurationArgs,
+    ContainerServiceSshPublicKeyArgs,
+    ContainerServiceNetworkProfileArgs,
+    ManagedCluster,
+    ManagedClusterAgentPoolProfileArgs,
+    ManagedClusterIdentityArgs,
+    NetworkDataplane,
+    NetworkPlugin,
+    NetworkPolicy,
+    ResourceIdentityType,
 )
 
 
-class ClusterArgs:
+class AccessClusterArgs:
     def __init__(
         self,
-        config: pulumi.config.Config,
-        resource_group_name: str,
         cluster_name: str,
-        use_private_cluster: bool = False,
+        config: pulumi.config.Config,
+        identity: managedidentity.UserAssignedIdentity,
+        resource_group_name: str,
+        ssh_key: tls.PrivateKey,
     ) -> None:
-        self.config = config
-        self.resource_group_name = resource_group_name
         self.cluster_name = cluster_name
-        self.use_private_cluster = use_private_cluster
+        self.config = config
+        self.identity = identity
+        self.resource_group_name = resource_group_name
+        self.ssh_key = ssh_key
 
 
-class Cluster(ComponentResource):
-    def __init__(self, name: str, args: ClusterArgs, opts: ResourceOptions = None):
-        super().__init__("fridge_aks:Cluster", name, {}, opts)
+class AccessCluster(ComponentResource):
+    def __init__(
+        self, name: str, args: AccessClusterArgs, opts: ResourceOptions = None
+    ):
+        super().__init__("fridge_aks:AccessCluster", name, {}, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
-        access_cluster = containerservice.ManagedCluster(
+        access_cluster = ManagedCluster(
             f"{args.config.require('cluster_name')}-access",
-            resource_group_name=args.resource_group.name,
+            resource_group_name=args.resource_group_name,
+            cluster_name=args.cluster_name,
             agent_pool_profiles=[
-                containerservice.ManagedClusterAgentPoolProfileArgs(
+                ManagedClusterAgentPoolProfileArgs(
                     enable_auto_scaling=True,
                     max_count=5,
                     max_pods=100,
-                    min_count=3,
+                    min_count=2,
                     mode="System",
                     name="gppool",
                     node_labels={
@@ -52,7 +69,7 @@ class Cluster(ComponentResource):
                     type="VirtualMachineScaleSets",
                     vm_size="Standard_B4als_v2",
                 ),
-                containerservice.ManagedClusterAgentPoolProfileArgs(
+                ManagedClusterAgentPoolProfileArgs(
                     enable_auto_scaling=True,
                     max_count=5,
                     max_pods=100,
@@ -76,35 +93,38 @@ class Cluster(ComponentResource):
                     vm_size="Standard_B2als_v2",
                 ),
             ],
-            disk_encryption_set_id=disk_encryption_set.id,
             dns_prefix="fridge",
-            identity=containerservice.ManagedClusterIdentityArgs(
-                type=containerservice.ResourceIdentityType.USER_ASSIGNED,
-                user_assigned_identities=[identity.id],
+            identity=ManagedClusterIdentityArgs(
+                type=ResourceIdentityType.USER_ASSIGNED,
+                user_assigned_identities=[args.identity.id],
             ),
-            kubernetes_version="1.32",
-            linux_profile=containerservice.ContainerServiceLinuxProfileArgs(
+            kubernetes_version="1.33",
+            linux_profile=ContainerServiceLinuxProfileArgs(
                 admin_username="fridgeadmin",
-                ssh=containerservice.ContainerServiceSshConfigurationArgs(
+                ssh=ContainerServiceSshConfigurationArgs(
                     public_keys=[
-                        containerservice.ContainerServiceSshPublicKeyArgs(
-                            key_data=ssh_key.public_key_openssh,
+                        ContainerServiceSshPublicKeyArgs(
+                            key_data=args.ssh_key.public_key_openssh,
                         )
                     ],
                 ),
             ),
-            network_profile=containerservice.ContainerServiceNetworkProfileArgs(
-                advanced_networking=containerservice.AdvancedNetworkingArgs(
+            network_profile=ContainerServiceNetworkProfileArgs(
+                advanced_networking=AdvancedNetworkingArgs(
                     enabled=True,
-                    observability=containerservice.AdvancedNetworkingObservabilityArgs(
+                    observability=AdvancedNetworkingObservabilityArgs(
                         enabled=True,
                     ),
                 ),
-                network_dataplane=containerservice.NetworkDataplane.CILIUM,
-                network_plugin=containerservice.NetworkPlugin.AZURE,
-                network_policy=containerservice.NetworkPolicy.CILIUM,
+                network_dataplane=NetworkDataplane.CILIUM,
+                network_plugin=NetworkPlugin.AZURE,
+                network_policy=NetworkPolicy.CILIUM,
             ),
-            opts=pulumi.ResourceOptions(replace_on_changes=["agent_pool_profiles"]),
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(replace_on_changes=["agent_pool_profiles"]),
+            ),
         )
 
+        self.name = access_cluster.name
         self.register_outputs({"access_cluster": access_cluster})
