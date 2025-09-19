@@ -18,9 +18,11 @@ class PodSecurityStandard(Enum):
 class TlsEnvironment(Enum):
     STAGING = "staging"
     PRODUCTION = "production"
+    DEVELOPMENT = "development"
 
 
 tls_issuer_names = {
     TlsEnvironment.STAGING: "letsencrypt-staging",
     TlsEnvironment.PRODUCTION: "letsencrypt-prod",
+    TlsEnvironment.DEVELOPMENT: "dev-issuer",
 }

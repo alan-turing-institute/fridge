@@ -6,7 +6,10 @@ from enums import K8sEnvironment
 
 class NetworkPolicies(ComponentResource):
     def __init__(
-        self, name: str, k8s_environment: K8sEnvironment, opts=ResourceOptions
+        self,
+        name: str,
+        k8s_environment: K8sEnvironment,
+        opts: ResourceOptions | None = None,
     ) -> None:
         super().__init__("fridge:k8s:NetworkPolicies", name, {}, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
