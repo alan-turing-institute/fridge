@@ -1,36 +1,41 @@
-import base64
 import json
 import os
 import requests
-from kubernetes import client, config
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, UploadFile, File
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel
 from secrets import compare_digest
-from typing import Annotated
+from typing import Annotated, Any, Union
+from app.minio_client import MinioClient
 
-
-# Load environment variables from .env file
-load_dotenv()
-FRIDGE_API_ADMIN = os.getenv("FRIDGE_API_ADMIN")
-FRIDGE_API_PASSWORD = os.getenv("FRIDGE_API_PASSWORD")
 
 # Check if running in the Kubernetes cluster
-# If so, use the in-cluster configuration to retrieve the token
-# Note that this requires a service account with the necessary permissions
-# If not in the cluster, use the current kube config credentials to retrieve the token
+# If not in the cluster, load environment variables from .env file
 if os.getenv("KUBERNETES_SERVICE_HOST"):
-    config.load_incluster_config()
-    v1 = client.CoreV1Api()
-    secret = v1.read_namespaced_secret(
-        "argo-workflows-api-sa.service-account-token", "argo-workflows"
+    FRIDGE_API_ADMIN = os.getenv("FRIDGE_API_ADMIN")
+    FRIDGE_API_PASSWORD = os.getenv("FRIDGE_API_PASSWORD")
+    ARGO_SERVER_NS = os.getenv("ARGO_SERVER_NS")
+    ARGO_SERVER = (
+        f"https://argo-workflows-server.{ARGO_SERVER_NS}.svc.cluster.local:2746"
     )
-    ARGO_TOKEN = base64.b64decode(secret.data["token"]).decode("utf-8")
-    ARGO_SERVER = "argo-server.argo-server.svc.cluster.local:2746"
 else:
-    ARGO_TOKEN = os.getenv("ARGO_TOKEN")
+    # Load environment variables from .env file
+    load_dotenv()
+    FRIDGE_API_ADMIN = os.getenv("FRIDGE_API_ADMIN")
+    FRIDGE_API_PASSWORD = os.getenv("FRIDGE_API_PASSWORD")
     ARGO_SERVER = os.getenv("ARGO_SERVER")
+    MINIO_URL = os.getenv("MINIO_URL")
+    MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY")
+    MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY")
+
+# Disable TLS verification in development mode
+VERIFY_TLS = os.getenv("VERIFY_TLS", "False") == "True"
+if not VERIFY_TLS:
+    print(
+        "Warning: TLS verification is disabled. This is not secure and should only be used in development environments."
+    )
+
 
 description = """
 FRIDGE API allows you to interact with the FRIDGE cluster.
@@ -44,10 +49,38 @@ and submit workflows based on templates.
 
 """
 
-app = FastAPI(title="FRIDGE API", description=description, version="0.1.0")
+app = FastAPI(title="FRIDGE API", description=description, version="0.2.0")
+
+
+# On the Kubernetes cluster, the Argo token is stored in a service account token file on a projected volume
+# The token expires after one hour; the file on the volume is updated automatically by Kubernetes
+# Reading the token from the file when required ensures that we always use a valid token
+# If not running in the cluster, we use the ARGO_TOKEN environment variable
+def argo_token() -> str:
+    """
+    Load the ARGO token on request from the environment variable or from the service account token file if running in a Kubernetes cluster.
+    """
+    if os.getenv("KUBERNETES_SERVICE_HOST"):
+        with open("/service-account/token", "r") as f:
+            ARGO_TOKEN = f.read().strip()
+    else:
+        ARGO_TOKEN = os.getenv("ARGO_TOKEN")
+        if ARGO_TOKEN is None:
+            raise HTTPException(
+                status_code=500,
+                detail="ARGO_TOKEN environment variable is not set.",
+            )
+    return ARGO_TOKEN
 
 
 security = HTTPBasic()
+
+# Init minio client (insecure enabled for dev)
+minio_client = MinioClient(
+    endpoint=os.getenv("MINIO_URL"),
+    access_key=os.getenv("MINIO_ACCESS_KEY"),
+    secret_key=os.getenv("MINIO_SECRET_KEY"),
+)
 
 
 class Workflow(BaseModel):
@@ -116,6 +149,37 @@ def extract_argo_workflows(response: dict) -> list[Workflow] | Workflow | dict:
         return workflow
 
 
+def extract_argo_workflow_templates(
+    response: dict,
+) -> list[WorkflowTemplate] | WorkflowTemplate | dict:
+    """
+    Parse the Argo response to extract workflow information.
+    """
+    workflows = []
+    if "items" in response:
+        if not response["items"]:
+            return {"message": "No workflows found in the specified namespace."}
+        for item in response["items"]:
+            workflow = WorkflowTemplate(
+                template_name=item.get("metadata", {}).get("name"),
+                namespace=item.get("metadata", {}).get("namespace"),
+                parameters=item.get("spec", {})
+                .get("arguments", {})
+                .get("parameters", []),
+            )
+            workflows.append(workflow)
+        return workflows
+    else:
+        workflow = WorkflowTemplate(
+            template_name=response.get("metadata", {}).get("name"),
+            namespace=response.get("metadata", {}).get("namespace"),
+            parameters=response.get("spec", {})
+            .get("arguments", {})
+            .get("parameters", []),
+        )
+        return workflow
+
+
 def parse_parameters(parameters: list[dict]) -> list[str]:
     """
     Parse the parameters from the workflow template into a list of strings.
@@ -127,7 +191,7 @@ def parse_parameters(parameters: list[dict]) -> list[str]:
     ]
 
 
-def verify_request(credentials: HTTPBasicCredentials = Depends(security)):
+def verify_request(credentials: HTTPBasicCredentials = Depends(security)) -> bool:
     """
     Verify the request using basic auth.
     """
@@ -157,11 +221,11 @@ async def get_workflows(
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
     ),
-):
+) -> list[Workflow] | Workflow | dict:
     r = requests.get(
         f"{ARGO_SERVER}/api/v1/workflows/{namespace}",
-        verify=False,
-        headers={"Authorization": f"Bearer {ARGO_TOKEN}"},
+        verify=VERIFY_TLS,
+        headers={"Authorization": f"Bearer {argo_token()}"},
     )
     if r.status_code != 200:
         raise HTTPException(
@@ -182,11 +246,11 @@ async def get_single_workflow(
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
     ),
-):
+) -> list[Workflow] | Workflow | dict:
     r = requests.get(
         f"{ARGO_SERVER}/api/v1/workflows/{namespace}/{workflow_name}",
-        verify=False,
-        headers={"Authorization": f"Bearer {ARGO_TOKEN}"},
+        verify=VERIFY_TLS,
+        headers={"Authorization": f"Bearer {argo_token()}"},
     )
     if r.status_code != 200:
         raise HTTPException(
@@ -200,21 +264,27 @@ async def get_single_workflow(
 @app.get("/workflowtemplates/{namespace}", tags=["Argo Workflows"])
 async def list_workflow_templates(
     namespace: str,
+    verbose: Annotated[
+        bool, "Return verbose output - full details of the templates"
+    ] = False,
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
     ),
-):
+) -> list[WorkflowTemplate] | WorkflowTemplate | dict | Union[list, WorkflowTemplate]:
     r = requests.get(
         f"{ARGO_SERVER}/api/v1/workflow-templates/{namespace}",
-        verify=False,
-        headers={"Authorization": f"Bearer {ARGO_TOKEN}"},
+        verify=VERIFY_TLS,
+        headers={"Authorization": f"Bearer {argo_token()}"},
     )
     if r.status_code != 200:
         raise HTTPException(
             status_code=r.status_code, detail=parse_argo_error(r.json())
         )
     json_data = r.json()
-    return json_data
+    workflow_templates = extract_argo_workflow_templates(json_data)
+    if verbose:
+        return [json_data, workflow_templates]
+    return workflow_templates
 
 
 @app.get("/workflowtemplates/{namespace}/{template_name}", tags=["Argo Workflows"])
@@ -227,11 +297,11 @@ async def get_workflow_template(
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
     ),
-):
+) -> WorkflowTemplate | dict | Union[Any, WorkflowTemplate]:
     r = requests.get(
         f"{ARGO_SERVER}/api/v1/workflow-templates/{namespace}/{template_name}",
-        verify=False,
-        headers={"Authorization": f"Bearer {ARGO_TOKEN}"},
+        verify=VERIFY_TLS,
+        headers={"Authorization": f"Bearer {argo_token()}"},
     )
     if r.status_code != 200:
         raise HTTPException(
@@ -257,19 +327,21 @@ async def submit_workflow_from_template(
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
     ),
-):
+) -> dict:
     r = requests.post(
         f"{ARGO_SERVER}/api/v1/workflows/{workflow_template.namespace}/submit",
-        verify=False,
-        headers={"Authorization": f"Bearer {ARGO_TOKEN}"},
+        verify=VERIFY_TLS,
+        headers={"Authorization": f"Bearer {argo_token()}"},
         data=json.dumps(
             {
                 "resourceKind": "WorkflowTemplate",
                 "resourceName": workflow_template.template_name,
                 "submitOptions": {
-                    "parameters": parse_parameters(workflow_template.parameters)
-                    if workflow_template.parameters
-                    else []
+                    "parameters": (
+                        parse_parameters(workflow_template.parameters)
+                        if workflow_template.parameters
+                        else []
+                    )
                 },
             }
         ),
@@ -283,3 +355,50 @@ async def submit_workflow_from_template(
         "status": r.status_code,
         "response": r.json() if verbose else extract_argo_workflows(r.json()),
     }
+
+
+@app.post("/object/{bucket}/upload", tags=["s3"])
+async def upload_object(
+    bucket: str,
+    file: UploadFile = File(...),
+    verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
+        verify_request
+    ),
+):
+    return await minio_client.put_object(bucket, file)
+
+
+@app.get("/object/{bucket}/{file_name}", tags=["s3"])
+async def get_object(
+    bucket: str,
+    file_name: str,
+    target_file: str = None,
+    version: str = None,
+    verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
+        verify_request
+    ),
+):
+    return minio_client.get_object(bucket, file_name, target_file, version)
+
+
+@app.post("/object/bucket", tags=["s3"])
+async def create_bucket(
+    bucket_name: str,
+    versioning: bool = False,
+    verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
+        verify_request
+    ),
+):
+    return minio_client.create_bucket(bucket_name, versioning)
+
+
+@app.delete("/object/{bucket}/{file_name}", tags=["s3"])
+async def delete_object(
+    bucket: str,
+    file_name: str,
+    version: str = None,
+    verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
+        verify_request
+    ),
+):
+    return minio_client.delete_object(bucket, file_name, version)
