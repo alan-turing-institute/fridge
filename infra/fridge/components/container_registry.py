@@ -27,7 +27,10 @@ class ContainerRegistryArgs:
 
 class ContainerRegistry(ComponentResource):
     def __init__(
-        self, name: str, args: ContainerRegistryArgs, opts: ResourceOptions = None
+        self,
+        name: str,
+        args: ContainerRegistryArgs,
+        opts: ResourceOptions | None = None,
     ):
         super().__init__("fridge:ContainerRegistry", name, {}, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))

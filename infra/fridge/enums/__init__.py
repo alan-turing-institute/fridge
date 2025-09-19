@@ -24,5 +24,5 @@ class TlsEnvironment(Enum):
 tls_issuer_names = {
     TlsEnvironment.STAGING: "letsencrypt-staging",
     TlsEnvironment.PRODUCTION: "letsencrypt-prod",
-    TlsEnvironment.DEVELOPMENT: "self-signed",
+    TlsEnvironment.DEVELOPMENT: "dev-issuer",
 }

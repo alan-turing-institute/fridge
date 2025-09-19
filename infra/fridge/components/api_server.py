@@ -60,7 +60,7 @@ class ApiServer(ComponentResource):
         self,
         name: str,
         args: ApiServerArgs,
-        opts=ResourceOptions,
+        opts: ResourceOptions | None = None,
     ) -> None:
         super().__init__("fridge:ApiServer", name, {}, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
