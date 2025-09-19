@@ -135,16 +135,6 @@ argo_workflows = components.WorkflowServer(
     ),
 )
 
-argo_example = ConfigFile(
-    "argo-example",
-    file="./k8s/argo_workflows/examples/workflow_template.yaml",
-    opts=ResourceOptions(
-        depends_on=[
-            argo_workflows,
-        ]
-    ),
-)
-
 if enable_sso:
     argo_workflows_rbac = components.WorkflowUiRbac(
         "argo-workflows-rbac",
@@ -157,6 +147,16 @@ if enable_sso:
             depends_on=[argo_workflows],
         ),
     )
+
+argo_example = ConfigFile(
+    "argo-example",
+    file="./k8s/argo_workflows/examples/workflow_template.yaml",
+    opts=ResourceOptions(
+        depends_on=[
+            argo_workflows,
+        ]
+    ),
+)
 
 # Harbor
 harbor = components.ContainerRegistry(
