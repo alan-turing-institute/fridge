@@ -47,9 +47,8 @@ class AccessCluster(ComponentResource):
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
         access_cluster = ManagedCluster(
-            f"{args.config.require('cluster_name')}-access",
+            args.cluster_name,
             resource_group_name=args.resource_group_name,
-            cluster_name=args.cluster_name,
             agent_pool_profiles=[
                 ManagedClusterAgentPoolProfileArgs(
                     enable_auto_scaling=True,

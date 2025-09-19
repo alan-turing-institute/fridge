@@ -123,14 +123,16 @@ private_cluster = components.PrivateCluster(
         config=config,
         disk_encryption_set=disk_encryption_set,
         resource_group_name=resource_group.name,
-        cluster_name=config.require("cluster_name"),
+        cluster_name=f"{config.require('cluster_name')}-private",
         identity=identity,
         ssh_key=ssh_key,
     ),
 )
 
-admin_credentials = containerservice.list_managed_cluster_admin_credentials_output(
-    resource_group_name=resource_group.name, resource_name=private_cluster.name
+private_admin_credentials = (
+    containerservice.list_managed_cluster_admin_credentials_output(
+        resource_group_name=resource_group.name, resource_name=private_cluster.name
+    )
 )
 
 # Create access cluster
@@ -148,5 +150,14 @@ access_cluster = components.AccessCluster(
     ),
 )
 
-kubeconfig = admin_credentials.kubeconfigs.apply(get_kubeconfig)
-pulumi.export("kubeconfig", kubeconfig)
+public_admin_credentials = (
+    containerservice.list_managed_cluster_admin_credentials_output(
+        resource_group_name=resource_group.name, resource_name=access_cluster.name
+    )
+)
+
+
+private_kubeconfig = private_admin_credentials.kubeconfigs.apply(get_kubeconfig)
+public_kubeconfig = public_admin_credentials.kubeconfigs.apply(get_kubeconfig)
+pulumi.export("private_kubeconfig", private_kubeconfig)
+pulumi.export("public_kubeconfig", public_kubeconfig)

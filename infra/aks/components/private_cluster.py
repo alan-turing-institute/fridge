@@ -15,6 +15,7 @@ from pulumi_azure_native.containerservice import (
     ContainerServiceNetworkProfileArgs,
     ManagedCluster,
     ManagedClusterAgentPoolProfileArgs,
+    ManagedClusterAPIServerAccessProfileArgs,
     ManagedClusterIdentityArgs,
     NetworkDataplane,
     NetworkPlugin,
@@ -49,9 +50,11 @@ class PrivateCluster(ComponentResource):
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
         private_cluster = ManagedCluster(
-            f"{args.config.require('cluster_name')}-private",
+            args.cluster_name,
             resource_group_name=args.resource_group_name,
-            cluster_name=args.cluster_name,
+            api_server_access_profile=ManagedClusterAPIServerAccessProfileArgs(
+                enable_private_cluster=True,
+            ),
             agent_pool_profiles=[
                 ManagedClusterAgentPoolProfileArgs(
                     enable_auto_scaling=True,
@@ -96,7 +99,7 @@ class PrivateCluster(ComponentResource):
                 ),
             ],
             disk_encryption_set_id=args.disk_encryption_set.id,
-            dns_prefix="fridge",
+            dns_prefix="fridge-private",
             identity=ManagedClusterIdentityArgs(
                 type=ResourceIdentityType.USER_ASSIGNED,
                 user_assigned_identities=[args.identity.id],
