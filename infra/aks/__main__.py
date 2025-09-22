@@ -116,6 +116,16 @@ authorization.RoleAssignment(
     scope=disk_encryption_set.id,
 )
 
+# Networking
+networking = components.Networking(
+    "networking",
+    components.NetworkingArgs(
+        config=config,
+        resource_group_name=resource_group.name,
+        location=resource_group.location,
+    ),
+)
+
 # Create main, private cluster
 private_cluster = components.PrivateCluster(
     "private-cluster",
@@ -125,6 +135,7 @@ private_cluster = components.PrivateCluster(
         resource_group_name=resource_group.name,
         cluster_name=f"{config.require('cluster_name')}-private",
         identity=identity,
+        nodes_subnet_id=networking.private_nodes_subnet_id,
         ssh_key=ssh_key,
     ),
 )
@@ -146,6 +157,7 @@ access_cluster = components.AccessCluster(
         resource_group_name=resource_group.name,
         cluster_name=f"{config.require('cluster_name')}-access",
         identity=identity,
+        nodes_subnet_id=networking.access_nodes_subnet_id,
         ssh_key=ssh_key,
     ),
 )
