@@ -1,7 +1,7 @@
 encryptionsalt: v1:ykjzeFXxJjM=:v1:lelRqe5sSoksTSch:PoR4OU+t4z2i7P1rWQorCrsPlKOT4w==
 config:
   kubernetes:context: default
-  fridge:tls_environment: staging
+  fridge:tls_environment: development
   fridge:k8s_env: K3s
   fridge:argo_fqdn_prefix: argo
   fridge:base_fqdn: fridge.internal
