@@ -1,9 +1,9 @@
 from pulumi import ComponentResource, ResourceOptions
 from pulumi_kubernetes.core.v1 import Namespace
-from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
+from pulumi_kubernetes.meta.v1 import ObjectMetaArgs, ObjectMetaPatchArgs
 from pulumi_kubernetes.helm.v3 import Release
 from pulumi_kubernetes.helm.v4 import RepositoryOptsArgs
-from pulumi_kubernetes.storage.v1 import StorageClass
+from pulumi_kubernetes.storage.v1 import StorageClass, CSIDriverPatch, CSIDriverSpecPatchArgs
 
 from enums import K8sEnvironment, PodSecurityStandard
 
@@ -119,7 +119,17 @@ class StorageClasses(ComponentResource):
 
                 standard_storage_name = storage_class.metadata.name
                 standard_supports_rwm = True
-            case k8s_environment.OKE:
+            case K8sEnvironment.OKE:
+                # Patch the OCI CSI Driver to set the fsGroupPolicy to "File", which is required for ReadWriteMany support
+                # fixes issues with pods not starting due to permission issues
+                oci_drive_patch = CSIDriverPatch(
+                    "oci-csi-driver-patch",
+                    metadata=ObjectMetaPatchArgs(name="fss.csi.oraclecloud.com"),
+                    spec=CSIDriverSpecPatchArgs(
+                        fs_group_policy="File",
+                    ),
+                    opts=child_opts,
+                )
                 storage_class = StorageClass(
                     "fridge_storage_class",
                     allow_volume_expansion=True,
@@ -130,12 +140,13 @@ class StorageClasses(ComponentResource):
                         },
                     ),
                     parameters={
-                        "availabilityDomain": args.oracle_region,
-                        "mountTargetSubnetOcid": args.oracle_ffs_volume_subnet_id,
-                        "kms-key-id": args.oracle_kms_key_id,
-                        "encryptInTransit": "true",
+                        #"attachment-type": "paravirtualized",
+                        #"kms-key-id": args.oracle_kms_key_id,
+                        **({"availabilityDomain": f"{args.oracle_region}-AD-1"} if args.oracle_region else {}),
+                        **({"kmsKeyOcid": args.oracle_kms_key_id} if args.oracle_kms_key_id else {}),
+                        **({"mountTargetOcid": args.oracle_ffs_volume_subnet_id} if args.oracle_ffs_volume_subnet_id else {}),
                     },
-                    provisioner="ffs.csi.oraclecloud.com",
+                    provisioner="fss.csi.oraclecloud.com",
                     reclaim_policy="Delete",
                     volume_binding_mode="Immediate",
                     opts=child_opts,
