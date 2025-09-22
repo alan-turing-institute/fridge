@@ -4,7 +4,7 @@ from pulumi import ResourceOptions
 from pulumi_kubernetes.batch.v1 import CronJobPatch, CronJobSpecPatchArgs
 from pulumi_kubernetes.core.v1 import NamespacePatch
 from pulumi_kubernetes.meta.v1 import ObjectMetaPatchArgs
-from pulumi_kubernetes.yaml import ConfigFile
+from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
 
 import components
 from enums import K8sEnvironment, PodSecurityStandard, TlsEnvironment
@@ -148,9 +148,9 @@ if enable_sso:
         ),
     )
 
-argo_example = ConfigFile(
+argo_example = ConfigGroup(
     "argo-example",
-    file="./k8s/argo_workflows/examples/workflow_template.yaml",
+    files=["./k8s/argo_workflows/examples/*.yaml"],
     opts=ResourceOptions(
         depends_on=[
             argo_workflows,
