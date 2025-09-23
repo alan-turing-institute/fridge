@@ -18,6 +18,7 @@ from pulumi_azure_native.containerservice import (
     ManagedClusterIdentityArgs,
     NetworkDataplane,
     NetworkPlugin,
+    NetworkPluginMode,
     NetworkPolicy,
     ResourceIdentityType,
 )
@@ -29,12 +30,14 @@ class AccessClusterArgs:
         cluster_name: str,
         config: pulumi.config.Config,
         identity: managedidentity.UserAssignedIdentity,
+        nodes_subnet_id: str,
         resource_group_name: str,
         ssh_key: tls.PrivateKey,
     ) -> None:
         self.cluster_name = cluster_name
         self.config = config
         self.identity = identity
+        self.nodes_subnet_id = nodes_subnet_id
         self.resource_group_name = resource_group_name
         self.ssh_key = ssh_key
 
@@ -67,6 +70,7 @@ class AccessCluster(ComponentResource):
                     os_sku="Ubuntu",
                     type="VirtualMachineScaleSets",
                     vm_size="Standard_B4als_v2",
+                    vnet_subnet_id=args.nodes_subnet_id,
                 ),
                 ManagedClusterAgentPoolProfileArgs(
                     enable_auto_scaling=True,
@@ -90,6 +94,7 @@ class AccessCluster(ComponentResource):
                     os_sku="Ubuntu",
                     type="VirtualMachineScaleSets",
                     vm_size="Standard_B2als_v2",
+                    vnet_subnet_id=args.nodes_subnet_id,
                 ),
             ],
             dns_prefix="fridge",
@@ -117,6 +122,7 @@ class AccessCluster(ComponentResource):
                 ),
                 network_dataplane=NetworkDataplane.CILIUM,
                 network_plugin=NetworkPlugin.AZURE,
+                network_plugin_mode=NetworkPluginMode.OVERLAY,
                 network_policy=NetworkPolicy.CILIUM,
             ),
             opts=ResourceOptions.merge(
