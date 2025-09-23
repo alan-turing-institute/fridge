@@ -12,6 +12,7 @@ from pulumi_azure_native import (
     managedidentity,
     resources,
 )
+from pulumi_kubernetes import Provider
 
 
 def get_kubeconfig(
@@ -168,8 +169,30 @@ public_admin_credentials = (
     )
 )
 
-
 private_kubeconfig = private_admin_credentials.kubeconfigs.apply(get_kubeconfig)
 public_kubeconfig = public_admin_credentials.kubeconfigs.apply(get_kubeconfig)
+
+private_cluster_provider = Provider(
+    "private-cluster-provider",
+    kubeconfig=private_kubeconfig,
+)
+
+access_cluster_provider = Provider(
+    "access-cluster-provider",
+    kubeconfig=public_kubeconfig,
+)
+
+dual_cluster_test = components.DualCluster(
+    "dual-cluster-test",
+    components.DualClusterArgs(
+        resource_group_name=resource_group.name,
+        cluster_name=config.require("cluster_name"),
+        access_nodes_subnet_id=networking.access_nodes_subnet_id,
+        private_nodes_subnet_id=networking.private_nodes_subnet_id,
+        access_kubeconfig=public_kubeconfig,
+        private_kubeconfig=private_kubeconfig,
+    ),
+)
+
 pulumi.export("private_kubeconfig", private_kubeconfig)
 pulumi.export("public_kubeconfig", public_kubeconfig)
