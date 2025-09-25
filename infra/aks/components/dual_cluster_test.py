@@ -135,37 +135,46 @@ class DualCluster(ComponentResource):
             ),
         )
 
-        ingress_to_proxy = Ingress(
-            "ingress-to-proxy",
-            metadata=ObjectMetaArgs(
-                namespace=ingress_nginx_ns.metadata.name,
-            ),
-            spec=IngressSpecArgs(
-                rules=[
-                    IngressRuleArgs(
-                        host="socks-proxy.fridge.internal",
-                        http=HTTPIngressRuleValueArgs(
-                            paths=[
-                                HTTPIngressPathArgs(
-                                    path="/",
-                                    path_type="Prefix",
-                                    backend=IngressBackendArgs(
-                                        service=IngressServiceBackendArgs(
-                                            name=socks_proxy.metadata.name,
-                                            port=ServiceBackendPortArgs(number=1080),
-                                        )
-                                    ),
-                                )
-                            ]
-                        ),
-                    )
-                ]
-            ),
-        )
+        # ingress_to_proxy = Ingress(
+        #     "ingress-to-proxy",
+        #     metadata=ObjectMetaArgs(
+        #         namespace=socks_proxy_ns.metadata.name,
+        #     ),
+        #     spec=IngressSpecArgs(
+        #         rules=[
+        #             IngressRuleArgs(
+        #                 #host="socks-proxy.fridge.internal",
+        #                 http=HTTPIngressRuleValueArgs(
+        #                     paths=[
+        #                         HTTPIngressPathArgs(
+        #                             path="/",
+        #                             path_type="Prefix",
+        #                             backend=IngressBackendArgs(
+        #                                 service=IngressServiceBackendArgs(
+        #                                     name=socks_proxy.metadata.name,
+        #                                     port=ServiceBackendPortArgs(number=1080),
+        #                                 )
+        #                             ),
+        #                         )
+        #                     ]
+        #                 ),
+        #             )
+        #         ]
+        #     ),
+        #     opts=ResourceOptions.merge(
+        #         child_opts,
+        #         ResourceOptions(
+        #             depends_on=socks_proxy, provider=args.access_kubeconfig
+        #         ),
+        #     ),
+        # )
 
         self.register_outputs(
             {
                 "ingress_nginx": ingress_nginx,
                 "ingress_nginx_ns": ingress_nginx_ns,
+                "socks_proxy": socks_proxy,
+                "socks_proxy_ns": socks_proxy_ns,
+                # "ingress_to_proxy": ingress_to_proxy,
             }
         )
