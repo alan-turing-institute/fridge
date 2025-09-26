@@ -1,5 +1,4 @@
 import os
-from string import Template
 from pulumi import ComponentResource, ResourceOptions
 from pulumi_kubernetes.batch.v1 import (
     Job,
@@ -41,7 +40,9 @@ class MinioConfigArgs:
 
 
 class MinioConfigJob(ComponentResource):
-    def __init__(self, name: str, args: MinioConfigArgs, opts=ResourceOptions) -> None:
+    def __init__(
+        self, name: str, args: MinioConfigArgs, opts: ResourceOptions | None = None
+    ) -> None:
         super().__init__("fridge:k8s:MinioConfigJob", name, {}, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
