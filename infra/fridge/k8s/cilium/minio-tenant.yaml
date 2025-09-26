@@ -58,6 +58,13 @@ spec:
         - ports:
             - port: "9000"
               protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            job-name: minio-config-job
+      toPorts:
+        - ports:
+            - port: "9000"
+              protocol: TCP
   egress:
     # Outbound to k8s DNS to look up IPs
     - toEndpoints:
@@ -102,7 +109,7 @@ metadata:
 spec:
   endpointSelector:
     matchLabels:
-      app: minio-config-job
+      job-name: minio-config-job
   egress:
     # Outbound to k8s DNS to look up IPs
     - toEndpoints:
@@ -121,3 +128,11 @@ spec:
       toPorts:
         - ports:
             - port: "80"
+    # Allows the MinIO config job to connect to the MinIO tenant for configuration
+    - toEndpoints:
+        - matchLabels:
+            v1.min.io/tenant: argo-artifacts
+      toPorts:
+        - ports:
+            - port: "9000"
+              protocol: TCP
