@@ -4,7 +4,10 @@ config:
     - https://graph.microsoft.com/Group.Read.All
     - email
   fridge:argo_fqdn_prefix: argo
-  fridge:base_fqdn: fridge.develop.turingsafehaven.ac.uk
+  fridge:azure_disk_encryption_set: fridge-disk-encryption-set
+  fridge:azure_subscription_id: "36cfe11d-bfcd-4dce-9b70-c3905a4f3d01"
+  fridge:azure_resource_group: fridge-one
+  fridge:base_fqdn: aks.fridge.develop.turingsafehaven.ac.uk
   fridge:harbor_admin_password:
     secure: v1:3+jAcVhe/3xj57pG:EEgytR6DgCOZqJrJsoHyLNEwWPOLxW5/
   fridge:harbor_ip: 10.0.50.50
@@ -29,4 +32,8 @@ config:
   pulumi:autonaming:
     mode: verbatim
   kubernetes:context: cluster
+  fridge:fridge_api_admin:
+    secure: v1:nn2LgdxeGCv5c0Lv:pr4uv23iVaHqcZ9cq0FqZnNtKNaRCciG
+  fridge:fridge_api_password:
+    secure: v1:x/BGXr+SaRLFlvZf:KN9s8Tu7wbRc/Pk3yOBv6Jp0VHsjp64UXZw=
 encryptionsalt: v1:UMTR46NTSCc=:v1:dRO4tTAutzORsIcQ:BEEfHoJF1QYioY1S3mfhAsEth2I7AA==
