@@ -1,6 +1,7 @@
 import pulumi
 from pulumi import ComponentResource, Output, ResourceOptions
 from pulumi_kubernetes import Provider
+from pulumi_kubernetes.apps.v1 import Deployment, DeploymentSpecArgs
 from pulumi_kubernetes.core.v1 import (
     ConfigMap,
     ContainerArgs,
@@ -13,22 +14,20 @@ from pulumi_kubernetes.core.v1 import (
     VolumeArgs,
     VolumeMountArgs,
 )
-from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
-
-
 from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs
-from pulumi_kubernetes.apps.v1 import Deployment, DeploymentSpecArgs
-from pulumi_kubernetes.meta.v1 import LabelSelectorArgs
+from pulumi_kubernetes.meta.v1 import LabelSelectorArgs, ObjectMetaArgs
 
 
 class DualClusterArgs:
     def __init__(
         self,
         access_kubeconfig: Provider,
+        config: pulumi.config.Config,
         private_fqdn: pulumi.Output[str],
         private_kubeconfig: Provider,
     ):
         self.access_kubeconfig = access_kubeconfig
+        self.config = config
         self.private_fqdn = private_fqdn
         self.private_kubeconfig = private_kubeconfig
 
@@ -164,7 +163,8 @@ stream {{
                                         name="USER_NAME", value="fridgeoperator"
                                     ),
                                     EnvVarArgs(
-                                        name="USER_PASSWORD", value="datasafehorse!"
+                                        name="USER_PASSWORD",
+                                        value=args.config.require("api_ssh_password"),
                                     ),
                                     EnvVarArgs(
                                         name="DOCKER_MODS",
