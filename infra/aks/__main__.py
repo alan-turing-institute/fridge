@@ -5,7 +5,6 @@ import pulumi
 import pulumi_random as random
 import pulumi_tls as tls
 from pulumi_azure_native import (
-    authorization,
     compute,
     containerservice,
     keyvault,
@@ -187,6 +186,7 @@ dual_cluster_test = components.DualCluster(
     components.DualClusterArgs(
         access_kubeconfig=access_cluster_provider,
         private_kubeconfig=private_cluster_provider,
+        private_fqdn=private_cluster.private_cluster.fqdn,
     ),
 )
 
