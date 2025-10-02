@@ -41,7 +41,7 @@ class DualCluster(ComponentResource):
 
         # Deploy something to both clusters to verify connectivity
 
-        api_proxy_ns = Namespace(
+        self.api_proxy_ns = Namespace(
             "api-proxy-ns",
             metadata=ObjectMetaArgs(
                 name="api-proxy", labels={}  # | PodSecurityStandard.RESTRICTED.value,
@@ -79,7 +79,7 @@ class DualCluster(ComponentResource):
                     },
                     "tcp": {
                         "2500": Output.concat(
-                            api_proxy_ns.metadata.name, "/api-ssh-svc:2500"
+                            self.api_proxy_ns.metadata.name, "/api-ssh-svc:2500"
                         ),
                     },
                 },
@@ -95,7 +95,7 @@ class DualCluster(ComponentResource):
         api_proxy_config = ConfigMap(
             "api-proxy-config",
             metadata=ObjectMetaArgs(
-                namespace=api_proxy_ns.metadata.name,
+                namespace=self.api_proxy_ns.metadata.name,
                 name="api-proxy-config",
             ),
             data={
@@ -137,7 +137,7 @@ stream {{
         self.api_proxy = Deployment(
             "api-proxy",
             metadata=ObjectMetaArgs(
-                namespace=api_proxy_ns.metadata.name,
+                namespace=self.api_proxy_ns.metadata.name,
             ),
             spec=DeploymentSpecArgs(
                 selector=LabelSelectorArgs(
@@ -216,7 +216,7 @@ stream {{
         self.api_ssh_svc = Service(
             "api-ssh-svc",
             metadata=ObjectMetaArgs(
-                namespace=api_proxy_ns.metadata.name,
+                namespace=self.api_proxy_ns.metadata.name,
                 name="api-ssh-svc",
             ),
             spec={
@@ -232,31 +232,12 @@ stream {{
             ),
         )
 
-        self.api_proxy_svc = Service(
-            "api-proxy-svc",
-            metadata=ObjectMetaArgs(
-                namespace=api_proxy_ns.metadata.name,
-                name="api-proxy-svc",
-            ),
-            spec={
-                "type": "ClusterIP",
-                "ports": [{"port": 8443, "targetPort": 8443, "protocol": "TCP"}],
-                "selector": {"app": "api-proxy"},
-            },
-            opts=ResourceOptions.merge(
-                child_opts,
-                ResourceOptions(
-                    depends_on=self.api_proxy, provider=args.access_kubeconfig
-                ),
-            ),
-        )
-
         self.register_outputs(
             {
                 "ingress_nginx": self.ingress_nginx,
                 "ingress_nginx_ns": self.ingress_nginx_ns,
-                # "socks_proxy": socks_proxy,
-                "api_proxy_ns": api_proxy_ns,
-                # "ingress_to_proxy": ingress_to_proxy,
+                "api_proxy_ns": self.api_proxy_ns,
+                "api_proxy": self.api_proxy,
+                "api_ssh_svc": self.api_ssh_svc,
             }
         )
