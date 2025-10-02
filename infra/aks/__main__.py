@@ -185,6 +185,7 @@ dual_cluster_test = components.DualCluster(
     "dual-cluster-test",
     components.DualClusterArgs(
         access_kubeconfig=access_cluster_provider,
+        config=config,
         private_kubeconfig=private_cluster_provider,
         private_fqdn=private_cluster.private_cluster.fqdn,
     ),
