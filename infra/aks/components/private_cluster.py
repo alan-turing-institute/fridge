@@ -52,7 +52,7 @@ class PrivateCluster(ComponentResource):
         super().__init__("fridge_aks:PrivateCluster", name, {}, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
-        private_cluster = ManagedCluster(
+        self.private_cluster = ManagedCluster(
             args.cluster_name,
             resource_group_name=args.resource_group_name,
             api_server_access_profile=ManagedClusterAPIServerAccessProfileArgs(
@@ -138,5 +138,6 @@ class PrivateCluster(ComponentResource):
             ),
         )
 
-        self.name = private_cluster.name
-        self.register_outputs({"private_cluster": private_cluster})
+        self.name = self.private_cluster.name
+        self.private_fqdn = self.private_cluster.private_fqdn
+        self.register_outputs({"private_cluster": self.private_cluster})
