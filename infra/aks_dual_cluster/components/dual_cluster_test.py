@@ -178,19 +178,19 @@ stream {{
                                     )
                                 ],
                             ),
-                            ContainerArgs(
-                                name="api-proxy",
-                                image="nginx:latest",
-                                ports=[ContainerPortArgs(container_port=8443)],
-                                volume_mounts=[
-                                    {
-                                        "name": "api-proxy-config",
-                                        "mountPath": "/etc/nginx/nginx.conf",
-                                        "subPath": "nginx.conf",
-                                        "readOnly": True,
-                                    }
-                                ],
-                            ),
+                            # ContainerArgs(
+                            #     name="api-proxy",
+                            #     image="nginx:latest",
+                            #     ports=[ContainerPortArgs(container_port=8443)],
+                            #     volume_mounts=[
+                            #         {
+                            #             "name": "api-proxy-config",
+                            #             "mountPath": "/etc/nginx/nginx.conf",
+                            #             "subPath": "nginx.conf",
+                            #             "readOnly": True,
+                            #         }
+                            #     ],
+                            # ),
                         ],
                         volumes=[
                             {
