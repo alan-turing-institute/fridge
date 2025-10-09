@@ -15,7 +15,6 @@ class MinioClient:
         )
 
     def get_credentials(self, sts_endpoint):
-        STS_ENDPOINT = "https://sts.minio-operator.svc.cluster.local:8223/sts/argo-artifacts"
         SA_TOKEN_FILE = "/minio/token"      # Path to the service account token
         # CA_FILE = "kube-ca.crt"             # Kubernetes CA file
 
@@ -28,7 +27,7 @@ class MinioClient:
         # Send the token to the MinIO STS endpoint
         response = http.request(
             "POST",
-            f"{STS_ENDPOINT}?Action=AssumeRoleWithWebIdentity&Version=2011-06-15&WebIdentityToken={sa_token}",
+            f"{sts_endpoint}/sts/argo-artifacts?Action=AssumeRoleWithWebIdentity&Version=2011-06-15&WebIdentityToken={sa_token}",
         )
 
         if response.status != 200:
