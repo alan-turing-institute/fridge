@@ -10,13 +10,14 @@ import xml.etree.ElementTree as ET
 class MinioClient:
     def __init__(self, endpoint: str, sts_endpoint: str):
         access_key, secret_key = self.get_credentials(sts_endpoint)
+        if access_key == None or secret_key == None:
+            raise Exception("Failed to get keys for minio client")
         self.client = Minio(
             endpoint, access_key=access_key, secret_key=secret_key, secure=False
         )
 
     def get_credentials(self, sts_endpoint):
-        SA_TOKEN_FILE = "/minio/token"      # Path to the service account token
-        # CA_FILE = "kube-ca.crt"             # Kubernetes CA file
+        SA_TOKEN_FILE = "/minio/token"  # Path to the service account token
 
         # Read service account token
         sa_token = Path(SA_TOKEN_FILE).read_text().strip()
@@ -31,13 +32,14 @@ class MinioClient:
         )
 
         if response.status != 200:
-            return self.handle_500_error(msg=response.data.decode())
+            print(f"STS request failed: {response.status} {response.data.decode()}")
+            return None, None
         else:
             root = ET.fromstring(response.data)
-            ns = {'sts': 'https://sts.amazonaws.com/doc/2011-06-15/'}
+            ns = {"sts": "https://sts.amazonaws.com/doc/2011-06-15/"}
             credentials = root.find(".//sts:Credentials", ns)
-            access_key = credentials.find('sts:AccessKeyId', ns).text
-            secret_key = credentials.find('sts:SecretAccessKey', ns).text
+            access_key = credentials.find("sts:AccessKeyId", ns).text
+            secret_key = credentials.find("sts:SecretAccessKey", ns).text
             
             return access_key, secret_key
 
