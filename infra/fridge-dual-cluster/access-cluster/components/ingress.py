@@ -2,14 +2,15 @@ from pulumi import ComponentResource, Output, ResourceOptions
 from pulumi_kubernetes.core.v1 import Namespace, Service
 from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
+from .private_api_proxy import PrivateAPIProxy
 
 from enums import K8sEnvironment, PodSecurityStandard
 
 
 class IngressArgs:
-    def __init__(self, api_proxy_ns: Namespace, k8s_environment: K8sEnvironment):
+    def __init__(self, api_proxy: PrivateAPIProxy, k8s_environment: K8sEnvironment):
         self.k8s_environment = k8s_environment
-        self.api_proxy_ns = api_proxy_ns
+        self.api_proxy = api_proxy
 
 
 class Ingress(ComponentResource):
@@ -51,7 +52,11 @@ class Ingress(ComponentResource):
                             },
                             "tcp": {
                                 "2500": Output.concat(
-                                    args.api_proxy_ns.metadata.name, "/api-ssh-svc:2500"
+                                    args.api_proxy.api_proxy_ns.metadata.name,
+                                    "/",
+                                    args.api_proxy.api_proxy_service.metadata.name,
+                                    ":",
+                                    "2500",
                                 ),
                             },
                         },
