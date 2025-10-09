@@ -78,8 +78,7 @@ security = HTTPBasic()
 # Init minio client (insecure enabled for dev)
 minio_client = MinioClient(
     endpoint=os.getenv("MINIO_URL"),
-    access_key=os.getenv("MINIO_ACCESS_KEY"),
-    secret_key=os.getenv("MINIO_SECRET_KEY"),
+    sts_endpoint=os.getenv("MINIO_STS_URL", "https://sts.minio-operator.svc.cluster.local:4223/sts"),
 )
 
 

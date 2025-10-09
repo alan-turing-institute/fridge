@@ -3,13 +3,45 @@ from fastapi.responses import StreamingResponse
 from minio import Minio, versioningconfig, commonconfig
 from io import BytesIO
 from minio.error import S3Error
-
+import urllib3
+from pathlib import Path
+import xml.etree.ElementTree as ET
 
 class MinioClient:
-    def __init__(self, endpoint: str, access_key: str, secret_key: str):
+    def __init__(self, endpoint: str, sts_endpoint: str):
+        access_key, secret_key = self.get_credentials(sts_endpoint)
         self.client = Minio(
             endpoint, access_key=access_key, secret_key=secret_key, secure=False
         )
+
+    def get_credentials(self, sts_endpoint):
+        STS_ENDPOINT = "https://sts.minio-operator.svc.cluster.local:8223/sts/argo-artifacts"
+        SA_TOKEN_FILE = "/minio/token"      # Path to the service account token
+        # CA_FILE = "kube-ca.crt"             # Kubernetes CA file
+
+        # Read service account token
+        sa_token = Path(SA_TOKEN_FILE).read_text().strip()
+
+        # Create urllib3 client
+        http = urllib3.PoolManager()
+
+        # Send the token to the MinIO STS endpoint
+        response = http.request(
+            "POST",
+            f"{STS_ENDPOINT}?Action=AssumeRoleWithWebIdentity&Version=2011-06-15&WebIdentityToken={sa_token}",
+        )
+
+        if response.status != 200:
+            return self.handle_500_error(msg=response.data.decode())
+        else:
+            root = ET.fromstring(response.data)
+            ns = {'sts': 'https://sts.amazonaws.com/doc/2011-06-15/'}
+            credentials = root.find(".//sts:Credentials", ns)
+            access_key = credentials.find('sts:AccessKeyId', ns).text
+            secret_key = credentials.find('sts:SecretAccessKey', ns).text
+            
+            return access_key, secret_key
+
 
     def handle_minio_error(self, error: S3Error):
         status = 500

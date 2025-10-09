@@ -27,6 +27,7 @@ from pulumi_kubernetes.rbac.v1 import (
     RoleRefArgs,
     SubjectArgs,
 )
+from pulumi_kubernetes.yaml import ConfigFile
 
 from enums import PodSecurityStandard
 
@@ -121,6 +122,13 @@ class ApiServer(ComponentResource):
             opts=child_opts,
         )
 
+        # Policy binding for the Service account to auth with minio
+        policy_binding = ConfigFile(
+            "minio_sa_policy_binding",
+            file="./k8s/minio/policy_binding.yaml",
+            opts=child_opts,
+        )
+
         fridge_api_config = Secret(
             "fridge-api-config",
             metadata=ObjectMetaArgs(
@@ -207,6 +215,11 @@ class ApiServer(ComponentResource):
                                         mount_path="/service-account",
                                         read_only=True,
                                     ),
+                                    VolumeMountArgs(
+                                        name="minio-sa",
+                                        mount_path="/minio",
+                                        read_only=True,
+                                    )
                                 ],
                             )
                         ],
@@ -218,6 +231,20 @@ class ApiServer(ComponentResource):
                                     sources=[
                                         VolumeProjectionArgs(
                                             service_account_token=ServiceAccountTokenProjectionArgs(
+                                                expiration_seconds=3600,
+                                                path="token",
+                                            ),
+                                        )
+                                    ]
+                                ),
+                            ),
+                            VolumeArgs(
+                                name="minio-sa",
+                                projected=ProjectedVolumeSourceArgs(
+                                    sources=[
+                                        VolumeProjectionArgs(
+                                            service_account_token=ServiceAccountTokenProjectionArgs(
+                                                audience="sts.min.io",
                                                 expiration_seconds=3600,
                                                 path="token",
                                             )

@@ -124,7 +124,7 @@ class ObjectStorage(ComponentResource):
                         {"name": "egress"},
                     ],
                     "certificate": {
-                        "requestAutoCert": "false",
+                        "requestAutoCert": "true",
                     },
                     "configuration": {
                         "name": "argo-artifacts-env-configuration",
@@ -213,8 +213,8 @@ class ObjectStorage(ComponentResource):
                 ],
                 tls=[
                     IngressTLSArgs(
-                        hosts=[self.minio_fqdn],
-                        secret_name="argo-artifacts-tls",
+                        hosts=[minio_fqdn],
+                        secret_name="argo-artifacts-ingress-tls",
                     )
                 ],
             ),
