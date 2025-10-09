@@ -40,9 +40,20 @@ if k8s_environment == K8sEnvironment.AKS:
         file="./k8s/hubble/hubble_ui.yaml",
     )
 
+# Private API proxy
+private_api_proxy = components.PrivateAPIProxy(
+    "private-api-proxy",
+    components.PrivateAPIProxyArgs(
+        config=config,
+        k8s_environment=k8s_environment,
+    ),
+)
+
 ingress_nginx = components.Ingress(
     "ingress-nginx",
-    args=components.IngressArgs(k8s_environment=k8s_environment),
+    args=components.IngressArgs(
+        api_proxy_ns=private_api_proxy.api_proxy_ns, k8s_environment=k8s_environment
+    ),
 )
 
 cert_manager = components.CertManager(

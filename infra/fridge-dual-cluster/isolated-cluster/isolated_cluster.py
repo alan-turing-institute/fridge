@@ -40,11 +40,6 @@ if k8s_environment == K8sEnvironment.AKS:
         file="./k8s/hubble/hubble_ui.yaml",
     )
 
-ingress_nginx = components.Ingress(
-    "ingress-nginx",
-    args=components.IngressArgs(k8s_environment=k8s_environment),
-)
-
 cert_manager = components.CertManager(
     "cert-manager",
     args=components.CertManagerArgs(
@@ -110,7 +105,6 @@ minio = components.ObjectStorage(
     ),
     opts=ResourceOptions(
         depends_on=[
-            ingress_nginx,
             cert_manager,
             storage_classes,
         ]
@@ -129,7 +123,6 @@ argo_workflows = components.WorkflowServer(
     ),
     opts=ResourceOptions(
         depends_on=[
-            ingress_nginx,
             cert_manager,
         ]
     ),
@@ -173,7 +166,6 @@ api_server = components.ApiServer(
 
 resources = [
     argo_workflows,
-    ingress_nginx,
     minio,
     storage_classes,
 ]
@@ -189,5 +181,3 @@ network_policies = components.NetworkPolicies(
 # Pulumi exports
 pulumi.export("argo_fqdn", argo_workflows.argo_fqdn)
 pulumi.export("minio_fqdn", minio.minio_fqdn)
-pulumi.export("ingress_ip", ingress_nginx.ingress_ip)
-pulumi.export("ingress_ports", ingress_nginx.ingress_ports)
