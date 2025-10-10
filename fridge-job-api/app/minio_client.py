@@ -4,6 +4,7 @@ from minio import Minio, versioningconfig, commonconfig
 from io import BytesIO
 from minio.error import S3Error
 import urllib3
+import ssl
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
@@ -12,18 +13,23 @@ class MinioClient:
         access_key, secret_key = self.get_credentials(sts_endpoint)
         if access_key == None or secret_key == None:
             raise Exception("Failed to get keys for minio client")
+
         self.client = Minio(
             endpoint, access_key=access_key, secret_key=secret_key, secure=False
         )
 
     def get_credentials(self, sts_endpoint):
         SA_TOKEN_FILE = "/minio/token"  # Path to the service account token
+        KUBE_CA_CRT = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
 
         # Read service account token
         sa_token = Path(SA_TOKEN_FILE).read_text().strip()
 
+        ssl_context = ssl.create_default_context(cafile=KUBE_CA_CRT)
+        ssl_context.check_hostname = False
+
         # Create urllib3 client
-        http = urllib3.PoolManager()
+        http = urllib3.PoolManager(ssl_context=ssl_context)
 
         # Send the token to the MinIO STS endpoint
         response = http.request(
