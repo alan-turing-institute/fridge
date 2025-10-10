@@ -123,11 +123,11 @@ class ApiServer(ComponentResource):
 
         # Policy binding for the Service account to auth with minio
         CustomResource(
-            resource_name=f"minio-policy-readonly",
+            resource_name=f"minio-policy-readwrite",
             api_version="sts.min.io/v1alpha1",
             kind="PolicyBinding",
             metadata=ObjectMetaArgs(
-                name=f"fridge-api-minio-readonly",
+                name=f"fridge-api-minio-readwrite",
                 namespace=args.minio_tenant,
             ),
             spec={
