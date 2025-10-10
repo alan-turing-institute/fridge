@@ -52,6 +52,12 @@ class NetworkPolicies(ComponentResource):
                 )
 
         ConfigFile(
+            "network_policy_api_proxy",
+            file="./k8s/cilium/api-proxy.yaml",
+            opts=child_opts,
+        )
+
+        ConfigFile(
             "network_policy_cert_manager",
             file="./k8s/cilium/cert_manager.yaml",
             opts=child_opts,
