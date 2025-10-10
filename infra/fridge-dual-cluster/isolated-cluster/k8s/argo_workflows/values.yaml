@@ -40,22 +40,9 @@ workflow:
     create: true
 server:
   secure: true
-  ingress:
-    enabled: true
-    annotations:
-      ingress.kubernetes.io/proxy-body-size: 100M
-      ingress.kubernetes.io/app-root: "/"
-      nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
-    ingressClassName: "nginx"
-    paths:
-      - /
-    pathType: ImplementationSpecific
   securityContext:
     seccompProfile:
       type: RuntimeDefault
-  extraEnv:
-    - name: SSO_DELEGATE_RBAC_TO_NAMESPACE
-      value: "true"
 artifactRepository:
   s3:
     bucket: argo-artifacts
