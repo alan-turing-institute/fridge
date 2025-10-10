@@ -35,8 +35,12 @@ class MinioClient:
             exit(1)
 
         self.client = Minio(
-            endpoint, access_key=access_key, secret_key=secret_key, secure=secure
+            endpoint,
+            access_key=access_key,
+            secret_key=secret_key,
+            secure=secure,
         )
+        print("Successfully configured Minio client")
 
     def handle_sts_auth(self, sts_endpoint, tenant):
         # Mounted in from the service account to include sts.min.io audience
@@ -76,10 +80,8 @@ class MinioClient:
         status = 500
         if error._code in ["NoSuchBucket", "NoSuchKey"]:
             status = 404
-        
-        raise HTTPException(
-            status_code=status, detail=error
-        )
+
+        raise HTTPException(status_code=status, detail=error)
 
     def create_bucket(self, name, enable_versioning=False):
         try:
@@ -93,9 +95,7 @@ class MinioClient:
         except S3Error as error:
             self.handle_minio_error(error)
         except ValueError as error:
-            raise HTTPException(
-                status_code=500, detail="Unable to create bucket"
-            )
+            raise HTTPException(status_code=500, detail="Unable to create bucket")
 
         return {"response": name, "status": 201}
 
@@ -113,7 +113,7 @@ class MinioClient:
             self.handle_minio_error(error)
         except Exception as error:
             raise HTTPException(
-                status_code=500, detail="Unable to upload object"
+                status_code=500, detail=f"Unable to upload object: {error}"
             )
 
         return {
@@ -138,7 +138,7 @@ class MinioClient:
             self.handle_minio_error(error)
         except Exception as error:
             raise HTTPException(
-                status_code=500, detail="Unable to get object from bucket"
+                status_code=500, detail=f"Unable to get object from bucket: {error}"
             )
 
     def check_object_exists(self, bucket, file_name, version=None):
@@ -158,9 +158,7 @@ class MinioClient:
             if self.check_object_exists(bucket, file_name, version):
                 self.client.remove_object(bucket, file_name, version_id=version)
             else:
-                raise HTTPException(
-                    status_code=500, detail="Object not deleted"
-                )
+                raise HTTPException(status_code=500, detail="Object not deleted")
         except S3Error as error:
             self.handle_minio_error(error)
         except Exception as error:
