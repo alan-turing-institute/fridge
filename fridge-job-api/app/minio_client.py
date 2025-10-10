@@ -8,15 +8,16 @@ import ssl
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
+
 class MinioClient:
     def __init__(
-            self, 
-            endpoint: str,
-            sts_endpoint: str=None,
-            tenant: str=None,
-            access_key: str=None,
-            secret_key: str=None
-        ):
+        self,
+        endpoint: str,
+        sts_endpoint: str = None,
+        tenant: str = None,
+        access_key: str = None,
+        secret_key: str = None,
+    ):
 
         retry_count = 0
         # Try STS auth if access or secret key is not defined
@@ -68,9 +69,8 @@ class MinioClient:
             credentials = root.find(".//sts:Credentials", ns)
             access_key = credentials.find("sts:AccessKeyId", ns).text
             secret_key = credentials.find("sts:SecretAccessKey", ns).text
-            
-            return access_key, secret_key
 
+            return access_key, secret_key
 
     def handle_minio_error(self, error: S3Error):
         status = 500

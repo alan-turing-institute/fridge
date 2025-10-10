@@ -27,9 +27,7 @@ if os.getenv("KUBERNETES_SERVICE_HOST"):
     minio_client_args["sts_endpoint"] = os.getenv(
         "MINIO_STS_URL", "https://sts.minio-operator.svc.cluster.local:4223"
     )
-    minio_client_args["tenant"] = os.getenv(
-        "MINIO_TENANT_NAME", "argo-artifacts"
-    )
+    minio_client_args["tenant"] = os.getenv("MINIO_TENANT_NAME", "argo-artifacts")
 else:
     # Load environment variables from .env file
     load_dotenv()
@@ -90,6 +88,7 @@ security = HTTPBasic()
 
 # Init minio client (insecure enabled for dev)
 minio_client = MinioClient(**minio_client_args)
+
 
 class Workflow(BaseModel):
     name: str
