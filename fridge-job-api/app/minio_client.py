@@ -17,6 +17,7 @@ class MinioClient:
         tenant: str = None,
         access_key: str = None,
         secret_key: str = None,
+        secure: bool = False,
     ):
 
         retry_count = 0
@@ -35,7 +36,7 @@ class MinioClient:
             exit(1)
 
         self.client = Minio(
-            endpoint, access_key=access_key, secret_key=secret_key, secure=True
+            endpoint, access_key=access_key, secret_key=secret_key, secure=secure
         )
 
     def handle_sts_auth(self, sts_endpoint, tenant):
