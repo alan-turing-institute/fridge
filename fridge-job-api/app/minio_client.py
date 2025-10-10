@@ -9,17 +9,39 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 
 class MinioClient:
-    def __init__(self, endpoint: str, sts_endpoint: str):
-        access_key, secret_key = self.get_credentials(sts_endpoint)
+    def __init__(
+            self, 
+            endpoint: str,
+            sts_endpoint: str=None,
+            tenant: str=None,
+            access_key: str=None,
+            secret_key: str=None
+        ):
+
+        retry_count = 0
+        # Try STS auth if access or secret key is not defined
+        while (access_key == None or secret_key == None) and retry_count < 5:
+            print("Attempting Minio authentication with STS")
+            retry_count = retry_count + 1
+            try:
+                access_key, secret_key = self.handle_sts_auth(sts_endpoint, tenant)
+            except Exception as e:
+                print(f"Failed to get keys for minio client: {e}")
+
+        # Exit if minio client keys are not available
         if access_key == None or secret_key == None:
-            raise Exception("Failed to get keys for minio client")
+            print("Failed to initialise Minio client")
+            exit(1)
 
         self.client = Minio(
             endpoint, access_key=access_key, secret_key=secret_key, secure=False
         )
 
-    def get_credentials(self, sts_endpoint):
-        SA_TOKEN_FILE = "/minio/token"  # Path to the service account token
+    def handle_sts_auth(self, sts_endpoint, tenant):
+        # Mounted in from the service account to include sts.min.io audience
+        SA_TOKEN_FILE = "/minio/token"
+
+        # Kube CA cert path added by mounted service account, needed for TLS with Minio STS
         KUBE_CA_CRT = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
 
         # Read service account token
@@ -28,13 +50,13 @@ class MinioClient:
         ssl_context = ssl.create_default_context(cafile=KUBE_CA_CRT)
         ssl_context.check_hostname = False
 
-        # Create urllib3 client
+        # Create urllib3 client which accepts kube CA cert
         http = urllib3.PoolManager(ssl_context=ssl_context)
 
         # Send the token to the MinIO STS endpoint
         response = http.request(
             "POST",
-            f"{sts_endpoint}/sts/argo-artifacts?Action=AssumeRoleWithWebIdentity&Version=2011-06-15&WebIdentityToken={sa_token}",
+            f"{sts_endpoint}/sts/{tenant}?Action=AssumeRoleWithWebIdentity&Version=2011-06-15&WebIdentityToken={sa_token}",
         )
 
         if response.status != 200:

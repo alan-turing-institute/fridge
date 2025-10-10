@@ -10,6 +10,8 @@ from typing import Annotated, Any, Union
 from app.minio_client import MinioClient
 
 
+minio_client_args = {}
+
 # Check if running in the Kubernetes cluster
 # If not in the cluster, load environment variables from .env file
 if os.getenv("KUBERNETES_SERVICE_HOST"):
@@ -19,15 +21,26 @@ if os.getenv("KUBERNETES_SERVICE_HOST"):
     ARGO_SERVER = (
         f"https://argo-workflows-server.{ARGO_SERVER_NS}.svc.cluster.local:2746"
     )
+
+    # Use minio STS auth when running in cluster
+    minio_client_args["endpoint"] = os.getenv("MINIO_URL")
+    minio_client_args["sts_endpoint"] = os.getenv(
+        "MINIO_STS_URL", "https://sts.minio-operator.svc.cluster.local:4223"
+    )
+    minio_client_args["tenant"] = os.getenv(
+        "MINIO_TENANT_NAME", "argo-artifacts"
+    )
 else:
     # Load environment variables from .env file
     load_dotenv()
     FRIDGE_API_ADMIN = os.getenv("FRIDGE_API_ADMIN")
     FRIDGE_API_PASSWORD = os.getenv("FRIDGE_API_PASSWORD")
     ARGO_SERVER = os.getenv("ARGO_SERVER")
-    MINIO_URL = os.getenv("MINIO_URL")
-    MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY")
-    MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY")
+
+    # Use minio root credentials when not in cluster
+    minio_client_args["endpoint"] = os.getenv("MINIO_URL")
+    minio_client_args["access_key"] = os.getenv("MINIO_ACCESS_KEY")
+    minio_client_args["secret_key"] = os.getenv("MINIO_SECRET_KEY")
 
 # Disable TLS verification in development mode
 VERIFY_TLS = os.getenv("VERIFY_TLS", "False") == "True"
@@ -76,12 +89,7 @@ def argo_token() -> str:
 security = HTTPBasic()
 
 # Init minio client (insecure enabled for dev)
-minio_client = MinioClient(
-    endpoint=os.getenv("MINIO_URL"),
-    sts_endpoint=os.getenv(
-        "MINIO_STS_URL", "https://sts.minio-operator.svc.cluster.local:4223"
-    ),
-)
+minio_client = MinioClient(**minio_client_args)
 
 class Workflow(BaseModel):
     name: str

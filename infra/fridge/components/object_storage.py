@@ -225,6 +225,7 @@ class ObjectStorage(ComponentResource):
 
         self.minio_fqdn = minio_fqdn
         self.minio_cluster_url = minio_cluster_url
+        self.minio_tenant_name = minio_tenant.name
         self.register_outputs(
             {
                 "minio_ingress": minio_ingress,

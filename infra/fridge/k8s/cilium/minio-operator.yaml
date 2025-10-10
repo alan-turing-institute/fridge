@@ -7,7 +7,14 @@ spec:
   # Apply to all pods in this namespace
   endpointSelector: {}
   ingress:
-    - {}
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: fridge-api
+            app: fridge-api-server
+      toPorts:
+        - ports:
+            - port: "4223"
+              protocol: TCP
   egress:
     # Allows the MinIO operator to communicate with the MinIO tenant through the MinIO API
     - toEndpoints:
