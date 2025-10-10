@@ -5,7 +5,7 @@ from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from .storage_classes import StorageClasses
 
-from enums import PodSecurityStandard, TlsEnvironment, tls_issuer_names
+from enums import PodSecurityStandard, TlsEnvironment
 
 
 class ObjectStorageArgs:
@@ -59,26 +59,12 @@ class ObjectStorage(ComponentResource):
             ),
         )
 
-        minio_fqdn = ".".join(
-            (
-                args.config.require("minio_fqdn_prefix"),
-                args.config.require("base_fqdn"),
-            )
-        )
-
         minio_cluster_url = pulumi.Output.concat(
             "minio.", minio_tenant_ns.metadata.name, ".svc.cluster.local"
         )
 
         minio_config_env = Output.format(
-            (
-                "export MINIO_BROWSER_REDIRECT_URL=https://{0}\n"
-                "export MINIO_SERVER_URL=http://{1}\n"
-                "export MINIO_ROOT_USER={2}\n"
-                "export MINIO_ROOT_PASSWORD={3}"
-            ),
-            minio_fqdn,
-            minio_cluster_url,
+            ("export MINIO_ROOT_USER={0}\n" "export MINIO_ROOT_PASSWORD={1}"),
             args.config.require_secret("minio_root_user"),
             args.config.require_secret("minio_root_password"),
         )
@@ -128,9 +114,7 @@ class ObjectStorage(ComponentResource):
                     },
                     "features": {
                         "domains": {
-                            "console": minio_fqdn,
                             "minio": [
-                                Output.concat(minio_fqdn, "/api"),
                                 minio_cluster_url,
                             ],
                         }
@@ -168,58 +152,9 @@ class ObjectStorage(ComponentResource):
             ),
         )
 
-        # minio_ingress = Ingress(
-        #     "minio-ingress",
-        #     metadata=ObjectMetaArgs(
-        #         name="minio-ingress",
-        #         namespace=minio_tenant_ns.metadata.name,
-        #         annotations={
-        #             "nginx.ingress.kubernetes.io/proxy-body-size": "0",
-        #             "nginx.ingress.kubernetes.io/force-ssl-redirect": "true",
-        #             "cert-manager.io/cluster-issuer": tls_issuer_names[
-        #                 args.tls_environment
-        #             ],
-        #         },
-        #     ),
-        #     spec=IngressSpecArgs(
-        #         ingress_class_name="nginx",
-        #         rules=[
-        #             IngressRuleArgs(
-        #                 host=minio_fqdn,
-        #                 http={
-        #                     "paths": [
-        #                         {
-        #                             "path": "/",
-        #                             "path_type": "Prefix",
-        #                             "backend": IngressBackendArgs(
-        #                                 service=IngressServiceBackendArgs(
-        #                                     name="argo-artifacts-console",
-        #                                     port={"number": 9090},
-        #                                 )
-        #                             ),
-        #                         }
-        #                     ]
-        #                 },
-        #             )
-        #         ],
-        #         tls=[
-        #             IngressTLSArgs(
-        #                 hosts=[minio_fqdn],
-        #                 secret_name="argo-artifacts-tls",
-        #             )
-        #         ],
-        #     ),
-        #     opts=ResourceOptions.merge(
-        #         child_opts,
-        #         ResourceOptions(depends_on=[minio_tenant]),
-        #     ),
-        # )
-
-        self.minio_fqdn = minio_fqdn
         self.minio_cluster_url = minio_cluster_url
         self.register_outputs(
             {
-                # "minio_ingress": minio_ingress,
                 "minio_tenant": minio_tenant,
                 "minio_operator": minio_operator,
                 "minio_env_secret": minio_env_secret,
