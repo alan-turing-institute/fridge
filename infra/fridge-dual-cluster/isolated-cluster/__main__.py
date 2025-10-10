@@ -112,14 +112,11 @@ minio = components.ObjectStorage(
 )
 
 # Argo Workflows
-enable_sso = k8s_environment is not K8sEnvironment.K3S
-
 argo_workflows = components.WorkflowServer(
     "argo-workflows",
     args=components.WorkflowServerArgs(
         config=config,
         tls_environment=tls_environment,
-        enable_sso=enable_sso,
     ),
     opts=ResourceOptions(
         depends_on=[
@@ -127,20 +124,6 @@ argo_workflows = components.WorkflowServer(
         ]
     ),
 )
-
-if enable_sso:
-    argo_workflows_rbac = components.WorkflowUiRbac(
-        "argo-workflows-rbac",
-        args=components.WorkflowUiRbacArgs(
-            config=config,
-            argo_workflows_ns=argo_workflows.argo_workflows_ns,
-            argo_server_ns=argo_workflows.argo_server_ns,
-        ),
-        opts=ResourceOptions(
-            depends_on=[argo_workflows],
-        ),
-    )
-
 
 # API Server
 api_server = components.ApiServer(
@@ -177,7 +160,3 @@ network_policies = components.NetworkPolicies(
         depends_on=resources,
     ),
 )
-
-# Pulumi exports
-pulumi.export("argo_fqdn", argo_workflows.argo_fqdn)
-pulumi.export("minio_fqdn", minio.minio_fqdn)
