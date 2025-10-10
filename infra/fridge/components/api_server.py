@@ -137,7 +137,7 @@ class ApiServer(ComponentResource):
                     # The service account to use for the application
                     "serviceaccount": fridge_api_sa.metadata.name,
                 },
-                "policies": ["readonly"],
+                "policies": ["readwrite"],
             },
             opts=ResourceOptions(depends_on=[fridge_api_sa]),
         )
