@@ -1,4 +1,4 @@
-from fastapi import File, UploadFile
+from fastapi import File, UploadFile, HTTPException
 from fastapi.responses import StreamingResponse
 from minio import Minio, versioningconfig, commonconfig
 from io import BytesIO
@@ -19,7 +19,6 @@ class MinioClient:
         secret_key: str = None,
         secure: bool = False,
     ):
-
         retry_count = 0
         # Try STS auth if access or secret key is not defined
         while (access_key == None or secret_key == None) and retry_count < 5:
@@ -77,10 +76,10 @@ class MinioClient:
         status = 500
         if error._code in ["NoSuchBucket", "NoSuchKey"]:
             status = 404
-        return {"response": error._message, "error": error, "status": status}
-
-    def handle_500_error(self, msg=""):
-        return {"status": 500, "response": f"Unexpected error: {msg}"}
+        
+        raise HTTPException(
+            status_code=status, detail=error
+        )
 
     def create_bucket(self, name, enable_versioning=False):
         try:
@@ -92,9 +91,11 @@ class MinioClient:
                     name, versioningconfig.VersioningConfig(commonconfig.ENABLED)
                 )
         except S3Error as error:
-            return self.handle_minio_error(error)
+            self.handle_minio_error(error)
         except ValueError as error:
-            return self.handle_500_error("Unable to create bucket")
+            raise HTTPException(
+                status_code=500, detail="Unable to create bucket"
+            )
 
         return {"response": name, "status": 201}
 
@@ -109,9 +110,11 @@ class MinioClient:
                 content_type=file.content_type,
             )
         except S3Error as error:
-            return self.handle_minio_error(error)
+            self.handle_minio_error(error)
         except Exception as error:
-            return self.handle_500_error("Unable to upload object")
+            raise HTTPException(
+                status_code=500, detail="Unable to upload object"
+            )
 
         return {
             "status": 201,
@@ -132,9 +135,11 @@ class MinioClient:
                 },
             )
         except S3Error as error:
-            return self.handle_minio_error(error)
+            self.handle_minio_error(error)
         except Exception as error:
-            return self.handle_500_error("Unable to get object from bucket")
+            raise HTTPException(
+                status_code=500, detail="Unable to get object from bucket"
+            )
 
     def check_object_exists(self, bucket, file_name, version=None):
         try:
@@ -153,11 +158,14 @@ class MinioClient:
             if self.check_object_exists(bucket, file_name, version):
                 self.client.remove_object(bucket, file_name, version_id=version)
             else:
-                # Use this path if stat_object result could not be determined
-                return {"status": 500, "response": "Object not deleted"}
+                raise HTTPException(
+                    status_code=500, detail="Object not deleted"
+                )
         except S3Error as error:
-            return self.handle_minio_error(error)
+            self.handle_minio_error(error)
         except Exception as error:
-            return self.handle_500_error("Unable to delete object from bucket")
+            raise HTTPException(
+                status_code=500, detail="Unable to delete object from bucket"
+            )
 
         return {"status": 200, "response": file_name, "version": version}
