@@ -70,18 +70,6 @@ class NetworkPolicies(ComponentResource):
         )
 
         ConfigFile(
-            "network_policy_containerd_config",
-            file="./k8s/cilium/containerd_config.yaml",
-            opts=child_opts,
-        )
-
-        ConfigFile(
-            "network_policy_harbor",
-            file="./k8s/cilium/harbor.yaml",
-            opts=child_opts,
-        )
-
-        ConfigFile(
             "network_policy_hubble",
             file="./k8s/cilium/hubble.yaml",
             opts=child_opts,
