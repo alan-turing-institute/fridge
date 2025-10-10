@@ -206,3 +206,21 @@ spec:
               protocol: TCP
             - port: "80"
               protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: admission-controller
+  namespace: ingress-nginx
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s:app.kubernetes.io/name: ingress-nginx
+      k8s:app.kubernetes.io/component: admission-webhook
+  egress:
+    - toEntities:
+        - kube-apiserver
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
