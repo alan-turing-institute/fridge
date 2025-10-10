@@ -128,7 +128,7 @@ class ApiServer(ComponentResource):
             kind="PolicyBinding",
             metadata=ObjectMetaArgs(
                 name=f"fridge-api-minio-readonly",
-                namespace=args.minio_tenant
+                namespace=args.minio_tenant,
             ),
             spec={
                 "application": {
