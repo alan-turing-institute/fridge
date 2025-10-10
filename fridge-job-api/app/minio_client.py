@@ -35,7 +35,7 @@ class MinioClient:
             exit(1)
 
         self.client = Minio(
-            endpoint, access_key=access_key, secret_key=secret_key, secure=False
+            endpoint, access_key=access_key, secret_key=secret_key, secure=True
         )
 
     def handle_sts_auth(self, sts_endpoint, tenant):
