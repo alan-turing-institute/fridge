@@ -52,7 +52,7 @@ private_api_proxy = components.PrivateAPIProxy(
 ingress_nginx = components.Ingress(
     "ingress-nginx",
     args=components.IngressArgs(
-        api_proxy_ns=private_api_proxy.api_proxy_ns, k8s_environment=k8s_environment
+        api_proxy=private_api_proxy, k8s_environment=k8s_environment
     ),
 )
 
