@@ -73,7 +73,7 @@ security = HTTPBasic()
 
 # Init minio client. Will fallback to STS if access/secret key are not set
 minio_client = MinioClient(
-    endpiont=os.getenv("MINIO_URL"),
+    endpoint=os.getenv("MINIO_URL"),
     sts_endpoint=os.getenv(
         "MINIO_STS_URL", "https://sts.minio-operator.svc.cluster.local:4223"
     ),
