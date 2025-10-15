@@ -5,6 +5,7 @@ import pulumi
 import pulumi_random as random
 import pulumi_tls as tls
 from pulumi_azure_native import (
+    authorization,
     compute,
     containerservice,
     keyvault,
@@ -16,7 +17,7 @@ from pulumi_kubernetes import Provider
 
 def get_kubeconfig(
     credentials: list[containerservice.outputs.CredentialResultResponse],
-) -> str:
+) -> str | None:
     for credential in credentials:
         if credential.name == "clusterAdmin":
             return base64.b64decode(credential.value).decode()
@@ -103,18 +104,19 @@ identity = managedidentity.UserAssignedIdentity(
     resource_group_name=resource_group.name,
 )
 
-# authorization.RoleAssignment(
-#     "cluster_role_assignment_disk_encryption_set",
-#     principal_id=identity.principal_id,
-#     principal_type=authorization.PrincipalType.SERVICE_PRINCIPAL,
-#     # Contributor: https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles
-#     role_definition_id=f"/subscriptions/{azure_config.require('subscriptionId')}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c",
-#     # The docs suggest using the scope of the resource group where the disk encryption
-#     # set is located. However, the scope of the disk encryption set seems sufficient.
-#     # Disks are created in the AKS managed resource group
-#     # https://learn.microsoft.com/en-us/azure/aks/azure-disk-customer-managed-keys#encrypt-your-aks-cluster-data-disk
-#     scope=disk_encryption_set.id,
-# )
+authorization.RoleAssignment(
+    "cluster_role_assignment_disk_encryption_set",
+    principal_id=identity.principal_id,
+    principal_type=authorization.PrincipalType.SERVICE_PRINCIPAL,
+    # Contributor: https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles
+    role_definition_id=f"/subscriptions/{azure_config.require('subscriptionId')}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c",
+    # The docs suggest using the scope of the resource group where the disk encryption
+    # set is located. However, the scope of the disk encryption set seems sufficient.
+    # Disks are created in the AKS managed resource group
+    # https://learn.microsoft.com/en-us/azure/aks/azure-disk-customer-managed-keys#encrypt-your-aks-cluster-data-disk
+    # scope=f"/subscriptions/{azure_config.require('subscriptionId')}"
+    scope=disk_encryption_set.id,
+)
 
 # Networking
 networking = components.Networking(
@@ -127,22 +129,22 @@ networking = components.Networking(
 )
 
 # Create main, private cluster
-private_cluster = components.PrivateCluster(
-    "private-cluster",
-    components.PrivateClusterArgs(
+isolated_cluster = components.IsolatedCluster(
+    "isolated-cluster",
+    components.IsolatedClusterArgs(
         config=config,
         disk_encryption_set=disk_encryption_set,
         resource_group_name=resource_group.name,
-        cluster_name=f"{config.require('cluster_name')}-private",
+        cluster_name=f"{config.require('cluster_name')}-isolated",
         identity=identity,
         nodes_subnet_id=networking.private_nodes_subnet_id,
         ssh_key=ssh_key,
     ),
 )
 
-private_admin_credentials = (
+isolated_admin_credentials = (
     containerservice.list_managed_cluster_admin_credentials_output(
-        resource_group_name=resource_group.name, resource_name=private_cluster.name
+        resource_group_name=resource_group.name, resource_name=isolated_cluster.name
     )
 )
 
@@ -162,34 +164,24 @@ access_cluster = components.AccessCluster(
     ),
 )
 
-public_admin_credentials = (
+access_admin_credentials = (
     containerservice.list_managed_cluster_admin_credentials_output(
         resource_group_name=resource_group.name, resource_name=access_cluster.name
     )
 )
 
-private_kubeconfig = private_admin_credentials.kubeconfigs.apply(get_kubeconfig)
-public_kubeconfig = public_admin_credentials.kubeconfigs.apply(get_kubeconfig)
+isolated_kubeconfig = isolated_admin_credentials.kubeconfigs.apply(get_kubeconfig)
+access_kubeconfig = access_admin_credentials.kubeconfigs.apply(get_kubeconfig)
 
-private_cluster_provider = Provider(
-    "private-cluster-provider",
-    kubeconfig=private_kubeconfig,
+isolated_cluster_provider = Provider(
+    "isolated-cluster-provider",
+    kubeconfig=isolated_kubeconfig,
 )
 
 access_cluster_provider = Provider(
     "access-cluster-provider",
-    kubeconfig=public_kubeconfig,
+    kubeconfig=access_kubeconfig,
 )
 
-dual_cluster_test = components.DualCluster(
-    "dual-cluster-test",
-    components.DualClusterArgs(
-        access_kubeconfig=access_cluster_provider,
-        config=config,
-        private_kubeconfig=private_cluster_provider,
-        private_fqdn=private_cluster.private_cluster.fqdn,
-    ),
-)
-
-pulumi.export("private_kubeconfig", private_kubeconfig)
-pulumi.export("public_kubeconfig", public_kubeconfig)
+pulumi.export("isolated_kubeconfig", isolated_kubeconfig)
+pulumi.export("access_kubeconfig", access_kubeconfig)

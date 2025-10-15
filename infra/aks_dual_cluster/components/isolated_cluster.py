@@ -25,7 +25,7 @@ from pulumi_azure_native.containerservice import (
 )
 
 
-class PrivateClusterArgs:
+class IsolatedClusterArgs:
     def __init__(
         self,
         cluster_name: str,
@@ -45,14 +45,14 @@ class PrivateClusterArgs:
         self.ssh_key = ssh_key
 
 
-class PrivateCluster(ComponentResource):
+class IsolatedCluster(ComponentResource):
     def __init__(
-        self, name: str, args: PrivateClusterArgs, opts: ResourceOptions = None
+        self, name: str, args: IsolatedClusterArgs, opts: ResourceOptions | None = None
     ):
-        super().__init__("fridge_aks:PrivateCluster", name, {}, opts)
+        super().__init__("fridge_aks:IsolatedCluster", name, {}, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
-        self.private_cluster = ManagedCluster(
+        self.isolated_cluster = ManagedCluster(
             args.cluster_name,
             resource_group_name=args.resource_group_name,
             api_server_access_profile=ManagedClusterAPIServerAccessProfileArgs(
@@ -138,6 +138,6 @@ class PrivateCluster(ComponentResource):
             ),
         )
 
-        self.name = self.private_cluster.name
-        self.private_fqdn = self.private_cluster.private_fqdn
-        self.register_outputs({"private_cluster": self.private_cluster})
+        self.name = self.isolated_cluster.name
+        self.private_fqdn = self.isolated_cluster.private_fqdn
+        self.register_outputs({"isolated_cluster": self.isolated_cluster})
