@@ -47,12 +47,9 @@ class MinioConfigJob(ComponentResource):
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
         minio_setup_sh = """
-            echo "Creating default S3 policies"
-            for policy in /tmp/scripts/*.json; do
-                echo "Creating policy $policy"
-                mc --insecure admin policy create $1 $(basename "$policy" .json) "$policy"
-                echo "Policy $(basename "$policy" .json) created"
-            done
+            echo "Configuring ingress and egress buckets with anonymous S3 policies"
+            mc anonymous set upload $1/egress
+            mc anonymous set download $1/ingress
         """
 
         # Create a ConfigMap for MinIO configuration
@@ -67,22 +64,6 @@ class MinioConfigJob(ComponentResource):
                 "MINIO_URL": "http://minio.argo-artifacts.svc.cluster.local:80",
                 "MINIO_NAMESPACE": args.minio_tenant_ns.metadata.name,
                 "setup.sh": minio_setup_sh,
-                "read-only-ingress.json": load_policy("read-only-ingress.json"),
-                "read-only-sensitive-ingress.json": load_policy(
-                    "read-only-sensitive-ingress.json"
-                ),
-                "write-only-ready-for-review.json": load_policy(
-                    "write-only-ready-for-review.json"
-                ),
-                "read-only-ready-for-review.json": load_policy(
-                    "read-only-ready-for-review.json"
-                ),
-                "write-only-ready-for-egress.json": load_policy(
-                    "write-only-ready-for-egress.json"
-                ),
-                "argo-workflows-pod-policy.json": load_policy(
-                    "argo-workflows-pod-policy.json"
-                ),
             },
             opts=child_opts,
         )
