@@ -128,6 +128,17 @@ networking = components.Networking(
     ),
 )
 
+# Grant the managed identity Contributor role on the isolated vnet so it can manage network interfaces
+# This allows the creation of internal load balancers to make it easier to direct traffic to the right place on the isolated network
+authorization.RoleAssignment(
+    "cluster_role_assignment_private_vnet",
+    principal_id=identity.principal_id,
+    principal_type=authorization.PrincipalType.SERVICE_PRINCIPAL,
+    # Contributor: https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles
+    role_definition_id=f"/subscriptions/{azure_config.require('subscriptionId')}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c",
+    scope=networking.private_nodes.id,
+)
+
 # Create main, private cluster
 isolated_cluster = components.IsolatedCluster(
     "isolated-cluster",
