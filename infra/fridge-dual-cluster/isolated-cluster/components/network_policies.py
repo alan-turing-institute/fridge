@@ -76,12 +76,6 @@ class NetworkPolicies(ComponentResource):
         )
 
         ConfigFile(
-            "network_policy_ingress_nginx",
-            file="./k8s/cilium/ingress-nginx.yaml",
-            opts=child_opts,
-        )
-
-        ConfigFile(
             "network_policy_kube_node_lease",
             file="./k8s/cilium/kube-node-lease.yaml",
             opts=child_opts,
