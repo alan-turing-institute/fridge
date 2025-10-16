@@ -21,7 +21,8 @@ class MinioClient:
         secure: bool = False,
     ):
         retry_count = 0
-        st = None # Default session token to None if not using STS
+        st = None  # Default session token to None if not using STS
+
         # Try STS auth if access or secret key is not defined
         while (access_key == None or secret_key == None) and retry_count < 5:
             print("Attempting Minio authentication with STS")
@@ -40,7 +41,7 @@ class MinioClient:
             endpoint,
             access_key=access_key,
             secret_key=secret_key,
-            session_token=st if st else None,
+            session_token=st,
             secure=secure,
         )
         print("Successfully configured Minio client")
@@ -50,7 +51,9 @@ class MinioClient:
         SA_TOKEN_FILE = os.getenv("MINIO_SA_TOKEN_PATH", "/minio/token")
 
         # Kube CA cert path added by mounted service account, needed for TLS with Minio STS
-        KUBE_CA_CRT = os.getenv("STS_CA_CERT_FILE", "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt")
+        KUBE_CA_CRT = os.getenv(
+            "STS_CA_CERT_FILE", "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+        )
 
         # Read service account token
         sa_token = Path(SA_TOKEN_FILE).read_text().strip()
