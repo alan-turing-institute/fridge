@@ -7,6 +7,7 @@ import urllib3
 import ssl
 from pathlib import Path
 import xml.etree.ElementTree as ET
+import os
 
 
 class MinioClient:
@@ -20,6 +21,7 @@ class MinioClient:
         secure: bool = False,
     ):
         retry_count = 0
+        st = None # Default session token to None if not using STS
         # Try STS auth if access or secret key is not defined
         while (access_key == None or secret_key == None) and retry_count < 5:
             print("Attempting Minio authentication with STS")
@@ -45,10 +47,10 @@ class MinioClient:
 
     def handle_sts_auth(self, sts_endpoint, tenant):
         # Mounted in from the service account to include sts.min.io audience
-        SA_TOKEN_FILE = "/minio/token"
+        SA_TOKEN_FILE = os.getenv("MINIO_SA_TOKEN_PATH", "/minio/token")
 
         # Kube CA cert path added by mounted service account, needed for TLS with Minio STS
-        KUBE_CA_CRT = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+        KUBE_CA_CRT = os.getenv("STS_CA_CERT_FILE", "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt")
 
         # Read service account token
         sa_token = Path(SA_TOKEN_FILE).read_text().strip()
@@ -66,7 +68,7 @@ class MinioClient:
 
         if response.status != 200:
             print(f"STS request failed: {response.status} {response.data.decode()}")
-            return None, None
+            return None, None, None
         else:
             root = ET.fromstring(response.data)
             ns = {"sts": "https://sts.amazonaws.com/doc/2011-06-15/"}
@@ -78,11 +80,14 @@ class MinioClient:
             return access_key, secret_key, session_token
 
     def handle_minio_error(self, error: S3Error):
-        status = 500
         if error._code in ["NoSuchBucket", "NoSuchKey"]:
             status = 404
+        elif error._code in ["AccessDenied"]:
+            status = 403
+        else:
+            status = 500
 
-        raise HTTPException(status_code=status, detail=error)
+        raise HTTPException(status_code=status, detail=error.message)
 
     def create_bucket(self, name, enable_versioning=False):
         try:
