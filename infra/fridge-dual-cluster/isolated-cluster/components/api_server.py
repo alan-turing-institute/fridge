@@ -13,8 +13,11 @@ from pulumi_kubernetes.core.v1 import (
     Secret,
     SecretEnvSourceArgs,
     SecurityContextArgs,
+    Service,
     ServiceAccount,
     ServiceAccountTokenProjectionArgs,
+    ServicePortArgs,
+    ServiceSpecArgs,
     VolumeArgs,
     VolumeMountArgs,
     VolumeProjectionArgs,
@@ -228,6 +231,32 @@ class ApiServer(ComponentResource):
                         ],
                     ),
                 ),
+            ),
+            opts=child_opts,
+        )
+
+        self.api_service = Service(
+            "fridge-api-service",
+            metadata=ObjectMetaArgs(
+                name="fridge-api",
+                namespace=api_server_ns.metadata.name,
+                labels={"app": "fridge-api-server"},
+                annotations={
+                    "service.beta.kubernetes.io/azure-load-balancer-internal": "true",
+                    "service.beta.kubernetes.io/azure-load-balancer-ipv4": "10.20.1.60/32",
+                },
+            ),
+            spec=ServiceSpecArgs(
+                type="LoadBalancer",
+                selector=fridge_api_server.spec.template.metadata.labels,
+                load_balancer_source_ranges=["10.10.0.0/16"],
+                ports=[
+                    ServicePortArgs(
+                        protocol="TCP",
+                        port=443,
+                        target_port=8000,
+                    )
+                ],
             ),
             opts=child_opts,
         )
