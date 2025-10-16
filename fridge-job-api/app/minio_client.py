@@ -25,7 +25,7 @@ class MinioClient:
             print("Attempting Minio authentication with STS")
             retry_count = retry_count + 1
             try:
-                access_key, secret_key = self.handle_sts_auth(sts_endpoint, tenant)
+                access_key, secret_key, st = self.handle_sts_auth(sts_endpoint, tenant)
             except Exception as e:
                 print(f"Failed to get keys for minio client: {e}")
 
@@ -38,6 +38,7 @@ class MinioClient:
             endpoint,
             access_key=access_key,
             secret_key=secret_key,
+            session_token=st if st else None,
             secure=secure,
         )
         print("Successfully configured Minio client")
@@ -53,7 +54,6 @@ class MinioClient:
         sa_token = Path(SA_TOKEN_FILE).read_text().strip()
 
         ssl_context = ssl.create_default_context(cafile=KUBE_CA_CRT)
-        ssl_context.check_hostname = False
 
         # Create urllib3 client which accepts kube CA cert
         http = urllib3.PoolManager(ssl_context=ssl_context)
@@ -73,8 +73,9 @@ class MinioClient:
             credentials = root.find(".//sts:Credentials", ns)
             access_key = credentials.find("sts:AccessKeyId", ns).text
             secret_key = credentials.find("sts:SecretAccessKey", ns).text
+            session_token = credentials.find("sts:SessionToken", ns).text
 
-            return access_key, secret_key
+            return access_key, secret_key, session_token
 
     def handle_minio_error(self, error: S3Error):
         status = 500
