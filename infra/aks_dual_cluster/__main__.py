@@ -12,7 +12,6 @@ from pulumi_azure_native import (
     managedidentity,
     resources,
 )
-from pulumi_kubernetes import Provider
 
 
 def get_kubeconfig(
@@ -139,7 +138,7 @@ authorization.RoleAssignment(
     scope=networking.private_nodes.id,
 )
 
-# Create main, private cluster
+# Create isolated cluster to host private workloads
 isolated_cluster = components.IsolatedCluster(
     "isolated-cluster",
     components.IsolatedClusterArgs(
@@ -183,16 +182,6 @@ access_admin_credentials = (
 
 isolated_kubeconfig = isolated_admin_credentials.kubeconfigs.apply(get_kubeconfig)
 access_kubeconfig = access_admin_credentials.kubeconfigs.apply(get_kubeconfig)
-
-isolated_cluster_provider = Provider(
-    "isolated-cluster-provider",
-    kubeconfig=isolated_kubeconfig,
-)
-
-access_cluster_provider = Provider(
-    "access-cluster-provider",
-    kubeconfig=access_kubeconfig,
-)
 
 pulumi.export("isolated_kubeconfig", isolated_kubeconfig)
 pulumi.export("access_kubeconfig", access_kubeconfig)
