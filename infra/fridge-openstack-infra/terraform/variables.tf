@@ -28,9 +28,19 @@ variable "kubeapi_instance_name" {
    default = "kubeapi"
 }
 
-variable "flavor_name" {
+variable "flavor_name_xsmall" {
   type = string
   default = "vm.v1.xsmall"
+}
+
+variable "flavor_name_large" {
+  type = string
+  default = "vm.v1.large"
+}
+
+variable "flavor_name_small" {
+  type = string
+  default = "vm.v1.small"
 }
 
 variable "image_name" {

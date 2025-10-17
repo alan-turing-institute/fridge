@@ -39,6 +39,21 @@ resource "openstack_networking_subnet_v2" "isolated_subnet" {
   enable_dhcp = true
 }
 
+
 data "openstack_networking_network_v2" "external_network"{
     name = var.external_network_name
 }
+
+
+# create temporary router to route traffic in isolated network to install k3s etc
+# router conneting private network to the external network
+# resource "openstack_networking_router_v2" "isolated_router" {
+#   name = "${var.isolated_network}-router"
+#   external_network_id = data.openstack_networking_network_v2.external_network.id 
+
+# }
+
+# resource "openstack_networking_router_interface_v2" "isolated_router_interface" {
+#   router_id = openstack_networking_router_v2.isolated_router.id
+#   subnet_id = openstack_networking_subnet_v2.isolated_subnet.id
+# }
