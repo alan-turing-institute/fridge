@@ -3,7 +3,6 @@ import pulumi_tls as tls
 
 from pulumi import ComponentResource, ResourceOptions
 from pulumi_azure_native import (
-    compute,
     managedidentity,
 )
 from pulumi_azure_native.containerservice import (
