@@ -122,14 +122,14 @@ class StorageClasses(ComponentResource):
             case K8sEnvironment.OKE:
                 # Patch the OCI CSI Driver to set the fsGroupPolicy to "File", which is required for ReadWriteMany support
                 # fixes issues with pods not starting due to permission issues
-                oci_drive_patch = CSIDriverPatch(
-                    "oci-csi-driver-patch",
-                    metadata=ObjectMetaPatchArgs(name="fss.csi.oraclecloud.com"),
-                    spec=CSIDriverSpecPatchArgs(
-                        fs_group_policy="File",
-                    ),
-                    opts=child_opts,
-                )
+                # oci_drive_patch = CSIDriverPatch(
+                #     "oci-csi-driver-patch",
+                #     metadata=ObjectMetaPatchArgs(name="fss.csi.oraclecloud.com"),
+                #     spec=CSIDriverSpecPatchArgs(
+                #         fs_group_policy="file",
+                #     ),
+                #     opts=child_opts,
+                # )
                 storage_class = StorageClass(
                     "fridge_storage_class",
                     allow_volume_expansion=True,
