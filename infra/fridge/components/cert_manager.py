@@ -2,7 +2,7 @@ import pulumi
 
 from pulumi import ComponentResource, ResourceOptions
 from pulumi_kubernetes.apiextensions import CustomResource
-from pulumi_kubernetes.core.v1 import Namespace
+from pulumi_kubernetes.core.v1 import Namespace, Service
 from pulumi_kubernetes.helm.v3 import Release
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
@@ -69,6 +69,12 @@ class CertManager(ComponentResource):
                 # Dawn specific configuration
                 cert_manager_ns = Namespace.get("cert-manager-ns", "cert-manager")
                 cert_manager = Release.get("cert-manager", "cert-manager")
+
+            case K8sEnvironment.OKE:
+                # OKE specific configuration
+                cert_manager_ns = Namespace.get("cert-manager-ns", "cert-manager")
+                cert_manager = Service.get("cert-manager", "cert-manager/cert-manager")
+
 
         # Create ClusterIssuers
         issuer_outputs = {}
