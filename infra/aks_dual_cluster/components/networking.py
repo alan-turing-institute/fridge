@@ -136,7 +136,7 @@ class Networking(ComponentResource):
             virtual_network_name=self.private_vnet.name,
             remote_virtual_network=network.SubResourceArgs(id=self.access_vnet.id),
             allow_virtual_network_access=True,
-            allow_forwarded_traffic=True,
+            allow_forwarded_traffic=False,
             allow_gateway_transit=False,
             use_remote_gateways=False,
             opts=ResourceOptions.merge(
@@ -158,7 +158,7 @@ class Networking(ComponentResource):
             virtual_network_name=self.access_vnet.name,
             remote_virtual_network=network.SubResourceArgs(id=self.private_vnet.id),
             allow_virtual_network_access=True,
-            allow_forwarded_traffic=True,
+            allow_forwarded_traffic=False,
             allow_gateway_transit=False,
             use_remote_gateways=False,
             opts=ResourceOptions.merge(
