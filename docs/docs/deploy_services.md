@@ -4,9 +4,11 @@ This page explains how to deploy the FRIDGE services to a Kubernetes cluster.
 This process includes configuring for various components such as Argo Workflows, MinIO, network policies, and other infrastructure settings.
 It does not deploy the Kubernetes cluster itself; instead, it assumes that a Kubernetes cluster is already available.
 
-To read about deploying the Kubernetes cluster see [Deploy Infrastructure](deploy_infrastructure.md).
+!!! note
+    To read about deploying the Kubernetes cluster see [Deploy Infrastructure](deploy_infrastructure.md).
 
-Note that container-based Kubernetes environments such as K3d or Kind are not supported, as Longhorn is not compatible with those environments.
+!!! warning
+    Container-based Kubernetes environments such as K3d or Kind are not supported, as Longhorn is not compatible with those environments.
 
 ## Deployment
 
@@ -42,7 +44,8 @@ To create a new stack, you can use the following command:
 pulumi stack init <stack-name>
 ```
 
-Note: you will be asked to provide a passphrase for the stack, which is used to encrypt secrets within the stack's configuration settings.
+!!! note
+    You will be asked to provide a passphrase for the stack, which is used to encrypt secrets within the stack's configuration settings.
 
 ### Configuring your stack
 

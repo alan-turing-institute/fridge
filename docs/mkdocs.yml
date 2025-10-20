@@ -11,3 +11,5 @@ nav:
   - Prerequisites: 'prerequisites.md'
   - Deploy Infrastructure: 'deploy_infrastructure.md'
   - Deploy Services: 'deploy_services.md'
+markdown_extensions:
+  - admonition
