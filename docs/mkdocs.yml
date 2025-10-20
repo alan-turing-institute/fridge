@@ -9,4 +9,5 @@ copyright: >-
 nav:
   - Home: 'index.md'
   - Prerequisites: 'prerequisites.md'
+  - Deploy Infrastructure: 'deploy_infrastructure.md'
   - Deploy Services: 'deploy_services.md'

@@ -4,9 +4,7 @@ This page explains how to deploy the FRIDGE services to a Kubernetes cluster.
 This process includes configuring for various components such as Argo Workflows, MinIO, network policies, and other infrastructure settings.
 It does not deploy the Kubernetes cluster itself; instead, it assumes that a Kubernetes cluster is already available.
 
-For an example of deploying a Kubernetes cluster on Azure Kubernetes Service using Pulumi, see the `infra/aks` directory.
-For local development, you can use a local Kubernetes cluster such as [K3s](https://k3s.io/).
-For a suggested setup, see the `infra/local` directory.
+To read about deploying the Kubernetes cluster see [Deploy Infrastructure](deploy_infrastructure.md).
 
 Note that container-based Kubernetes environments such as K3d or Kind are not supported, as Longhorn is not compatible with those environments.
 
