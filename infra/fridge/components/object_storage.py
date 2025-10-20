@@ -184,6 +184,9 @@ class ObjectStorage(ComponentResource):
                 annotations={
                     "nginx.ingress.kubernetes.io/proxy-body-size": "0",
                     "nginx.ingress.kubernetes.io/force-ssl-redirect": "true",
+                    "nginx.ingress.kubernetes.io/proxy-read-timeout": "360",
+                    "nginx.ingress.kubernetes.io/proxy-send-timeout": "360",
+                    "nginx.org/websocket-services": "[argo-artifacts-console]",
                     "cert-manager.io/cluster-issuer": tls_issuer_names[
                         args.tls_environment
                     ],
