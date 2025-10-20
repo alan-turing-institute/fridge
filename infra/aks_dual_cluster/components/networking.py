@@ -34,7 +34,7 @@ class Networking(ComponentResource):
                     protocol=network.SecurityRuleProtocol.ASTERISK,
                     source_port_range="*",
                     destination_port_range="443",
-                    source_address_prefix="10.10.0.0/16",  # Access cluster VNet
+                    source_address_prefix=args.config.require("access_vnet_cidr"),
                     destination_address_prefix="*",
                 )
             ],
@@ -88,7 +88,9 @@ class Networking(ComponentResource):
         self.access_vnet = network.VirtualNetwork(
             f"{name}-access-vnet",
             resource_group_name=args.resource_group_name,
-            address_space=network.AddressSpaceArgs(address_prefixes=["10.10.0.0/16"]),
+            address_space=network.AddressSpaceArgs(
+                address_prefixes=[args.config.require("access_vnet_cidr")]
+            ),
             opts=child_opts,
         )
 
@@ -96,7 +98,7 @@ class Networking(ComponentResource):
             f"{name}-access-nodes",
             resource_group_name=args.resource_group_name,
             virtual_network_name=self.access_vnet.name,
-            address_prefix="10.10.1.0/24",
+            address_prefix=args.config.require("access_nodes_subnet_cidr"),
             network_security_group=network.NetworkSecurityGroupArgs(
                 id=self.access_nsg.id
             ),
@@ -108,7 +110,9 @@ class Networking(ComponentResource):
         self.private_vnet = network.VirtualNetwork(
             f"{name}-private-vnet",
             resource_group_name=args.resource_group_name,
-            address_space=network.AddressSpaceArgs(address_prefixes=["10.20.0.0/16"]),
+            address_space=network.AddressSpaceArgs(
+                address_prefixes=[args.config.require("private_vnet_cidr")]
+            ),
             opts=child_opts,
         )
 
@@ -116,7 +120,7 @@ class Networking(ComponentResource):
             f"{name}-private-nodes",
             resource_group_name=args.resource_group_name,
             virtual_network_name=self.private_vnet.name,
-            address_prefix="10.20.1.0/24",
+            address_prefix=args.config.require("private_nodes_subnet_cidr"),
             network_security_group=network.NetworkSecurityGroupArgs(
                 id=self.private_nsg.id
             ),
