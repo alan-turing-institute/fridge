@@ -8,7 +8,7 @@ It is designed to interact with the Argo Workflows API.
 
 ### Setup
 
-1. From the root of the project, run `uv sync` to setup the environment and then `uv run fastapi dev main.py` to start the API server.
+1. From the root of the project, run `uv sync` to setup the environment and then `uv run fastapi dev app/main.py` to start the API server.
 2. The API will be available at `http://localhost:8000`.
 3. You can access the OpenAPI documentation at `http://localhost:8000/docs`.
 4. The API requires basic HTTP authentication. You can use the `FRIDGE_API_ADMIN` and `FRIDGE_API_PASSWORD` environment variables to authenticate.
@@ -21,6 +21,9 @@ For local development, you can set the following variables in a `.env` file:
 
 - `ARGO_SERVER`: The URL of the Argo Workflows server
 - `ARGO_TOKEN`: The access token for authenticating with the Argo Workflows server
+- `MINIO_URL`: The URL of the Minio server
+- `MINIO_ACCESS_KEY`: Access Key to authenticate with Minio server
+- `MINIO_SECRET_KEY`: Secret Key to authenticate with the Minio server
 - `FRIDGE_API_ADMIN`: The username of the admin user for the FRIDGE API
 - `FRIDGE_API_PASSWORD`: The password for the admin user for the FRIDGE API
 - `VERIFY_TLS`: Set to `False` to disable TLS verification (not recommended for production)

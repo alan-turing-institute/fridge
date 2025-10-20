@@ -6,7 +6,10 @@ from enums import K8sEnvironment
 
 class NetworkPolicies(ComponentResource):
     def __init__(
-        self, name: str, k8s_environment: K8sEnvironment, opts=ResourceOptions
+        self,
+        name: str,
+        k8s_environment: K8sEnvironment,
+        opts: ResourceOptions | None = None,
     ) -> None:
         super().__init__("fridge:k8s:NetworkPolicies", name, {}, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
@@ -31,6 +34,20 @@ class NetworkPolicies(ComponentResource):
                 ConfigFile(
                     "network_policy_prometheus",
                     file="./k8s/cilium/prometheus.yaml",
+                    opts=child_opts,
+                )
+                # Longhorn is used on Dawn for RWX volume provision
+                ConfigFile(
+                    "network_policy_longhorn",
+                    file="./k8s/cilium/longhorn.yaml",
+                    opts=child_opts,
+                )
+            case K8sEnvironment.K3S:
+                # K3S policies applicable for a local dev environment
+                # These could be used in any vanilla k8s + Cilium local cluster
+                ConfigFile(
+                    "network_policy_k3s",
+                    file="./k8s/cilium/k3s.yaml",
                     opts=child_opts,
                 )
 
@@ -91,12 +108,6 @@ class NetworkPolicies(ComponentResource):
         ConfigFile(
             "network_policy_kubernetes_system",
             file="./k8s/cilium/kube-system.yaml",
-            opts=child_opts,
-        )
-
-        ConfigFile(
-            "network_policy_longhorn",
-            file="./k8s/cilium/longhorn.yaml",
             opts=child_opts,
         )
 

@@ -13,7 +13,7 @@ spec:
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
 metadata:
-  name: allow-argo-server-traffic
+  name: allow-server-traffic
   namespace: fridge-api
 spec:
   endpointSelector:
@@ -28,6 +28,14 @@ spec:
         - ports:
           - port: "2746"
             protocol: TCP
+    - fromEndpoints:
+      - matchLabels:
+          v1.min.io/tenant: argo-artifacts
+          k8s:io.kubernetes.pod.namespace: argo-artifacts
+      toPorts:
+        - ports:
+          - port: "9000"
+            protocol: TCP
   egress:
     - toEndpoints:
       - matchLabels:
@@ -36,6 +44,14 @@ spec:
       toPorts:
         - ports:
           - port: "2746"
+            protocol: TCP
+    - toEndpoints:
+      - matchLabels:
+          v1.min.io/tenant: argo-artifacts
+          k8s:io.kubernetes.pod.namespace: argo-artifacts
+      toPorts:
+        - ports:
+          - port: "9000"
             protocol: TCP
     - toEndpoints:
       - matchLabels:
@@ -48,5 +64,7 @@ spec:
           rules:
             dns:
               - matchName: "argo-workflows-server.argo-server.svc.cluster.local"
+              - matchName: "minio.argo-artifacts.svc.cluster.local"
     - toFQDNs:
       - matchName: "argo-workflows-server.argo-server.svc.cluster.local"
+      - matchName: "minio.argo-artifacts.svc.cluster.local"
