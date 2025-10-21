@@ -56,7 +56,7 @@ class NetworkPolicies(ComponentResource):
 	) -> None:
 		super().__init__("fridge:k8s:NetworkPolicies", name, {}, opts)
 		child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
-		
+
 		match k8s_environment:
 			case K8sEnvironment.AKS:
 				# AKS uses Konnectivity to mediate some API/webhook traffic, and uses a different external DNS server
@@ -101,7 +101,7 @@ case K8sEnvironment.AKS | K8sEnvironment.K3S:
 			labels={} | PodSecurityStandard.RESTRICTED.value,
 		),
 	)
-	  
+
 	ingress_nginx = ConfigFile(
 		"ingress-nginx",
 		file="https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.1/deploy/static/provider/cloud/deploy.yaml",

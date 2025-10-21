@@ -13,5 +13,7 @@ nav:
     - Prerequisites: 'deploy/prerequisites.md'
     - Deploy Infrastructure: 'deploy/infrastructure.md'
     - Deploy Services: 'deploy/services.md'
+  - Development Guide:
+    - Adding a New Target: 'develop/target.md'
 markdown_extensions:
   - admonition
