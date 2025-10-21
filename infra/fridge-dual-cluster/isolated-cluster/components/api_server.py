@@ -1,4 +1,5 @@
-from pulumi import ComponentResource, ResourceOptions
+import pulumi
+from pulumi import ComponentResource, Output, ResourceOptions
 from pulumi_kubernetes.apps.v1 import Deployment, DeploymentSpecArgs
 from pulumi_kubernetes.core.v1 import (
     CapabilitiesArgs,
@@ -41,20 +42,14 @@ class ApiServerArgs:
         self,
         argo_server_ns: str,
         argo_workflows_ns: str,
-        fridge_api_admin: str,
-        fridge_api_password: str,
-        minio_url: str,
-        minio_access_key: str,
-        minio_secret_key: str,
+        config: pulumi.Config,
+        minio_url: Output[str],
         verify_tls: bool = True,
     ) -> None:
         self.argo_server_ns = argo_server_ns
         self.argo_workflows_ns = argo_workflows_ns
-        self.fridge_api_admin = fridge_api_admin
-        self.fridge_api_password = fridge_api_password
+        self.config = config
         self.minio_url = minio_url
-        self.minio_access_key = minio_access_key
-        self.minio_secret_key = minio_secret_key
         self.verify_tls = verify_tls
 
 
@@ -132,11 +127,13 @@ class ApiServer(ComponentResource):
             ),
             string_data={
                 "ARGO_SERVER_NS": args.argo_server_ns,
-                "FRIDGE_API_ADMIN": args.fridge_api_admin,
-                "FRIDGE_API_PASSWORD": args.fridge_api_password,
+                "FRIDGE_API_ADMIN": args.config.require_secret("fridge_api_admin"),
+                "FRIDGE_API_PASSWORD": args.config.require_secret(
+                    "fridge_api_password"
+                ),
                 "MINIO_URL": args.minio_url,
-                "MINIO_ACCESS_KEY": args.minio_access_key,
-                "MINIO_SECRET_KEY": args.minio_secret_key,
+                "MINIO_ACCESS_KEY": args.config.require_secret("minio_root_user"),
+                "MINIO_SECRET_KEY": args.config.require_secret("minio_root_password"),
                 "VERIFY_TLS": str(args.verify_tls),
             },
             opts=child_opts,
@@ -241,6 +238,7 @@ class ApiServer(ComponentResource):
                 name="fridge-api",
                 namespace=api_server_ns.metadata.name,
                 labels={"app": "fridge-api-server"},
+                # Azure specific annotations for internal load balancer
                 annotations={
                     "service.beta.kubernetes.io/azure-load-balancer-internal": "true",
                     "service.beta.kubernetes.io/azure-load-balancer-ipv4": "10.20.1.60/32",
@@ -249,7 +247,7 @@ class ApiServer(ComponentResource):
             spec=ServiceSpecArgs(
                 type="LoadBalancer",
                 selector=fridge_api_server.spec.template.metadata.labels,
-                load_balancer_source_ranges=["10.10.0.0/16"],
+                # load_balancer_source_ranges=[args.config.require("access_cluster_node_cidr")],
                 ports=[
                     ServicePortArgs(
                         protocol="TCP",
