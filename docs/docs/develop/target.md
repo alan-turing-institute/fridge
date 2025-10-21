@@ -1,113 +1,79 @@
+# Add a New Target
+
 FRIDGE is deployed to a kubernetes (k8s) cluster that must meet certain requirements
+
 - Cilium Container network Interface CNI # for network policy enforcement
 - Bring Your Own Key (BYOK) CSI Container Storage Interface
-!# other requirements outside of K8s requirements not listed here unless required
-!# code examples taken on 04/09/2025 from commit `dd60faff6f88a4e522332b0bb72e3f571c6de8d6`
-# first: add a new k8s_enviroment enum
-open `infra/fridge/enums/__init__.py`
-update the file like the example below
-```Python ln:4 title:infra/fridge/enums/__init__.py
-@unique
-class K8sEnvironment(Enum):
-	AKS = "AKS"
-	DAWN = "Dawn"
-	K3S = "K3s"
-	OKE = "OKE" #new addition
-```
-this is used later for making changes to how FRIDGE is deployed based on this value (also restricts to only valid options listed)
 
-# Storage Class
-FRIDGE of course needs storage to support it's functions, this storage is presented via a Storage Class this needs to support BYOK encryption for the volumes.
+## Define a new K8s environment
 
-some k8s providers come with a CSI that supports this in which case `infra/fridge/components/storage_classes.py` needs to be updated to make use of this CSI
+The targets are defined in an Enum object in`infra/fridge/enums/__init__.py`.
+These environments are used in flow control to make target specific changes.
+Add your target to the Enum like the examples here
 
-if your k8s provider doesn't have a CSI with BYOK encryption support then you can instead use longhorn and provide the worker nodes with the required disk for longhorn to make use of
-```python ln:55 title:infra/fridge/components/storage_classes.py
-case K8sEnvironment.DAWN:
-	longhorn_ns = Namespace(
-		"longhorn-system",
-		metadata=ObjectMetaArgs(
-			name="longhorn-system",
-			labels={} | PodSecurityStandard.PRIVILEGED.value,
-		),
-		opts=child_opts,
-	)
-
-	longhorn = Release(
-		"longhorn",
-		namespace=longhorn_ns.metadata.name,
-		chart="longhorn",version="1.9.0",
-		repository_opts=RepositoryOptsArgs(
-			repo="https://charts.longhorn.io",
-		),
-		# Add a toleration for the GPU node, to allow Longhorn to schedule pods/create volumes there
-		values={
-			"global": {
-"""... cut short for space"""
+```python
+{%
+    include "../../../infra/fridge/enums/__init__.py"
+    start="# START env enum"
+    end="# END"
+%}
 ```
 
-# Network Policies
-Some k8s providers might requires some tweaks to the cilium network policies Example Below
-```Python ln:7 title:infra/fridge/components/network_policies.py
-class NetworkPolicies(ComponentResource):
-	def __init__(
-		self, name: str, k8s_environment: K8sEnvironment,
-		opts=ResourceOptions
-	) -> None:
-		super().__init__("fridge:k8s:NetworkPolicies", name, {}, opts)
-		child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
+## Storage Class
 
-		match k8s_environment:
-			case K8sEnvironment.AKS:
-				# AKS uses Konnectivity to mediate some API/webhook traffic, and uses a different external DNS server
-				ConfigFile(
-					"network_policy_aks",
-					file="./k8s/cilium/aks.yaml",
-					opts=child_opts,
-				)
-case K8sEnvironment.DAWN:
-```
-you can see it referances a manifest `infra/fridge/k8s/aks.yaml` that should be deployed to support Konnectivity, these are CiliumNetworkPolicy Manifests which enabled the needed connectivity
+FRIDGE of course needs storage to support it's functions, this storage is presented via a [Storage Class](https://kubernetes.io/docs/concepts/storage/storage-classes/).
+Ideally this needs to support passing an key to encrypt volumes.
+This depends on the K8s implementations having a [CSI](https://kubernetes.io/docs/concepts/storage/volumes/#csi) that supports this.
+If your K8s implementation does not have a CSI capable of this, you can instead use longhorn.
 
-# Loadbalancer
-to be able to access the FRIDGE API outside of the cluster a Load balancer is use (not a hard requirement NodePort could be used but isn't best practice)
+Storage classes used by FRIDGE are defined, for each K8s environment, in `infra/fridge/components/storage_classes.py`
+Each target must define,
 
-most cloud providers have load balancer functionality, otherwise options like MetalLB, Kube-VIP, Cilium
+`storage_class`
+:   Storage class object for sensitive data.
+    Encrypted with a deployer-provider key or by Longhorn.
 
-these Load balancer IPs should only be accessible from the proxy node
+`standard_storage_name`
+:   String giving the name of a storage class for non-sensitive data.
 
-# other changes
-below are some examples of other changes to help further illustrate  how this can be done
+`standard_supports_rwm`
+:   Boolean indicating whether the storage class named `standard_storage_name` support read write many.
 
-###### base cilium install doesn't include Hubble UI
-```python ln:40 title:infra/fridge/__main__.py
-# Hubble UI
-# Interface for Cilium
-if k8s_environment == K8sEnvironment.AKS:
-	hubble_ui = ConfigFile(
-		"hubble-ui",
-		file="./k8s/hubble/hubble_ui.yaml",
-	)
+```python
+{%
+    include "../../../infra/fridge/components/storage_classes.py"
+    start="# START storage classes"
+    end="# END"
+%}
 ```
 
-###### add needed ingress nginx config
-```python ln:49 title:infra/firdge/__main__.py
-case K8sEnvironment.AKS | K8sEnvironment.K3S:
-	# Ingress NGINX (ingress provider)
-	ingress_nginx_ns = Namespace(
-		"ingress-nginx-ns",
-		metadata=ObjectMetaArgs(
-			name="ingress-nginx",
-			labels={} | PodSecurityStandard.RESTRICTED.value,
-		),
-	)
+## Network Policies
 
-	ingress_nginx = ConfigFile(
-		"ingress-nginx",
-		file="https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.1/deploy/static/provider/cloud/deploy.yaml",
-		opts=ResourceOptions(
-			depends_on=[ingress_nginx_ns],
-		),
-	)
-"""... other AKS specific config happens past this point
+Some K8s providers might requires some tweaks to the Cilium network policies.
+These are collected, similarly to storage classes in `infra/fridge/components/network_policies.py`.
+For example with AKS,
+
+```python
+{%
+    include "../../../infra/fridge/components/network_policies.py"
+    start="# START network policies"
+    end="# END"
+%}
+```
+
+Here the policy manifests are defined in `./k8s/cilium/aks.yaml`.
+
+## Service Changes
+
+You may also need to deploy extra services, or you may want to avoid replaces services which are already deployed.
+This may be most convenient to do in `infra/fridge/__main__.py`.
+
+For example, the Hubble interface for Cilium is not provisioned automatically on AKS, so it is deployed here,
+
+```python
+{%
+    include "../../../infra/fridge/__main__.py"
+    start="# START hubble"
+    end="# END"
+%}
 ```
