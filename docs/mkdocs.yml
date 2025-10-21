@@ -2,6 +2,7 @@
 site_name: FRIDGE
 repo_url: https://github.com/alan-turing-institute/fridge
 edit_uri: blob/main/docs/docs/
+site_url: https://alan-turing-institute.github.io/fridge
 copyright: >-
   © The contributors.
 
