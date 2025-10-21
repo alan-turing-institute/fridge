@@ -21,7 +21,7 @@ class WorkflowServerArgs:
 
 class WorkflowServer(ComponentResource):
     def __init__(
-        self, name: str, args: WorkflowServerArgs, opts: ResourceOptions = None
+        self, name: str, args: WorkflowServerArgs, opts: ResourceOptions | None = None
     ):
         super().__init__("fridge:WorkflowServer", name, None, opts=opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
