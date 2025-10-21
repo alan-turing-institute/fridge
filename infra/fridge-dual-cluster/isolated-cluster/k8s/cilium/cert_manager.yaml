@@ -102,14 +102,6 @@ spec:
         - ports:
             - port: "443"
               protocol: TCP
-    - toEndpoints:
-      - matchLabels:
-          k8s:app.kubernetes.io/name: ingress-nginx
-          k8s:io.kubernetes.pod.namespace: ingress-nginx
-      toPorts:
-        - ports:
-            - port: "80"
-              protocol: TCP
   ingress:
     - {}
 ---

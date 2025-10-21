@@ -23,16 +23,6 @@ spec:
     matchLabels:
       v1.min.io/tenant: argo-artifacts
   ingress:
-    # Allow ingress to web UI
-    # May want to adapt later to expose API
-    - fromEndpoints:
-        - matchLabels:
-            app.kubernetes.io/name: ingress-nginx
-            k8s:io.kubernetes.pod.namespace: ingress-nginx
-      toPorts:
-        - ports:
-            - port: "9090"
-              protocol: TCP
     # Allow ingress from MinIO operator namespaces
     - fromEndpoints:
         - matchLabels:
@@ -74,22 +64,3 @@ spec:
     # after deployment
     - toEntities:
         - kube-apiserver
----
-apiVersion: cilium.io/v2
-kind: CiliumNetworkPolicy
-metadata:
-  name: acme-http-solver
-  namespace: argo-artifacts
-spec:
-  endpointSelector:
-    matchLabels:
-      acme.cert-manager.io/http01-solver: "true"
-  ingress:
-    - fromEndpoints:
-      - matchLabels:
-          k8s:app.kubernetes.io/name: ingress-nginx
-          k8s:io.kubernetes.pod.namespace: ingress-nginx
-      toPorts:
-        - ports:
-          - port: "8089"
-            protocol: TCP
