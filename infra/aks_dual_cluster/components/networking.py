@@ -27,16 +27,45 @@ class Networking(ComponentResource):
             network_security_group_name=f"{name}-private-nsg",
             security_rules=[
                 network.SecurityRuleArgs(
-                    name="AllowK8sAPIInBound",
+                    name="AllowFridgeAPIFromAccessInBound",
                     priority=100,
                     direction=network.SecurityRuleDirection.INBOUND,
                     access=network.SecurityRuleAccess.ALLOW,
-                    protocol=network.SecurityRuleProtocol.ASTERISK,
+                    protocol=network.SecurityRuleProtocol.TCP,
                     source_port_range="*",
                     destination_port_range="443",
+                    source_address_prefix=args.config.require(
+                        "access_nodes_subnet_cidr"
+                    ),
+                    destination_address_prefix="*",
+                    description="Allow FRIDGE API access from access cluster API Proxy",
+                ),
+                network.SecurityRuleArgs(
+                    name="DenyAccessVNetInBound",
+                    priority=2000,
+                    direction=network.SecurityRuleDirection.INBOUND,
+                    access=network.SecurityRuleAccess.DENY,
+                    protocol=network.SecurityRuleProtocol.ASTERISK,
+                    source_port_range="*",
+                    destination_port_range="*",
                     source_address_prefix=args.config.require("access_vnet_cidr"),
                     destination_address_prefix="*",
-                )
+                    description="Deny all other traffic from access cluster VNet",
+                ),
+                # OUTBOUND RULES
+                # Deny all other outbound to access cluster
+                network.SecurityRuleArgs(
+                    name="DenyAccessClusterOutBound",
+                    priority=4000,
+                    direction=network.SecurityRuleDirection.OUTBOUND,
+                    access=network.SecurityRuleAccess.DENY,
+                    protocol=network.SecurityRuleProtocol.ASTERISK,
+                    source_port_range="*",
+                    destination_port_range="*",
+                    source_address_prefix="*",
+                    destination_address_prefix=args.config.require("access_vnet_cidr"),
+                    description="Deny all other outbound to access cluster",
+                ),
             ],
             opts=child_opts,
         )
@@ -48,37 +77,87 @@ class Networking(ComponentResource):
             network_security_group_name=f"{name}-access-nsg",
             security_rules=[
                 network.SecurityRuleArgs(
-                    name="AllowHTTPSInBound",
-                    priority=300,
+                    name="AllowHTTPSInbound",
+                    priority=100,
                     direction=network.SecurityRuleDirection.INBOUND,
                     access=network.SecurityRuleAccess.ALLOW,
                     protocol=network.SecurityRuleProtocol.ASTERISK,
                     source_port_range="*",
                     destination_port_range="443",
-                    source_address_prefix="*",
+                    source_address_prefix="Internet",
                     destination_address_prefix="*",
+                    description="Allow HTTPS traffic for Harbor",
                 ),
                 network.SecurityRuleArgs(
-                    name="AllowSSHServerInBound",
-                    priority=400,
+                    name="AllowSSHServerInbound",
+                    priority=200,
                     direction=network.SecurityRuleDirection.INBOUND,
                     access=network.SecurityRuleAccess.ALLOW,
                     protocol=network.SecurityRuleProtocol.TCP,
                     source_port_range="*",
                     destination_port_range="2500",
-                    source_address_prefix="*",
+                    source_address_prefix="Internet",
                     destination_address_prefix="*",
+                    description="Allow SSH traffic to API Proxy SSH server",
+                ),
+                # Allow Azure Load Balancer health probes
+                network.SecurityRuleArgs(
+                    name="AllowAzureLoadBalancerInbound",
+                    priority=400,
+                    direction=network.SecurityRuleDirection.INBOUND,
+                    access=network.SecurityRuleAccess.ALLOW,
+                    protocol=network.SecurityRuleProtocol.ASTERISK,
+                    source_port_range="*",
+                    destination_port_range="*",
+                    source_address_prefix="AzureLoadBalancer",
+                    destination_address_prefix="*",
+                    description="Allow Azure Load Balancer health probes",
                 ),
                 network.SecurityRuleArgs(
-                    name="DenyAllOtherInbound",
-                    priority=500,
+                    name="DenyPrivateClusterInBound",
+                    priority=1000,
                     direction=network.SecurityRuleDirection.INBOUND,
                     access=network.SecurityRuleAccess.DENY,
                     protocol=network.SecurityRuleProtocol.ASTERISK,
                     source_port_range="*",
                     destination_port_range="*",
-                    source_address_prefix="*",
+                    source_address_prefix=args.config.require("private_vnet_cidr"),
                     destination_address_prefix="*",
+                    description="Deny all other inbound from private cluster",
+                ),
+                # Outbound rules
+                # Note: this allows access to any node in the private cluster on port 443
+                # The specific IP addresses of the API server and FRIDGE API are not known in advance
+                # so we allow access to the whole subnet. In practice, only the API Proxy pod
+                # will be making these requests. This can potentially be tightened after FRIDGE deployment.
+                network.SecurityRuleArgs(
+                    name="AllowAPIProxyToPrivateOutBound",
+                    priority=100,
+                    direction=network.SecurityRuleDirection.OUTBOUND,
+                    access=network.SecurityRuleAccess.ALLOW,
+                    protocol=network.SecurityRuleProtocol.TCP,
+                    source_port_range="*",
+                    destination_port_ranges=[
+                        "443",
+                    ],
+                    source_address_prefix="*",
+                    destination_address_prefix=args.config.require(
+                        "private_nodes_subnet_cidr"
+                    ),
+                    description="Allow API Proxy to access k8s API and FRIDGE API in private cluster",
+                ),
+                # Deny all other outbound to private cluster (except allowed APIs)
+                network.SecurityRuleArgs(
+                    name="DenyPrivateClusterOutBound",
+                    priority=4000,
+                    direction=network.SecurityRuleDirection.OUTBOUND,
+                    access=network.SecurityRuleAccess.DENY,
+                    protocol=network.SecurityRuleProtocol.ASTERISK,
+                    source_port_range="*",
+                    destination_port_range="*",
+                    source_address_prefix="*",
+                    destination_address_prefix=args.config.require("private_vnet_cidr"),
+                    description="Deny all other outbound to private cluster",
                 ),
             ],
             opts=child_opts,
@@ -88,6 +167,7 @@ class Networking(ComponentResource):
         self.access_vnet = network.VirtualNetwork(
             f"{name}-access-vnet",
             resource_group_name=args.resource_group_name,
+            location=args.location,
             address_space=network.AddressSpaceArgs(
                 address_prefixes=[args.config.require("access_vnet_cidr")]
             ),
@@ -110,6 +190,7 @@ class Networking(ComponentResource):
         self.private_vnet = network.VirtualNetwork(
             f"{name}-private-vnet",
             resource_group_name=args.resource_group_name,
+            location=args.location,
             address_space=network.AddressSpaceArgs(
                 address_prefixes=[args.config.require("private_vnet_cidr")]
             ),
