@@ -8,6 +8,8 @@ from pulumi_kubernetes.core.v1 import (
     Namespace,
     PodSpecArgs,
     PodTemplateSpecArgs,
+    Secret,
+    SecretVolumeSourceArgs,
     Service,
     ServiceSpecArgs,
     VolumeArgs,
@@ -45,6 +47,20 @@ class PrivateAPIProxy(ComponentResource):
             opts=child_opts,
         )
 
+        self.ssh_key_secret = Secret(
+            "api-proxy-ssh-key-secret",
+            metadata=ObjectMetaArgs(
+                namespace=self.api_proxy_ns.metadata.name,
+            ),
+            string_data={
+                "authorized_keys": args.config.require("private_api_ssh_public_key"),
+            },
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(depends_on=[self.api_proxy_ns]),
+            ),
+        )
+
         self.api_proxy = Deployment(
             "api-proxy",
             metadata=ObjectMetaArgs(
@@ -68,14 +84,14 @@ class PrivateAPIProxy(ComponentResource):
                                 env=[
                                     EnvVarArgs(name="PUID", value="1000"),
                                     EnvVarArgs(name="PGID", value="1000"),
-                                    EnvVarArgs(name="PASSWORD_ACCESS", value="true"),
+                                    EnvVarArgs(name="PASSWORD_ACCESS", value="false"),
+                                    EnvVarArgs(
+                                        name="PUBLIC_KEY_FILE",
+                                        value="/pubkey/authorized_keys",
+                                    ),
                                     EnvVarArgs(name="SUDO_ACCESS", value="false"),
                                     EnvVarArgs(
                                         name="USER_NAME", value="fridgeoperator"
-                                    ),
-                                    EnvVarArgs(
-                                        name="USER_PASSWORD",
-                                        value=args.config.require("api_ssh_password"),
                                     ),
                                     EnvVarArgs(
                                         name="DOCKER_MODS",
@@ -86,7 +102,12 @@ class PrivateAPIProxy(ComponentResource):
                                     VolumeMountArgs(
                                         name="ssh-config",
                                         mount_path="/config",
-                                    )
+                                    ),
+                                    VolumeMountArgs(
+                                        name="ssh-public-key",
+                                        mount_path="/pubkey",
+                                        read_only=True,
+                                    ),
                                 ],
                             ),
                         ],
@@ -94,6 +115,12 @@ class PrivateAPIProxy(ComponentResource):
                             VolumeArgs(
                                 name="ssh-config",
                                 empty_dir={},
+                            ),
+                            VolumeArgs(
+                                name="ssh-public-key",
+                                secret=SecretVolumeSourceArgs(
+                                    secret_name=self.ssh_key_secret.metadata.name,
+                                ),
                             ),
                         ],
                     ),
