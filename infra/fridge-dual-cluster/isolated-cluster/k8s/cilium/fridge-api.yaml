@@ -36,6 +36,12 @@ spec:
         - ports:
           - port: "9000"
             protocol: TCP
+    - fromEntities:
+      - remote-node
+      toPorts:
+        - ports:
+          - port: "8000"
+            protocol: TCP
   egress:
     - toEndpoints:
       - matchLabels:
