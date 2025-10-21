@@ -131,11 +131,8 @@ api_server = components.ApiServer(
     args=components.ApiServerArgs(
         argo_server_ns=argo_workflows.argo_server_ns,
         argo_workflows_ns=argo_workflows.argo_workflows_ns,
-        fridge_api_admin=config.require_secret("fridge_api_admin"),
-        fridge_api_password=config.require_secret("fridge_api_password"),
+        config=config,
         minio_url=minio.minio_cluster_url,
-        minio_access_key=config.require_secret("minio_root_user"),
-        minio_secret_key=config.require_secret("minio_root_password"),
         verify_tls=tls_environment is TlsEnvironment.PRODUCTION,
     ),
     opts=ResourceOptions(
