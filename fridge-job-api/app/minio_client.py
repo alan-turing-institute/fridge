@@ -3,7 +3,7 @@ from fastapi.responses import StreamingResponse
 from minio import Minio, versioningconfig, commonconfig
 from io import BytesIO
 from minio.error import S3Error
-
+import os
 
 class MinioClient:
     def __init__(self, endpoint: str, access_key: str, secret_key: str):
@@ -69,6 +69,16 @@ class MinioClient:
                     "Content-Disposition": f'attachment; filename="{target_file}"'
                 },
             )
+        except S3Error as error:
+            return self.handle_minio_error(error)
+        except Exception as error:
+            return self.handle_500_error("Unable to get object from bucket")
+
+    # Copy object to ingress data
+    def copy_object(self, bucket, file_name, version=None):
+        base_dir = os.environ.get("MINIO_INGRESS_DATA_PATH", f"/workflow-ingress-data")
+        try:
+            self.client.get_object(bucket, file_name, f"{base_dir}/{file_name}", version)
         except S3Error as error:
             return self.handle_minio_error(error)
         except Exception as error:

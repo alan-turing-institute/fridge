@@ -381,6 +381,18 @@ async def get_object(
     return minio_client.get_object(bucket, file_name, target_file, version)
 
 
+@app.get("/object/pull/{file_name}", tags=["s3"])
+async def copy_object(
+    bucket: str,
+    file_name: str,
+    version: str = None,
+    verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
+        verify_request
+    ),
+):
+    return minio_client.copy_object(bucket, file_name, version)
+
+
 @app.post("/object/bucket", tags=["s3"])
 async def create_bucket(
     bucket_name: str,
