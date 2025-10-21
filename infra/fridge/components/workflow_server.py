@@ -1,6 +1,6 @@
 import pulumi
 from pulumi import ComponentResource, FileAsset, Output, ResourceOptions
-from pulumi_kubernetes.core.v1 import Namespace, Secret
+from pulumi_kubernetes.core.v1 import Namespace, Secret, PersistentVolume, PersistentVolumeSpecArgs, PersistentVolumeClaim, PersistentVolumeClaimSpecArgs
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 
@@ -115,6 +115,45 @@ class WorkflowServer(ComponentResource):
         ]
         if argo_sso_secret is not None:
             argo_depends_on.append(argo_sso_secret)
+
+        # Persistant volume for API to copy data to from minio
+        workflow_data_pv = PersistentVolume(
+            "fridge-api-server",
+            metadata=ObjectMetaArgs(
+                name="workflow-data",
+            ),
+            spec=PersistentVolumeClaimSpecArgs(
+                storage_class_name="longhorn",
+                persistnet_volume_reclaim_policy="Delete",
+                access_modes=["ReadWriteMany"],
+                capacity={
+                    "storage": "2Gi"
+                },
+            )
+        )
+
+        workflow_ingress_data_pvc = PersistentVolumeClaim(
+            "fridge-api-server",
+            metadata=ObjectMetaArgs(
+                name="workflow-data-ingress",
+                namespace=argo_server_ns.metadata.name,
+            ),
+            spec=PersistentVolumeSpecArgs(
+                volume_name=workflow_data_pv.metadata.name
+            )
+        )
+
+
+        workflow_egress_data_pvc = PersistentVolumeClaim(
+            "fridge-api-server",
+            metadata=ObjectMetaArgs(
+                name="workflow-data-egress",
+                namespace=argo_server_ns.metadata.name,
+            ),
+            spec=PersistentVolumeSpecArgs(
+                volume_name=workflow_data_pv.metadata.name
+            )
+        )
 
         argo_workflows = Chart(
             "argo-workflows",
