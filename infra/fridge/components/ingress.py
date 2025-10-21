@@ -54,6 +54,83 @@ class Ingress(ComponentResource):
                         child_opts, ResourceOptions(depends_on=ingress_nginx_ns)
                     ),
                 )
+
+            case K8sEnvironment.OKE:
+
+                # Ingress NGINX (ingress provider)
+                ingress_nginx_ns = Namespace(
+                    "ingress-nginx-ns",
+                    metadata=ObjectMetaArgs(
+                        name="ingress-nginx",
+                        labels={} | PodSecurityStandard.RESTRICTED.value,
+                    ),
+                )
+
+                ingress_nginx = Release(
+                    "ingress-nginx",
+                    args=ReleaseArgs(
+                        chart="ingress-nginx",
+                        version="4.13.2",
+                        skip_crds=False,
+                        repository_opts={
+                            "repo": "https://kubernetes.github.io/ingress-nginx"
+                        },
+                        namespace=ingress_nginx_ns.metadata.name,
+                        create_namespace=False,
+                        replace=True,
+                        values={
+                            "controller": {
+                                "admissionWebhooks": {"enabled": False},
+                                "service": {
+                                    "externalTrafficPolicy": "Local",
+                                    "annotations": {
+                                        "oci.oraclecloud.com/load-balancer-type": "lb",
+                                        "service.beta.kubernetes.io/oci-load-balancer-internal": "true",
+                                        "trigger": "reload1",
+                                    },
+                                },
+                            },
+                        },
+                    ),
+                    opts=ResourceOptions.merge(
+                        child_opts, ResourceOptions(depends_on=[ingress_nginx_ns])
+                    )
+                )
+                # ingress_nginx_ns = Namespace(
+                #     "ingress-nginx-ns",
+                #     metadata=ObjectMetaArgs(
+                #         name="ingress-nginx",
+                #         labels={} | PodSecurityStandard.RESTRICTED.value,
+                #     ),
+                #     opts=child_opts,
+                # )
+
+                # ingress_nginx = Release(
+                #     "ingress-nginx",
+                #     ReleaseArgs(
+                #         chart="ingress-nginx",
+                #         version="4.13.2",
+                #         repository_opts={
+                #             "repo": "https://kubernetes.github.io/ingress-nginx"
+                #         },
+                #         namespace=ingress_nginx_ns.metadata.name,
+                #         create_namespace=False,
+                #         values={
+                #             "controller": {
+                #                 "nodeSelector": {"kubernetes.io/os": "linux"},
+                #                 "service": {
+                #                     "externalTrafficPolicy": "Local",
+                #                     "annotations": {
+                #                         "oci.oraclecloud.com/load-balancer-type": "lb"
+                #                     },
+                #                 },
+                #             }
+                #         },
+                #     ),
+                #     opts=ResourceOptions.merge(
+                #         child_opts, ResourceOptions(depends_on=ingress_nginx_ns)
+                #     ),
+                # )
             case K8sEnvironment.DAWN:
                 # Dawn specific configuration
                 ingress_nginx_ns = Namespace.get("ingress-nginx-ns", "ingress-nginx")

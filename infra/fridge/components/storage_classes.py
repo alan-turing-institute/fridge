@@ -1,9 +1,9 @@
 from pulumi import ComponentResource, ResourceOptions
 from pulumi_kubernetes.core.v1 import Namespace
-from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
+from pulumi_kubernetes.meta.v1 import ObjectMetaArgs, ObjectMetaPatchArgs
 from pulumi_kubernetes.helm.v3 import Release
 from pulumi_kubernetes.helm.v4 import RepositoryOptsArgs
-from pulumi_kubernetes.storage.v1 import StorageClass
+from pulumi_kubernetes.storage.v1 import StorageClass, CSIDriverPatch, CSIDriverSpecPatchArgs
 
 from enums import K8sEnvironment, PodSecurityStandard
 
@@ -17,11 +17,17 @@ class StorageClassesArgs:
         azure_disk_encryption_set: str | None = None,
         azure_resource_group: str | None = None,
         azure_subscription_id: str | None = None,
+        oracle_kms_key_id: str | None = None,
+        oracle_region: str | None = None,
+        oracle_ffs_volume_subnet_id: str | None = None,
     ) -> None:
         self.k8s_environment = k8s_environment
         self.azure_disk_encryption_set = azure_disk_encryption_set
         self.azure_resource_group = azure_resource_group
         self.azure_subscription_id = azure_subscription_id
+        self.oracle_kms_key_id = oracle_kms_key_id
+        self.oracle_region = oracle_region
+        self.oracle_ffs_volume_subnet_id = oracle_ffs_volume_subnet_id
 
 
 class StorageClasses(ComponentResource):
@@ -109,6 +115,41 @@ class StorageClasses(ComponentResource):
                         child_opts,
                         ResourceOptions(depends_on=[longhorn]),
                     ),
+                )
+
+                standard_storage_name = storage_class.metadata.name
+                standard_supports_rwm = True
+            case K8sEnvironment.OKE:
+                # Patch the OCI CSI Driver to set the fsGroupPolicy to "File", which is required for ReadWriteMany support
+                # fixes issues with pods not starting due to permission issues
+                # oci_drive_patch = CSIDriverPatch(
+                #     "oci-csi-driver-patch",
+                #     metadata=ObjectMetaPatchArgs(name="fss.csi.oraclecloud.com"),
+                #     spec=CSIDriverSpecPatchArgs(
+                #         fs_group_policy="file",
+                #     ),
+                #     opts=child_opts,
+                # )
+                storage_class = StorageClass(
+                    "fridge_storage_class",
+                    allow_volume_expansion=True,
+                    metadata=ObjectMetaArgs(
+                        name=STORAGE_CLASS_NAME,
+                        annotations={
+                            "storageclass.kubernetes.io/is-default-class": "true"
+                        },
+                    ),
+                    parameters={
+                        #"attachment-type": "paravirtualized",
+                        #"kms-key-id": args.oracle_kms_key_id,
+                        **({"availabilityDomain": f"{args.oracle_region}-AD-1"} if args.oracle_region else {}),
+                        **({"kmsKeyOcid": args.oracle_kms_key_id} if args.oracle_kms_key_id else {}),
+                        **({"mountTargetOcid": args.oracle_ffs_volume_subnet_id} if args.oracle_ffs_volume_subnet_id else {}),
+                    },
+                    provisioner="fss.csi.oraclecloud.com",
+                    reclaim_policy="Delete",
+                    volume_binding_mode="Immediate",
+                    opts=child_opts,
                 )
 
                 standard_storage_name = storage_class.metadata.name

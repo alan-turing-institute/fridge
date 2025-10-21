@@ -1,6 +1,6 @@
 import pulumi
 
-from pulumi import ResourceOptions
+from pulumi import ResourceOptions, Output
 from pulumi_kubernetes.batch.v1 import CronJobPatch, CronJobSpecPatchArgs
 from pulumi_kubernetes.core.v1 import NamespacePatch
 from pulumi_kubernetes.meta.v1 import ObjectMetaPatchArgs
@@ -92,6 +92,21 @@ storage_classes = components.StorageClasses(
             if k8s_environment is K8sEnvironment.AKS
             else None
         ),
+        oracle_kms_key_id=(
+            config.require("oracle_kms_key_id")
+            if k8s_environment is K8sEnvironment.OKE
+            else None
+        ),
+        oracle_region=(
+            config.require("oracle_region")
+            if k8s_environment is K8sEnvironment.OKE
+            else None
+        ),
+        oracle_ffs_volume_subnet_id=(
+            config.require("oracle_ffs_volume_subnet_id")
+            if k8s_environment is K8sEnvironment.OKE
+            else None
+        ),
     ),
 )
 
@@ -118,7 +133,7 @@ minio = components.ObjectStorage(
 )
 
 # Argo Workflows
-enable_sso = k8s_environment is not K8sEnvironment.K3S
+enable_sso = k8s_environment is not K8sEnvironment.K3S and k8s_environment is not K8sEnvironment.OKE
 
 argo_workflows = components.WorkflowServer(
     "argo-workflows",
@@ -192,7 +207,7 @@ resources = [
     minio,
     storage_classes,
 ]
-
+"""
 network_policies = components.NetworkPolicies(
     name=f"{stack_name}-network-policies",
     k8s_environment=k8s_environment,
@@ -200,6 +215,7 @@ network_policies = components.NetworkPolicies(
         depends_on=resources,
     ),
 )
+"""
 
 # Pulumi exports
 pulumi.export("argo_fqdn", argo_workflows.argo_fqdn)
