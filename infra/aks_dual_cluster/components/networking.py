@@ -20,11 +20,11 @@ class Networking(ComponentResource):
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
         # Create NSGs for each cluster
-        self.private_nsg = network.NetworkSecurityGroup(
-            f"{name}-private-nsg",
+        self.isolated_nsg = network.NetworkSecurityGroup(
+            f"{name}-isolated-nsg",
             resource_group_name=args.resource_group_name,
             location=args.location,
-            network_security_group_name=f"{name}-private-nsg",
+            network_security_group_name=f"{name}-isolated-nsg",
             security_rules=[
                 network.SecurityRuleArgs(
                     name="AllowFridgeAPIFromAccessInBound",
@@ -114,24 +114,24 @@ class Networking(ComponentResource):
                     description="Allow Azure Load Balancer health probes",
                 ),
                 network.SecurityRuleArgs(
-                    name="DenyPrivateClusterInBound",
+                    name="DenyIsolatedClusterInBound",
                     priority=1000,
                     direction=network.SecurityRuleDirection.INBOUND,
                     access=network.SecurityRuleAccess.DENY,
                     protocol=network.SecurityRuleProtocol.ASTERISK,
                     source_port_range="*",
                     destination_port_range="*",
-                    source_address_prefix=args.config.require("private_vnet_cidr"),
+                    source_address_prefix=args.config.require("Isolated_vnet_cidr"),
                     destination_address_prefix="*",
-                    description="Deny all other inbound from private cluster",
+                    description="Deny all other inbound from Isolated cluster",
                 ),
                 # Outbound rules
-                # Note: this allows access to any node in the private cluster on port 443
+                # Note: this allows access to any node in the Isolated cluster on port 443
                 # The specific IP addresses of the API server and FRIDGE API are not known in advance
                 # so we allow access to the whole subnet. In practice, only the API Proxy pod
                 # will be making these requests. This can potentially be tightened after FRIDGE deployment.
                 network.SecurityRuleArgs(
-                    name="AllowAPIProxyToPrivateOutBound",
+                    name="AllowAPIProxyToIsolatedOutBound",
                     priority=100,
                     direction=network.SecurityRuleDirection.OUTBOUND,
                     access=network.SecurityRuleAccess.ALLOW,
@@ -142,13 +142,13 @@ class Networking(ComponentResource):
                     ],
                     source_address_prefix="*",
                     destination_address_prefix=args.config.require(
-                        "private_nodes_subnet_cidr"
+                        "isolated_nodes_subnet_cidr"
                     ),
-                    description="Allow API Proxy to access k8s API and FRIDGE API in private cluster",
+                    description="Allow API Proxy to access k8s API and FRIDGE API in Isolated cluster",
                 ),
-                # Deny all other outbound to private cluster (except allowed APIs)
+                # Deny all other outbound to Isolated cluster (except allowed APIs)
                 network.SecurityRuleArgs(
-                    name="DenyPrivateClusterOutBound",
+                    name="DenyIsolatedClusterOutBound",
                     priority=4000,
                     direction=network.SecurityRuleDirection.OUTBOUND,
                     access=network.SecurityRuleAccess.DENY,
@@ -156,8 +156,10 @@ class Networking(ComponentResource):
                     source_port_range="*",
                     destination_port_range="*",
                     source_address_prefix="*",
-                    destination_address_prefix=args.config.require("private_vnet_cidr"),
-                    description="Deny all other outbound to private cluster",
+                    destination_address_prefix=args.config.require(
+                        "Isolated_vnet_cidr"
+                    ),
+                    description="Deny all other outbound to Isolated cluster",
                 ),
             ],
             opts=child_opts,
@@ -187,34 +189,34 @@ class Networking(ComponentResource):
             ),
         )
 
-        self.private_vnet = network.VirtualNetwork(
-            f"{name}-private-vnet",
+        self.isolated_vnet = network.VirtualNetwork(
+            f"{name}-isolated-vnet",
             resource_group_name=args.resource_group_name,
             location=args.location,
             address_space=network.AddressSpaceArgs(
-                address_prefixes=[args.config.require("private_vnet_cidr")]
+                address_prefixes=[args.config.require("isolated_vnet_cidr")]
             ),
             opts=child_opts,
         )
 
-        self.private_nodes = network.Subnet(
-            f"{name}-private-nodes",
+        self.isolated_nodes = network.Subnet(
+            f"{name}-isolated-nodes",
             resource_group_name=args.resource_group_name,
-            virtual_network_name=self.private_vnet.name,
-            address_prefix=args.config.require("private_nodes_subnet_cidr"),
+            virtual_network_name=self.isolated_vnet.name,
+            address_prefix=args.config.require("Isolated_nodes_subnet_cidr"),
             network_security_group=network.NetworkSecurityGroupArgs(
-                id=self.private_nsg.id
+                id=self.isolated_nsg.id
             ),
             opts=ResourceOptions.merge(
-                child_opts, ResourceOptions(depends_on=[self.private_vnet])
+                child_opts, ResourceOptions(depends_on=[self.isolated_vnet])
             ),
         )
 
         # Set up VNet peering between the two VNets so they can communicate
-        self.private_to_access_peering = network.VirtualNetworkPeering(
-            f"{name}-private-to-access-peering",
+        self.isolated_to_access_peering = network.VirtualNetworkPeering(
+            f"{name}-isolated-to-access-peering",
             resource_group_name=args.resource_group_name,
-            virtual_network_name=self.private_vnet.name,
+            virtual_network_name=self.isolated_vnet.name,
             remote_virtual_network=network.SubResourceArgs(id=self.access_vnet.id),
             allow_virtual_network_access=True,
             allow_forwarded_traffic=False,
@@ -224,8 +226,8 @@ class Networking(ComponentResource):
                 child_opts,
                 ResourceOptions(
                     depends_on=[
-                        self.private_vnet,
-                        self.private_nodes,
+                        self.isolated_vnet,
+                        self.isolated_nodes,
                         self.access_vnet,
                         self.access_nodes,
                     ]
@@ -233,11 +235,11 @@ class Networking(ComponentResource):
             ),
         )
 
-        self.access_to_private_peering = network.VirtualNetworkPeering(
-            f"{name}-access-to-private-peering",
+        self.access_to_isolated_peering = network.VirtualNetworkPeering(
+            f"{name}-access-to-isolated-peering",
             resource_group_name=args.resource_group_name,
             virtual_network_name=self.access_vnet.name,
-            remote_virtual_network=network.SubResourceArgs(id=self.private_vnet.id),
+            remote_virtual_network=network.SubResourceArgs(id=self.isolated_vnet.id),
             allow_virtual_network_access=True,
             allow_forwarded_traffic=False,
             allow_gateway_transit=False,
@@ -246,8 +248,8 @@ class Networking(ComponentResource):
                 child_opts,
                 ResourceOptions(
                     depends_on=[
-                        self.private_vnet,
-                        self.private_nodes,
+                        self.isolated_vnet,
+                        self.isolated_nodes,
                         self.access_vnet,
                         self.access_nodes,
                     ]
@@ -257,18 +259,18 @@ class Networking(ComponentResource):
 
         self.access_vnet_id = self.access_vnet.id
         self.access_nodes_subnet_id = self.access_nodes.id
-        self.private_vnet_id = self.private_vnet.id
-        self.private_nodes_subnet_id = self.private_nodes.id
+        self.isolated_vnet_id = self.isolated_vnet.id
+        self.isolated_nodes_subnet_id = self.isolated_nodes.id
 
         self.register_outputs(
             {
                 "access_vnet": self.access_vnet,
-                "private_vnet": self.private_vnet,
+                "isolated_vnet": self.isolated_vnet,
                 "access_nodes_subnet": self.access_nodes,
-                "private_nodes_subnet": self.private_nodes,
-                "access_to_private_peering": self.access_to_private_peering,
-                "private_to_access_peering": self.private_to_access_peering,
+                "isolated_nodes_subnet": self.isolated_nodes,
+                "access_to_isolated_peering": self.access_to_isolated_peering,
+                "isolated_to_access_peering": self.isolated_to_access_peering,
                 "access_nsg": self.access_nsg,
-                "private_nsg": self.private_nsg,
+                "isolated_nsg": self.isolated_nsg,
             }
         )
