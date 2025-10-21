@@ -10,8 +10,8 @@ copyright: >-
 nav:
   - Home: 'index.md'
   - Deploy Guide:
-    - Prerequisites: 'deploy_guide/prerequisites.md'
-    - Deploy Infrastructure: 'deploy_guide/deploy_infrastructure.md'
-    - Deploy Services: 'deploy_guide/deploy_services.md'
+    - Prerequisites: 'deploy/prerequisites.md'
+    - Deploy Infrastructure: 'deploy/infrastructure.md'
+    - Deploy Services: 'deploy/services.md'
 markdown_extensions:
   - admonition
