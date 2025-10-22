@@ -117,7 +117,7 @@ minio = components.ObjectStorage(
     ),
 )
 
-# MinIO configuration job
+# MinIO configuration
 minio_config = components.MinioConfigJob(
     name=f"{stack_name}-minio-config-job",
     args=components.MinioConfigArgs(
