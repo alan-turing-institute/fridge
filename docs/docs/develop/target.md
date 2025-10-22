@@ -21,7 +21,7 @@ Add your target to the Enum like the examples here
 
 ## Storage Class
 
-FRIDGE needs storage to support its functions. 
+FRIDGE needs storage to support its functions.
 This storage is presented via a [Storage Class](https://kubernetes.io/docs/concepts/storage/storage-classes/).
 Ideally this needs to support passing a key to encrypt volumes.
 This depends on the K8s implementations having a [CSI](https://kubernetes.io/docs/concepts/storage/volumes/#csi) that supports this.
