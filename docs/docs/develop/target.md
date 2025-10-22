@@ -38,7 +38,7 @@ Each target must define,
 :   String giving the name of a storage class for non-sensitive data.
 
 `standard_supports_rwm`
-:   Boolean indicating whether the storage class named `standard_storage_name` support `ReadWriteMany`.
+:   Boolean indicating whether the storage class named `standard_storage_name` support [`ReadWriteMany`](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes).
 
 ```python
 {%
