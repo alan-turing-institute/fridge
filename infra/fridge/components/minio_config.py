@@ -19,17 +19,6 @@ from pulumi_kubernetes.core.v1 import (
 from pulumi_kubernetes.helm.v4 import Chart
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 
-
-def load_policy(name: str) -> str:
-    """
-    Load a policy from the policies directory.
-    """
-    with open(
-        os.path.join(os.path.dirname(__file__), "minio_policies", name), "r"
-    ) as f:
-        return f.read()
-
-
 class MinioConfigArgs:
     def __init__(
         self, minio_tenant_ns: Namespace, minio_tenant: Chart, minio_credentials: dict
