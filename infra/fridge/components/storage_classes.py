@@ -113,10 +113,12 @@ class StorageClasses(ComponentResource):
 
                 standard_storage_name = storage_class.metadata.name
                 standard_supports_rwm = True
+            # START storage classes
             case K8sEnvironment.K3S:
                 storage_class = StorageClass.get("fridge-storage-class", "local-path")
                 standard_storage_name = storage_class.metadata.name
                 standard_supports_rwm = False
+            # END
 
         self.encrypted_storage_class = storage_class
         self.standard_storage_name = standard_storage_name

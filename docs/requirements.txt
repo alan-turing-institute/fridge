@@ -4,6 +4,8 @@
 #
 #    pip-compile
 #
+bracex==2.6
+    # via wcmatch
 click==8.3.0
     # via mkdocs
 ghp-import==2.1.0
@@ -21,9 +23,13 @@ mergedeep==1.3.4
     #   mkdocs
     #   mkdocs-get-deps
 mkdocs==1.6.1
-    # via -r requirements.in
+    # via
+    #   -r requirements.in
+    #   mkdocs-include-markdown-plugin
 mkdocs-get-deps==0.2.0
     # via mkdocs
+mkdocs-include-markdown-plugin==7.2.0
+    # via -r requirements.in
 packaging==25.0
     # via mkdocs
 pathspec==0.12.1
@@ -43,3 +49,5 @@ six==1.17.0
     # via python-dateutil
 watchdog==6.0.0
     # via mkdocs
+wcmatch==10.1
+    # via mkdocs-include-markdown-plugin

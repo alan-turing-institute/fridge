@@ -32,6 +32,7 @@ except ValueError:
         f"Supported values are {', '.join([item.value for item in K8sEnvironment])}."
     )
 
+# START hubble
 # Hubble UI
 # Interface for Cilium
 if k8s_environment == K8sEnvironment.AKS:
@@ -39,6 +40,7 @@ if k8s_environment == K8sEnvironment.AKS:
         "hubble-ui",
         file="./k8s/hubble/hubble_ui.yaml",
     )
+# END
 
 ingress_nginx = components.Ingress(
     "ingress-nginx",
