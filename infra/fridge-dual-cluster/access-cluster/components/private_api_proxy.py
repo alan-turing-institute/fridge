@@ -1,7 +1,10 @@
 import pulumi
+from pathlib import Path
 from pulumi import ComponentResource, ResourceOptions
 from pulumi_kubernetes.apps.v1 import Deployment, DeploymentSpecArgs
 from pulumi_kubernetes.core.v1 import (
+    ConfigMap,
+    ConfigMapVolumeSourceArgs,
     ContainerArgs,
     ContainerPortArgs,
     EnvVarArgs,
@@ -61,6 +64,19 @@ class PrivateAPIProxy(ComponentResource):
             ),
         )
 
+        script_path = Path(__file__).parent / "scripts" / "ssh_config.sh"
+
+        self.api_proxy_config_script = ConfigMap(
+            "api-proxy-config-script",
+            metadata=ObjectMetaArgs(
+                namespace=self.api_proxy_ns.metadata.name,
+            ),
+            data={
+                "setup_ssh_server.sh": script_path.read_text(),
+            },
+            opts=child_opts,
+        )
+
         self.api_proxy = Deployment(
             "api-proxy",
             metadata=ObjectMetaArgs(
@@ -93,10 +109,8 @@ class PrivateAPIProxy(ComponentResource):
                                     EnvVarArgs(
                                         name="USER_NAME", value="fridgeoperator"
                                     ),
-                                    EnvVarArgs(
-                                        name="DOCKER_MODS",
-                                        value="linuxserver/mods:openssh-server-ssh-tunnel",
-                                    ),
+                                    EnvVarArgs(name="LOG_STDOUT", value="true"),
+                                    EnvVarArgs(name="SHELL_NOLOGIN", value="true"),
                                 ],
                                 volume_mounts=[
                                     VolumeMountArgs(
@@ -106,6 +120,11 @@ class PrivateAPIProxy(ComponentResource):
                                     VolumeMountArgs(
                                         name="ssh-public-key",
                                         mount_path="/pubkey",
+                                        read_only=True,
+                                    ),
+                                    VolumeMountArgs(
+                                        name="setup-script",
+                                        mount_path="/custom-cont-init.d/",
                                         read_only=True,
                                     ),
                                 ],
@@ -120,6 +139,12 @@ class PrivateAPIProxy(ComponentResource):
                                 name="ssh-public-key",
                                 secret=SecretVolumeSourceArgs(
                                     secret_name=self.ssh_key_secret.metadata.name,
+                                ),
+                            ),
+                            VolumeArgs(
+                                name="setup-script",
+                                config_map=ConfigMapVolumeSourceArgs(
+                                    name=self.api_proxy_config_script.metadata.name,
                                 ),
                             ),
                         ],
