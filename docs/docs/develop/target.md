@@ -7,7 +7,7 @@ FRIDGE is deployed to a Kubernetes (k8s) cluster that must meet certain requirem
 
 ## Define a new K8s environment
 
-The targets are defined in an Enum object in`infra/fridge/enums/__init__.py`.
+The targets are defined in an Enum object in `infra/fridge/enums/__init__.py`.
 These environments are used in flow control to make target specific changes.
 Add your target to the Enum like the examples here
 
