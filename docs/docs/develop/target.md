@@ -1,6 +1,6 @@
 # Add a New Target
 
-FRIDGE is deployed to a kubernetes (k8s) cluster that must meet certain requirements
+FRIDGE is deployed to a Kubernetes (k8s) cluster that must meet certain requirements
 
 - Cilium Container network Interface CNI # for network policy enforcement
 - Bring Your Own Key (BYOK) CSI Container Storage Interface
@@ -21,10 +21,11 @@ Add your target to the Enum like the examples here
 
 ## Storage Class
 
-FRIDGE of course needs storage to support it's functions, this storage is presented via a [Storage Class](https://kubernetes.io/docs/concepts/storage/storage-classes/).
-Ideally this needs to support passing an key to encrypt volumes.
+FRIDGE needs storage to support its functions. 
+This storage is presented via a [Storage Class](https://kubernetes.io/docs/concepts/storage/storage-classes/).
+Ideally this needs to support passing a key to encrypt volumes.
 This depends on the K8s implementations having a [CSI](https://kubernetes.io/docs/concepts/storage/volumes/#csi) that supports this.
-If your K8s implementation does not have a CSI capable of this, you can instead use longhorn.
+If your K8s implementation does not have a CSI capable of this, you can instead use Longhorn.
 
 Storage classes used by FRIDGE are defined, for each K8s environment, in `infra/fridge/components/storage_classes.py`
 Each target must define,
@@ -37,7 +38,7 @@ Each target must define,
 :   String giving the name of a storage class for non-sensitive data.
 
 `standard_supports_rwm`
-:   Boolean indicating whether the storage class named `standard_storage_name` support read write many.
+:   Boolean indicating whether the storage class named `standard_storage_name` support `ReadWriteMany`.
 
 ```python
 {%
@@ -49,7 +50,7 @@ Each target must define,
 
 ## Network Policies
 
-Some K8s providers might requires some tweaks to the Cilium network policies.
+Some K8s providers might require some tweaks to the Cilium network policies.
 These are collected, similarly to storage classes in `infra/fridge/components/network_policies.py`.
 For example with AKS,
 
@@ -65,7 +66,7 @@ Here the policy manifests are defined in `./k8s/cilium/aks.yaml`.
 
 ## Service Changes
 
-You may also need to deploy extra services, or you may want to avoid replaces services which are already deployed.
+You may also need to deploy extra services, or you may want to avoid replacing services which are already deployed.
 This may be most convenient to do in `infra/fridge/__main__.py`.
 
 For example, the Hubble interface for Cilium is not provisioned automatically on AKS, so it is deployed here,
