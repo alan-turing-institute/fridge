@@ -5,7 +5,7 @@ This process includes configuring for various components such as Argo Workflows,
 It does not deploy the Kubernetes cluster itself; instead, it assumes that a Kubernetes cluster is already available.
 
 !!! note
-    To read about deploying the Kubernetes cluster see [Deploy Infrastructure](deploy_infrastructure.md).
+    To read about deploying the Kubernetes cluster see [Deploy Infrastructure](./infrastructure.md).
 
 !!! warning
     Container-based Kubernetes environments such as K3d or Kind are not supported, as Longhorn is not compatible with those environments.
