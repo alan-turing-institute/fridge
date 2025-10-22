@@ -35,7 +35,7 @@ jobs:
         uses: actions/upload-pages-artifact@v4
         with:
           path: ./docs/site/
-          name: site
+          name: github-pages
   deploy:
     needs: build
     if: github.event_name != 'pull_request' && github.ref_name == 'main'
