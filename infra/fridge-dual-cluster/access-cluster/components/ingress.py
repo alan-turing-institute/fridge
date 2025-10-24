@@ -23,7 +23,7 @@ class Ingress(ComponentResource):
         k8s_environment = args.k8s_environment
 
         match k8s_environment:
-            case K8sEnvironment.AKS | K8sEnvironment.K3S:
+            case K8sEnvironment.AKS | K8sEnvironment.K3S | K8sEnvironment.DAWN:
                 ingress_nginx_ns = Namespace(
                     "ingress-nginx-ns",
                     metadata=ObjectMetaArgs(
@@ -65,10 +65,10 @@ class Ingress(ComponentResource):
                         child_opts, ResourceOptions(depends_on=ingress_nginx_ns)
                     ),
                 )
-            case K8sEnvironment.DAWN:
-                # Dawn specific configuration
-                ingress_nginx_ns = Namespace.get("ingress-nginx-ns", "ingress-nginx")
-                ingress_nginx = Release.get("ingress-nginx", "ingress-nginx")
+            # case K8sEnvironment.DAWN:
+            #     # Dawn specific configuration
+            #     ingress_nginx_ns = Namespace.get("ingress-nginx-ns", "ingress-nginx")
+            #     ingress_nginx = Release.get("ingress-nginx", "ingress-nginx")
 
         controller_name = Output.concat(
             ingress_nginx_ns.metadata.name,
