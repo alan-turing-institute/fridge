@@ -1,0 +1,276 @@
+import pulumi
+from pulumi import ComponentResource, ResourceOptions
+from pulumi_azure_native import network
+
+
+class NetworkingArgs:
+    def __init__(
+        self, config: pulumi.config.Config, resource_group_name: str, location: str
+    ) -> None:
+        self.config = config
+        self.resource_group_name = resource_group_name
+        self.location = location
+
+
+class Networking(ComponentResource):
+    def __init__(
+        self, name: str, args: NetworkingArgs, opts: ResourceOptions | None = None
+    ):
+        super().__init__("fridge_aks:Networking", name, {}, opts)
+        child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
+
+        # Create NSGs for each cluster
+        self.isolated_nsg = network.NetworkSecurityGroup(
+            f"{name}-isolated-nsg",
+            resource_group_name=args.resource_group_name,
+            location=args.location,
+            network_security_group_name=f"{name}-isolated-nsg",
+            security_rules=[
+                network.SecurityRuleArgs(
+                    name="AllowFridgeAPIFromAccessInBound",
+                    priority=100,
+                    direction=network.SecurityRuleDirection.INBOUND,
+                    access=network.SecurityRuleAccess.ALLOW,
+                    protocol=network.SecurityRuleProtocol.TCP,
+                    source_port_range="*",
+                    destination_port_range="443",
+                    source_address_prefix=args.config.require(
+                        "access_nodes_subnet_cidr"
+                    ),
+                    destination_address_prefix="*",
+                    description="Allow FRIDGE API access from access cluster API Proxy",
+                ),
+                network.SecurityRuleArgs(
+                    name="DenyAccessVNetInBound",
+                    priority=2000,
+                    direction=network.SecurityRuleDirection.INBOUND,
+                    access=network.SecurityRuleAccess.DENY,
+                    protocol=network.SecurityRuleProtocol.ASTERISK,
+                    source_port_range="*",
+                    destination_port_range="*",
+                    source_address_prefix=args.config.require("access_vnet_cidr"),
+                    destination_address_prefix="*",
+                    description="Deny all other traffic from access cluster VNet",
+                ),
+                # OUTBOUND RULES
+                # Deny all other outbound to access cluster
+                network.SecurityRuleArgs(
+                    name="DenyAccessClusterOutBound",
+                    priority=4000,
+                    direction=network.SecurityRuleDirection.OUTBOUND,
+                    access=network.SecurityRuleAccess.DENY,
+                    protocol=network.SecurityRuleProtocol.ASTERISK,
+                    source_port_range="*",
+                    destination_port_range="*",
+                    source_address_prefix="*",
+                    destination_address_prefix=args.config.require("access_vnet_cidr"),
+                    description="Deny all other outbound to access cluster",
+                ),
+            ],
+            opts=child_opts,
+        )
+
+        self.access_nsg = network.NetworkSecurityGroup(
+            f"{name}-access-nsg",
+            resource_group_name=args.resource_group_name,
+            location=args.location,
+            network_security_group_name=f"{name}-access-nsg",
+            security_rules=[
+                network.SecurityRuleArgs(
+                    name="AllowHTTPSInbound",
+                    priority=100,
+                    direction=network.SecurityRuleDirection.INBOUND,
+                    access=network.SecurityRuleAccess.ALLOW,
+                    protocol=network.SecurityRuleProtocol.ASTERISK,
+                    source_port_range="*",
+                    destination_port_range="443",
+                    source_address_prefix="Internet",
+                    destination_address_prefix="*",
+                    description="Allow HTTPS traffic for Harbor",
+                ),
+                network.SecurityRuleArgs(
+                    name="AllowSSHServerInbound",
+                    priority=200,
+                    direction=network.SecurityRuleDirection.INBOUND,
+                    access=network.SecurityRuleAccess.ALLOW,
+                    protocol=network.SecurityRuleProtocol.TCP,
+                    source_port_range="*",
+                    destination_port_range="2500",
+                    source_address_prefix="Internet",
+                    destination_address_prefix="*",
+                    description="Allow SSH traffic to API Proxy SSH server",
+                ),
+                # Allow Azure Load Balancer health probes
+                network.SecurityRuleArgs(
+                    name="AllowAzureLoadBalancerInbound",
+                    priority=400,
+                    direction=network.SecurityRuleDirection.INBOUND,
+                    access=network.SecurityRuleAccess.ALLOW,
+                    protocol=network.SecurityRuleProtocol.ASTERISK,
+                    source_port_range="*",
+                    destination_port_range="*",
+                    source_address_prefix="AzureLoadBalancer",
+                    destination_address_prefix="*",
+                    description="Allow Azure Load Balancer health probes",
+                ),
+                network.SecurityRuleArgs(
+                    name="DenyIsolatedClusterInBound",
+                    priority=1000,
+                    direction=network.SecurityRuleDirection.INBOUND,
+                    access=network.SecurityRuleAccess.DENY,
+                    protocol=network.SecurityRuleProtocol.ASTERISK,
+                    source_port_range="*",
+                    destination_port_range="*",
+                    source_address_prefix=args.config.require("Isolated_vnet_cidr"),
+                    destination_address_prefix="*",
+                    description="Deny all other inbound from Isolated cluster",
+                ),
+                # Outbound rules
+                # Note: this allows access to any node in the Isolated cluster on port 443
+                # The specific IP addresses of the API server and FRIDGE API are not known in advance
+                # so we allow access to the whole subnet. In practice, only the API Proxy pod
+                # will be making these requests. This can potentially be tightened after FRIDGE deployment.
+                network.SecurityRuleArgs(
+                    name="AllowAPIProxyToIsolatedOutBound",
+                    priority=100,
+                    direction=network.SecurityRuleDirection.OUTBOUND,
+                    access=network.SecurityRuleAccess.ALLOW,
+                    protocol=network.SecurityRuleProtocol.TCP,
+                    source_port_range="*",
+                    destination_port_ranges=[
+                        "443",
+                    ],
+                    source_address_prefix="*",
+                    destination_address_prefix=args.config.require(
+                        "isolated_nodes_subnet_cidr"
+                    ),
+                    description="Allow API Proxy to access k8s API and FRIDGE API in Isolated cluster",
+                ),
+                # Deny all other outbound to Isolated cluster (except allowed APIs)
+                network.SecurityRuleArgs(
+                    name="DenyIsolatedClusterOutBound",
+                    priority=4000,
+                    direction=network.SecurityRuleDirection.OUTBOUND,
+                    access=network.SecurityRuleAccess.DENY,
+                    protocol=network.SecurityRuleProtocol.ASTERISK,
+                    source_port_range="*",
+                    destination_port_range="*",
+                    source_address_prefix="*",
+                    destination_address_prefix=args.config.require(
+                        "Isolated_vnet_cidr"
+                    ),
+                    description="Deny all other outbound to Isolated cluster",
+                ),
+            ],
+            opts=child_opts,
+        )
+
+        # Create VNets and node subnets for each cluster
+        self.access_vnet = network.VirtualNetwork(
+            f"{name}-access-vnet",
+            resource_group_name=args.resource_group_name,
+            location=args.location,
+            address_space=network.AddressSpaceArgs(
+                address_prefixes=[args.config.require("access_vnet_cidr")]
+            ),
+            opts=child_opts,
+        )
+
+        self.access_nodes = network.Subnet(
+            f"{name}-access-nodes",
+            resource_group_name=args.resource_group_name,
+            virtual_network_name=self.access_vnet.name,
+            address_prefix=args.config.require("access_nodes_subnet_cidr"),
+            network_security_group=network.NetworkSecurityGroupArgs(
+                id=self.access_nsg.id
+            ),
+            opts=ResourceOptions.merge(
+                child_opts, ResourceOptions(depends_on=[self.access_vnet])
+            ),
+        )
+
+        self.isolated_vnet = network.VirtualNetwork(
+            f"{name}-isolated-vnet",
+            resource_group_name=args.resource_group_name,
+            location=args.location,
+            address_space=network.AddressSpaceArgs(
+                address_prefixes=[args.config.require("isolated_vnet_cidr")]
+            ),
+            opts=child_opts,
+        )
+
+        self.isolated_nodes = network.Subnet(
+            f"{name}-isolated-nodes",
+            resource_group_name=args.resource_group_name,
+            virtual_network_name=self.isolated_vnet.name,
+            address_prefix=args.config.require("Isolated_nodes_subnet_cidr"),
+            network_security_group=network.NetworkSecurityGroupArgs(
+                id=self.isolated_nsg.id
+            ),
+            opts=ResourceOptions.merge(
+                child_opts, ResourceOptions(depends_on=[self.isolated_vnet])
+            ),
+        )
+
+        # Set up VNet peering between the two VNets so they can communicate
+        self.isolated_to_access_peering = network.VirtualNetworkPeering(
+            f"{name}-isolated-to-access-peering",
+            resource_group_name=args.resource_group_name,
+            virtual_network_name=self.isolated_vnet.name,
+            remote_virtual_network=network.SubResourceArgs(id=self.access_vnet.id),
+            allow_virtual_network_access=True,
+            allow_forwarded_traffic=False,
+            allow_gateway_transit=False,
+            use_remote_gateways=False,
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(
+                    depends_on=[
+                        self.isolated_vnet,
+                        self.isolated_nodes,
+                        self.access_vnet,
+                        self.access_nodes,
+                    ]
+                ),
+            ),
+        )
+
+        self.access_to_isolated_peering = network.VirtualNetworkPeering(
+            f"{name}-access-to-isolated-peering",
+            resource_group_name=args.resource_group_name,
+            virtual_network_name=self.access_vnet.name,
+            remote_virtual_network=network.SubResourceArgs(id=self.isolated_vnet.id),
+            allow_virtual_network_access=True,
+            allow_forwarded_traffic=False,
+            allow_gateway_transit=False,
+            use_remote_gateways=False,
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(
+                    depends_on=[
+                        self.isolated_vnet,
+                        self.isolated_nodes,
+                        self.access_vnet,
+                        self.access_nodes,
+                    ]
+                ),
+            ),
+        )
+
+        self.access_vnet_id = self.access_vnet.id
+        self.access_nodes_subnet_id = self.access_nodes.id
+        self.isolated_vnet_id = self.isolated_vnet.id
+        self.isolated_nodes_subnet_id = self.isolated_nodes.id
+
+        self.register_outputs(
+            {
+                "access_vnet": self.access_vnet,
+                "isolated_vnet": self.isolated_vnet,
+                "access_nodes_subnet": self.access_nodes,
+                "isolated_nodes_subnet": self.isolated_nodes,
+                "access_to_isolated_peering": self.access_to_isolated_peering,
+                "isolated_to_access_peering": self.isolated_to_access_peering,
+                "access_nsg": self.access_nsg,
+                "isolated_nsg": self.isolated_nsg,
+            }
+        )

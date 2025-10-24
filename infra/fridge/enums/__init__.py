@@ -1,6 +1,7 @@
 from enum import Enum, unique
 
 
+# START env enum
 @unique
 class K8sEnvironment(Enum):
     AKS = "AKS"
@@ -8,6 +9,7 @@ class K8sEnvironment(Enum):
     K3S = "K3s"
 
 
+# END
 @unique
 class PodSecurityStandard(Enum):
     RESTRICTED = {"pod-security.kubernetes.io/enforce": "restricted"}
