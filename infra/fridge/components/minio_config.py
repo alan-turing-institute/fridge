@@ -1,5 +1,4 @@
-import os
-from pulumi import ComponentResource, ResourceOptions
+from pulumi import ComponentResource, Output, ResourceOptions
 from pulumi_kubernetes.batch.v1 import (
     Job,
     JobSpecArgs,
@@ -22,11 +21,16 @@ from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 
 class MinioConfigArgs:
     def __init__(
-        self, minio_tenant_ns: Namespace, minio_tenant: Chart, minio_credentials: dict
+        self,
+        minio_tenant_ns: Namespace,
+        minio_tenant: Chart,
+        minio_credentials: dict,
+        minio_cluster_url: Output[str],
     ):
+        self.minio_cluster_url = minio_cluster_url
+        self.minio_credentials = minio_credentials
         self.minio_tenant_ns = minio_tenant_ns
         self.minio_tenant = minio_tenant
-        self.minio_credentials = minio_credentials
 
 
 class MinioConfigJob(ComponentResource):
@@ -37,9 +41,11 @@ class MinioConfigJob(ComponentResource):
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
         minio_setup_sh = """
+            #!/bin/sh
+            mc --insecure alias set "$MINIO_ALIAS" "$MINIO_URL" "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
             echo "Configuring ingress and egress buckets with anonymous S3 policies"
-            mc anonymous set upload $1/egress
-            mc anonymous set download $1/ingress
+            mc anonymous set upload "$MINIO_ALIAS/egress"
+            mc anonymous set download "$MINIO_ALIAS/ingress"
         """
 
         # Create a ConfigMap for MinIO configuration
@@ -50,9 +56,6 @@ class MinioConfigJob(ComponentResource):
                 namespace=args.minio_tenant_ns.metadata.name,
             ),
             data={
-                "MINIO_ALIAS": "argoartifacts",
-                "MINIO_URL": "http://minio.argo-artifacts.svc.cluster.local:80",
-                "MINIO_NAMESPACE": args.minio_tenant_ns.metadata.name,
                 "setup.sh": minio_setup_sh,
             },
             opts=child_opts,
@@ -79,8 +82,7 @@ class MinioConfigJob(ComponentResource):
                                     "-c",
                                 ],
                                 args=[
-                                    "mc --insecure alias set argoartifacts http://minio.argo-artifacts.svc.cluster.local:80 $(MINIO_ROOT_USER) $(MINIO_ROOT_PASSWORD) &&"
-                                    "/tmp/scripts/setup.sh argoartifacts;",
+                                    "/tmp/scripts/setup.sh",
                                 ],
                                 resources={
                                     "requests": {
@@ -94,6 +96,16 @@ class MinioConfigJob(ComponentResource):
                                 },
                                 env=[
                                     EnvVarArgs(name="MC_CONFIG_DIR", value="/tmp/.mc"),
+                                    EnvVarArgs(
+                                        name="MINIO_ALIAS",
+                                        value="argoartifacts",
+                                    ),
+                                    EnvVarArgs(
+                                        name="MINIO_URL",
+                                        value=Output.concat(
+                                            "http://", args.minio_cluster_url, ":80"
+                                        ),
+                                    ),
                                     EnvVarArgs(
                                         name="MINIO_ROOT_USER",
                                         value=args.minio_credentials.get(
