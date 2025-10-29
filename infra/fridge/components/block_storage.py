@@ -31,7 +31,7 @@ class BlockStorage(ComponentResource):
         block_storage_pvc = PersistentVolumeClaim(
             "block-storage",
             metadata=ObjectMetaArgs(
-                name="block-storage-pvc", # TODO: Export this to argo pod templates?
+                name="block-storage-pvc",
                 namespace=args.storage_volume_claim_ns,
             ),
             spec = PersistentVolumeClaimSpecArgs(
@@ -44,3 +44,5 @@ class BlockStorage(ComponentResource):
                 )
             ),
         )
+
+        self.block_storage_pvc = block_storage_pvc.metadata.name
