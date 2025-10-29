@@ -39,7 +39,7 @@ class BlockStorage(ComponentResource):
                 access_modes=["ReadWriteMany" if args.storage_classes.standard_supports_rwm else "ReadWriteOnce"],
                 resources=ResourceRequirementsArgs(
                     requests={
-                        "storage":"1Gi", # TODO: Get from config?
+                        "storage": args.config.require("block_storage_size"),
                     },
                 )
             ),
