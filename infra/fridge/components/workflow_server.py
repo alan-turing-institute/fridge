@@ -125,31 +125,10 @@ class WorkflowServer(ComponentResource):
         if argo_sso_secret is not None:
             argo_depends_on.append(argo_sso_secret)
 
-        # Persistant volume to be accessed by Argo workflows
-        workflow_data_pv = PersistentVolume(
-            "workflow-data-pv",
-            metadata=ObjectMetaArgs(
-                name="workflow-data",
-            ),
-            spec=PersistentVolumeSpecArgs(
-                storage_class_name="fridge",
-                access_modes=["ReadWriteMany"],
-                persistent_volume_reclaim_policy="Retain",
-                csi=CSIPersistentVolumeSourceArgs(
-                    driver="driver.longhorn.io",
-                    fs_type="ext4",
-                    volume_handle="workflow-data",
-                ),
-                capacity={
-                    "storage": "2Gi"
-                },
-            )
-        )
-
         workflow_data_pvc = PersistentVolumeClaim(
             "workflow-data-pvc",
             metadata=ObjectMetaArgs(
-                name="workflow-data",
+                name="workflow-data-ingress",
                 namespace=argo_workflows_ns.metadata.name,
             ),
             spec=PersistentVolumeClaimSpecArgs(
@@ -160,7 +139,6 @@ class WorkflowServer(ComponentResource):
                         "storage": "2Gi"
                     }
                 ),
-                volume_name=workflow_data_pv.metadata.name
             )
         )
 

@@ -6,24 +6,39 @@ metadata:
   namespace: argo-workflows
 spec:
   entrypoint: pull-data-from-minio
-  input:
-    parameters:
-      - name: bucket
-        value: "{{workflow.parameters.bucket}}"
-      - name: file
-        value: "{{workflow.parameters.file}}"
   templates:
     - name: pull-data-from-minio
+      inputs:
+        parameters:
+          - name: bucket
+          - name: file
       volumes:
-        - name: workflow-data
+        - name: workflow-data-ingress
           persistentVolumeClaim:
-            claimName: workflow-data
+            claimName: workflow-data-ingress
       container:
-        image: minio/mc
-        command: [mc, get]
-        args: ["{{inputs.parameters.bucket}} /data/{{inputs.parameters.file}}"]
+        name: mc
+        image: minio/mc:latest
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            mc --insecure alias set artifacts http://minio.argo-artifacts.svc.cluster.local $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
+            mc cp artifacts/{{inputs.parameters.bucket}}/{{inputs.parameters.file}} /data/
+        env:
+          - name: MC_CONFIG_DIR
+            value: /tmp/.mc
+          - name: MINIO_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: minio-credentials
+                key: accesskey
+          - name: minio-secret-key
+            valueFrom:
+              secretKeyRef:
+                name: minio-credentials
+                key: secretkey
         volumeMounts:
-          - name: workflow-data
+          - name: workflow-data-ingress
             mountPath: /data
           # Needed after STS changes
           # - name: minio-tls

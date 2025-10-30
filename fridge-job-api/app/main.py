@@ -400,10 +400,11 @@ async def move_object(
                 "resourceKind": "WorkflowTemplate",
                 "resourceName": "minio-data-copy",
                 "submitOptions": {
-                    "parameters": {
-                        "bucket": bucket,
-                        "file": file_name,
-                    }
+                    "generateName": "minio-copy-",
+                    "parameters": [
+                        f"bucket={bucket}",
+                        f"file={file_name}",
+                    ]
                 },
             }
         ),
