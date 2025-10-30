@@ -3,7 +3,6 @@ from fastapi.responses import StreamingResponse
 from minio import Minio, versioningconfig, commonconfig
 from io import BytesIO
 from minio.error import S3Error
-import os
 
 
 class MinioClient:
