@@ -381,16 +381,39 @@ async def get_object(
     return minio_client.get_object(bucket, file_name, target_file, version)
 
 
-@app.get("/object/pull/{file_name}", tags=["s3"])
-async def copy_object(
+# Trigger Argo workflow
+@app.get("/object/move/{file_name}", tags=["s3"])
+async def move_object(
     bucket: str,
     file_name: str,
     version: str = None,
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
     ),
-):
-    return minio_client.copy_object(bucket, file_name, version)
+) -> dict:
+    workflow_template = get_workflow_template("argo-artifacts", "minio-data-copy")
+    r = requests.post(
+        f"{ARGO_SERVER}/api/v1/workflows/{workflow_template.namespace}/submit",
+        verify=VERIFY_TLS,
+        headers={"Authorization": f"Bearer {argo_token()}"},
+        data=json.dumps(
+            {
+                "resourceKind": "WorkflowTemplate",
+                "resourceName": workflow_template.template_name,
+                "submitOptions": {
+                    "parameters": {
+                        "bucket": bucket,
+                        "file": file_name
+                    }
+                },
+            }
+        ),
+    )
+
+    return {
+        "status": r.status_code,
+        "response": extract_argo_workflows(r.json()),
+    }
 
 
 @app.post("/object/bucket", tags=["s3"])

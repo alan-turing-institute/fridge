@@ -21,6 +21,7 @@ from pulumi_kubernetes.core.v1 import (
     VolumeArgs,
     VolumeMountArgs,
     VolumeProjectionArgs,
+    VolumeResourceRequirementsArgs,
 )
 from pulumi_kubernetes.meta.v1 import LabelSelectorArgs, ObjectMetaArgs
 from pulumi_kubernetes.rbac.v1 import (
@@ -166,18 +167,6 @@ class ApiServer(ComponentResource):
             ),
         )
 
-        # PVC used to mount workflows data into fridge API for copying data s
-        workflow_ingress_data_pvc = PersistentVolumeClaim(
-            "fridge-api-server",
-            metadata=ObjectMetaArgs(
-                name="workflow-data-ingress",
-                namespace=api_server_ns.metadata.name,
-            ),
-            spec=PersistentVolumeClaimSpecArgs(
-                volume_name=workflow_data_pv.metadata.name
-            )
-        )
-
         fridge_api_server = Deployment(
             "fridge-api-server",
             metadata=ObjectMetaArgs(
@@ -221,12 +210,7 @@ class ApiServer(ComponentResource):
                                         name="token-vol",
                                         mount_path="/service-account",
                                         read_only=True,
-                                    ),                                                                    
-                                    VolumeMountArgs(
-                                        name="ingress-data",
-                                        mount_path="/workflow-ingress-data",
-                                        read_only=True,
-                                    )
+                                    ),
                                 ],
                             )
                         ],
@@ -243,13 +227,6 @@ class ApiServer(ComponentResource):
                                             )
                                         )
                                     ]
-                                ),
-                            ),
-                            VolumeArgs(
-                                name="ingress-data",
-                                persistent_volume_claim=PersistentVolumeClaimVolumeSourceArgs(
-                                    claim_name=workflow_ingress_data_pvc.metadata.name,
-                                    read_only=False
                                 ),
                             ),
                         ],
