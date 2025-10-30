@@ -5,6 +5,7 @@ from io import BytesIO
 from minio.error import S3Error
 import os
 
+
 class MinioClient:
     def __init__(self, endpoint: str, access_key: str, secret_key: str):
         self.client = Minio(

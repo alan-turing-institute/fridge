@@ -404,7 +404,7 @@ async def move_object(
                     "parameters": [
                         f"bucket={bucket}",
                         f"file={file_name}",
-                    ]
+                    ],
                 },
             }
         ),

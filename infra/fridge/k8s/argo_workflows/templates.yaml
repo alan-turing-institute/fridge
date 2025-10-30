@@ -40,10 +40,3 @@ spec:
         volumeMounts:
           - name: workflow-data-ingress
             mountPath: /data
-          # Needed after STS changes
-          # - name: minio-tls
-          #   mountPath: /minio/tls
-          # - name: minio-token
-          #   mountPath: /minio/token
-
-  # serviceAccount: minio-compatible-sa

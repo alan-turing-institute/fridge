@@ -3,11 +3,8 @@ from pulumi import ComponentResource, FileAsset, Output, ResourceOptions
 from pulumi_kubernetes.core.v1 import (
     Namespace,
     Secret,
-    PersistentVolume,
-    PersistentVolumeSpecArgs,
-    PersistentVolumeClaim, 
-    PersistentVolumeClaimSpecArgs, 
-    CSIPersistentVolumeSourceArgs,
+    PersistentVolumeClaim,
+    PersistentVolumeClaimSpecArgs,
     VolumeResourceRequirementsArgs,
 )
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
@@ -134,12 +131,8 @@ class WorkflowServer(ComponentResource):
             spec=PersistentVolumeClaimSpecArgs(
                 access_modes=["ReadWriteMany"],
                 storage_class_name="fridge",
-                resources=VolumeResourceRequirementsArgs(
-                    requests={
-                        "storage": "2Gi"
-                    }
-                ),
-            )
+                resources=VolumeResourceRequirementsArgs(requests={"storage": "2Gi"}),
+            ),
         )
 
         argo_workflows = Chart(
