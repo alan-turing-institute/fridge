@@ -9,9 +9,6 @@ from pulumi_kubernetes.core.v1 import (
     PodSpecArgs,
     PodTemplateSpecArgs,
     ProjectedVolumeSourceArgs,
-    PersistentVolumeClaim,
-    PersistentVolumeClaimSpecArgs,
-    PersistentVolumeClaimVolumeSourceArgs,
     SeccompProfileArgs,
     Secret,
     SecretEnvSourceArgs,
@@ -21,7 +18,6 @@ from pulumi_kubernetes.core.v1 import (
     VolumeArgs,
     VolumeMountArgs,
     VolumeProjectionArgs,
-    VolumeResourceRequirementsArgs,
 )
 from pulumi_kubernetes.meta.v1 import LabelSelectorArgs, ObjectMetaArgs
 from pulumi_kubernetes.rbac.v1 import (
