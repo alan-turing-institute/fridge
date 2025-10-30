@@ -74,16 +74,6 @@ class MinioClient:
         except Exception as error:
             return self.handle_500_error("Unable to get object from bucket")
 
-    # Copy object to ingress data
-    def copy_object(self, bucket, file_name, version=None):
-        base_dir = os.environ.get("MINIO_INGRESS_DATA_PATH", f"/workflow-ingress-data")
-        try:
-            self.client.get_object(bucket, file_name, f"{base_dir}/{file_name}", version)
-        except S3Error as error:
-            return self.handle_minio_error(error)
-        except Exception as error:
-            return self.handle_500_error("Unable to get object from bucket")
-
     def check_object_exists(self, bucket, file_name, version=None):
         try:
             self.client.stat_object(bucket, file_name, version_id=version)

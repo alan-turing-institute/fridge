@@ -1,0 +1,33 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: minio-data-copy
+spec:
+  entrypoint: pull-data-from-minio
+  input:
+    parameters:
+      - name: bucket
+        value: "{{workflow.parameters.bucket}}"
+      - name: file
+        value: "{{workflow.parameters.file}}"
+  templates:
+    - name: pull-data-from-minio
+      volumes:
+        - name: workflow-data
+          persistentVolumeClaim:
+            claimName: workflow-data
+      container:
+        image: minio/mc
+        command: [mc, get]
+        args: ["{{inputs.parameters.bucket}} /data/{{inputs.parameters.file}}"]
+        volumeMounts:
+          - name: workflow-data
+            mountPath: /data
+          # Needed after STS changes
+          # - name: minio-tls
+          #   mountPath: /minio/tls
+          # - name: minio-token
+          #   mountPath: /minio/token
+
+  # serviceAccount: minio-compatible-sa
