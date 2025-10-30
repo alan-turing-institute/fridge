@@ -382,7 +382,7 @@ async def get_object(
 
 
 # Trigger Argo workflow
-@app.get("/object/move/{file_name}", tags=["s3"])
+@app.post("/object/move/{file_name}", tags=["s3"])
 async def move_object(
     bucket: str,
     file_name: str,
@@ -391,19 +391,18 @@ async def move_object(
         verify_request
     ),
 ) -> dict:
-    workflow_template = get_workflow_template("argo-artifacts", "minio-data-copy")
     r = requests.post(
-        f"{ARGO_SERVER}/api/v1/workflows/{workflow_template.namespace}/submit",
+        f"{ARGO_SERVER}/api/v1/workflows/argo-workflows/submit",
         verify=VERIFY_TLS,
         headers={"Authorization": f"Bearer {argo_token()}"},
         data=json.dumps(
             {
                 "resourceKind": "WorkflowTemplate",
-                "resourceName": workflow_template.template_name,
+                "resourceName": "minio-data-copy",
                 "submitOptions": {
                     "parameters": {
                         "bucket": bucket,
-                        "file": file_name
+                        "file": file_name,
                     }
                 },
             }

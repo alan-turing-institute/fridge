@@ -3,6 +3,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: WorkflowTemplate
 metadata:
   name: minio-data-copy
+  namespace: argo-workflows
 spec:
   entrypoint: pull-data-from-minio
   input:
