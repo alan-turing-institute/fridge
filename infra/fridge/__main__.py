@@ -154,6 +154,17 @@ argo_workflows = components.WorkflowServer(
     ),
 )
 
+# Workflow templates
+workflow_templates = ConfigFile(
+    "workflow-templates",
+    file="./k8s/argo_workflows/templates.yaml",
+    opts=ResourceOptions(
+        depends_on=[
+            argo_workflows,
+        ]
+    ),
+)
+
 if enable_sso:
     argo_workflows_rbac = components.WorkflowUiRbac(
         "argo-workflows-rbac",

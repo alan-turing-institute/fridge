@@ -30,12 +30,12 @@ spec:
           - name: MINIO_ACCESS_KEY
             valueFrom:
               secretKeyRef:
-                name: minio-credentials
+                name: argo-artifacts-minio
                 key: accesskey
-          - name: minio-secret-key
+          - name: MINIO_SECRET_KEY
             valueFrom:
               secretKeyRef:
-                name: minio-credentials
+                name: argo-artifacts-minio
                 key: secretkey
         volumeMounts:
           - name: workflow-data-ingress
