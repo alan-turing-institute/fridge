@@ -1,6 +1,12 @@
 import pulumi
 from pulumi import ComponentResource, FileAsset, Output, ResourceOptions
-from pulumi_kubernetes.core.v1 import Namespace, Secret
+from pulumi_kubernetes.core.v1 import (
+    Namespace,
+    Secret,
+    PersistentVolumeClaim,
+    PersistentVolumeClaimSpecArgs,
+    VolumeResourceRequirementsArgs,
+)
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 
@@ -115,6 +121,19 @@ class WorkflowServer(ComponentResource):
         ]
         if argo_sso_secret is not None:
             argo_depends_on.append(argo_sso_secret)
+
+        workflow_data_pvc = PersistentVolumeClaim(
+            "workflow-data-pvc",
+            metadata=ObjectMetaArgs(
+                name="workflow-data-ingress",
+                namespace=argo_workflows_ns.metadata.name,
+            ),
+            spec=PersistentVolumeClaimSpecArgs(
+                access_modes=["ReadWriteMany"],
+                storage_class_name="fridge",
+                resources=VolumeResourceRequirementsArgs(requests={"storage": "2Gi"}),
+            ),
+        )
 
         argo_workflows = Chart(
             "argo-workflows",

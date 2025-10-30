@@ -1,0 +1,42 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: minio-data-copy
+  namespace: argo-workflows
+spec:
+  entrypoint: pull-data-from-minio
+  templates:
+    - name: pull-data-from-minio
+      inputs:
+        parameters:
+          - name: bucket
+          - name: file
+      volumes:
+        - name: workflow-data-ingress
+          persistentVolumeClaim:
+            claimName: workflow-data-ingress
+      container:
+        name: mc
+        image: minio/mc:latest
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            mc --insecure alias set artifacts http://minio.argo-artifacts.svc.cluster.local $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
+            mc cp artifacts/{{inputs.parameters.bucket}}/{{inputs.parameters.file}} /data/
+        env:
+          - name: MC_CONFIG_DIR
+            value: /tmp/.mc
+          - name: MINIO_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: argo-artifacts-minio
+                key: accesskey
+          - name: MINIO_SECRET_KEY
+            valueFrom:
+              secretKeyRef:
+                name: argo-artifacts-minio
+                key: secretkey
+        volumeMounts:
+          - name: workflow-data-ingress
+            mountPath: /data

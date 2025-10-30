@@ -381,6 +381,45 @@ async def get_object(
     return minio_client.get_object(bucket, file_name, target_file, version)
 
 
+# Trigger Argo workflow
+@app.post("/object/move/{file_name}", tags=["s3"])
+async def move_object(
+    bucket: str,
+    file_name: str,
+    version: str = None,
+    verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
+        verify_request
+    ),
+) -> dict:
+    r = requests.post(
+        f"{ARGO_SERVER}/api/v1/workflows/argo-workflows/submit",
+        verify=VERIFY_TLS,
+        headers={"Authorization": f"Bearer {argo_token()}"},
+        data=json.dumps(
+            {
+                "resourceKind": "WorkflowTemplate",
+                "resourceName": "minio-data-copy",
+                "submitOptions": {
+                    "generateName": "minio-copy-",
+                    "parameters": [
+                        f"bucket={bucket}",
+                        f"file={file_name}",
+                    ],
+                },
+            }
+        ),
+    )
+
+    if r.status_code != 200:
+        raise HTTPException(
+            status_code=r.status_code, detail=parse_argo_error(r.json())
+        )
+    return {
+        "status": r.status_code,
+        "response": r.json(),
+    }
+
+
 @app.post("/object/bucket", tags=["s3"])
 async def create_bucket(
     bucket_name: str,
