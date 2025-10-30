@@ -409,9 +409,13 @@ async def move_object(
         ),
     )
 
+    if r.status_code != 200:
+        raise HTTPException(
+            status_code=r.status_code, detail=parse_argo_error(r.json())
+        )
     return {
         "status": r.status_code,
-        "response": extract_argo_workflows(r.json()),
+        "response": r.json(),
     }
 
 
