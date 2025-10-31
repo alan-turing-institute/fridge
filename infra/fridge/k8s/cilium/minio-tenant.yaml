@@ -58,6 +58,13 @@ spec:
         - ports:
             - port: "9000"
               protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            job-name: minio-config-job
+      toPorts:
+        - ports:
+            - port: "9000"
+              protocol: TCP
   egress:
     # Outbound to k8s DNS to look up IPs
     - toEndpoints:
@@ -93,3 +100,39 @@ spec:
         - ports:
           - port: "8089"
             protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: minio-config-jobs
+  namespace: argo-artifacts
+spec:
+  endpointSelector:
+    matchLabels:
+      job-name: minio-config-job
+  egress:
+    # Outbound to k8s DNS to look up IPs
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+          rules:
+            dns:
+              - matchName: "minio.argo-artifacts.svc.cluster.local"
+    - toFQDNs:
+        - matchName: minio.argo-artifacts.svc.cluster.local
+      toPorts:
+        - ports:
+            - port: "80"
+    # Allows the MinIO config job to connect to the MinIO tenant for configuration
+    - toEndpoints:
+        - matchLabels:
+            v1.min.io/tenant: argo-artifacts
+      toPorts:
+        - ports:
+            - port: "9000"
+              protocol: TCP

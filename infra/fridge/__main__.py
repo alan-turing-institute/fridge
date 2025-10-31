@@ -102,7 +102,7 @@ standard_namespaces = ["default", "kube-node-lease", "kube-public"]
 for namespace in standard_namespaces:
     patch_namespace(namespace, PodSecurityStandard.RESTRICTED)
 
-# Minio
+# MinIO
 minio = components.ObjectStorage(
     "minio",
     args=components.ObjectStorageArgs(
@@ -116,6 +116,23 @@ minio = components.ObjectStorage(
             cert_manager,
             storage_classes,
         ]
+    ),
+)
+
+# MinIO configuration
+minio_config = components.MinioConfigJob(
+    name=f"{stack_name}-minio-config-job",
+    args=components.MinioConfigArgs(
+        minio_cluster_url=minio.minio_cluster_url,
+        minio_credentials={
+            "minio_root_user": config.require_secret("minio_root_user"),
+            "minio_root_password": config.require_secret("minio_root_password"),
+        },
+        minio_tenant_ns=minio.minio_tenant_ns,
+        minio_tenant=minio.minio_tenant,
+    ),
+    opts=ResourceOptions(
+        depends_on=[minio],
     ),
 )
 
