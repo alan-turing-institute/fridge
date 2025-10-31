@@ -64,6 +64,9 @@ config:
   minio_pool_size:
     type: string
     description: Size of the MinIO storage pool (e.g., 20Gi)
+  block_storage_size:
+    type: string
+    description: Size of the block storage available to jobs (e.g., 10Gi)
   oidc_client_id:
     type: string
     description: OIDC client ID for the FRIDGE API

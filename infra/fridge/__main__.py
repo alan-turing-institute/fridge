@@ -180,7 +180,6 @@ harbor = components.ContainerRegistry(
     ),
 )
 
-
 # API Server
 api_server = components.ApiServer(
     name=f"{stack_name}-api-server",
@@ -199,8 +198,20 @@ api_server = components.ApiServer(
     ),
 )
 
-# Network policy (through Cilium)
+# Block storage for Argo Workflow jobs
+block_storage = components.BlockStorage(
+    "block-storage",
+    components.BlockStorageArgs(
+        config=config,
+        storage_classes=storage_classes,
+        storage_volume_claim_ns=argo_workflows.argo_workflows_ns,
+    ),
+    opts=ResourceOptions(
+        depends_on=[storage_classes],
+    ),
+)
 
+# Network policy (through Cilium)
 # Network policies should be deployed last to ensure that none of them interfere with the deployment process
 
 resources = [
