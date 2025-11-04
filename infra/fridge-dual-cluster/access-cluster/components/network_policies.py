@@ -88,15 +88,7 @@ class NetworkPolicies(ComponentResource):
                         "toPorts": [
                             {
                                 "ports": [{"port": "53", "protocol": "ANY"}],
-                                "rules": {
-                                    "dns": [
-                                        {
-                                            "matchPattern": config.require(
-                                                "isolated_cluster_api_endpoint"
-                                            )
-                                        }
-                                    ]
-                                },
+                                "rules": {"dns": [{"matchPattern": "*"}]},
                             }
                         ],
                     },
