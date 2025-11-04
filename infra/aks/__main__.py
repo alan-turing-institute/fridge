@@ -183,5 +183,8 @@ access_admin_credentials = (
 isolated_kubeconfig = isolated_admin_credentials.kubeconfigs.apply(get_kubeconfig)
 access_kubeconfig = access_admin_credentials.kubeconfigs.apply(get_kubeconfig)
 
-pulumi.export("isolated_kubeconfig", isolated_kubeconfig)
 pulumi.export("access_kubeconfig", access_kubeconfig)
+pulumi.export("isolated_cluster_api_server_fqdn", isolated_cluster.fqdn)
+pulumi.export("isolated_kubeconfig", isolated_kubeconfig)
+pulumi.export("access_subnet_nsg", networking.access_nsg)
+pulumi.export("isolated_subnet_nsg", networking.isolated_nsg)
