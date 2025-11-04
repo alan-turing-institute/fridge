@@ -1,4 +1,6 @@
+import pulumi
 from pulumi import ComponentResource, ResourceOptions
+from pulumi_kubernetes.apiextensions import CustomResource
 from pulumi_kubernetes.yaml import ConfigFile
 
 from enums import K8sEnvironment
@@ -7,6 +9,7 @@ from enums import K8sEnvironment
 class NetworkPolicies(ComponentResource):
     def __init__(
         self,
+        config: pulumi.config.Config,
         name: str,
         k8s_environment: K8sEnvironment,
         opts: ResourceOptions | None = None,
@@ -51,9 +54,80 @@ class NetworkPolicies(ComponentResource):
                     opts=child_opts,
                 )
 
-        ConfigFile(
+        self.api_proxy_cnp = CustomResource(
             "network_policy_api_proxy",
-            file="./k8s/cilium/api-proxy.yaml",
+            api_version="cilium.io/v2",
+            kind="CiliumNetworkPolicy",
+            metadata={"name": "api-proxy-access", "namespace": "api-proxy"},
+            spec={
+                "endpointSelector": {"matchLabels": {"app": "api-proxy"}},
+                "ingress": [
+                    {
+                        "fromEndpoints": [
+                            {
+                                "matchLabels": {
+                                    "k8s:app.kubernetes.io/name": "ingress-nginx",
+                                    "k8s:app.kubernetes.io/component": "controller",
+                                    "k8s:io.kubernetes.pod.namespace": "ingress-nginx",
+                                }
+                            }
+                        ],
+                        "toPorts": [{"ports": [{"port": "2222", "protocol": "ANY"}]}],
+                    }
+                ],
+                "egress": [
+                    {
+                        "toEndpoints": [
+                            {
+                                "matchLabels": {
+                                    "k8s:io.kubernetes.pod.namespace": "kube-system",
+                                    "k8s-app": "kube-dns",
+                                }
+                            }
+                        ],
+                        "toPorts": [
+                            {
+                                "ports": [{"port": "53", "protocol": "ANY"}],
+                                "rules": {
+                                    "dns": [
+                                        {
+                                            "matchPattern": config.require(
+                                                "isolated_cluster_api_endpoint"
+                                            )
+                                        }
+                                    ]
+                                },
+                            }
+                        ],
+                    },
+                    {
+                        "toEndpoints": [
+                            {
+                                "matchLabels": {
+                                    "k8s:app.kubernetes.io/name": "ingress-nginx",
+                                    "k8s:app.kubernetes.io/component": "controller",
+                                    "k8s:io.kubernetes.pod.namespace": "ingress-nginx",
+                                }
+                            }
+                        ],
+                        "toPorts": [{"ports": [{"port": "2222", "protocol": "TCP"}]}],
+                    },
+                    {
+                        "toCIDR": [config.require("fridge_api_ip_address")],
+                        "toPorts": [{"ports": [{"port": "443", "protocol": "TCP"}]}],
+                    },
+                    {
+                        "toFQDNs": [
+                            {
+                                "matchName": config.require(
+                                    "isolated_cluster_api_endpoint"
+                                )
+                            }
+                        ],
+                        "toPorts": [{"ports": [{"port": "443", "protocol": "ANY"}]}],
+                    },
+                ],
+            },
             opts=child_opts,
         )
 
