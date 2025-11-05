@@ -42,10 +42,10 @@ class MinioConfigJob(ComponentResource):
 
         minio_setup_sh = """
             #!/bin/sh
-            mc --insecure alias set "$MINIO_ALIAS" "$MINIO_URL" "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
+            mc --insecure alias set $MINIO_ALIAS $MINIO_URL $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD
             echo "Configuring ingress and egress buckets with anonymous S3 policies"
-            mc anonymous set upload "$MINIO_ALIAS/egress"
-            mc anonymous set download "$MINIO_ALIAS/ingress"
+            mc anonymous set upload $MINIO_ALIAS/egress
+            mc anonymous set download $MINIO_ALIAS/ingress
         """
 
         # Create a ConfigMap for MinIO configuration
