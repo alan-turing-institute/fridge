@@ -15,7 +15,7 @@ spec:
       volumes:
         - name: workflow-data-ingress
           persistentVolumeClaim:
-            claimName: workflow-data-ingress
+            claimName: replace_me
       container:
         name: mc
         image: minio/mc:latest

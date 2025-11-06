@@ -162,6 +162,8 @@ argo_workflow_templates = ConfigFile(
             obj["spec"]["templates"][0]["volumes"][0].update(
                 {"persistentVolumeClaim": {"claimName": "workflow-data-ingress"}} # Replace this with PVC created in block_storage.py
             )
+            if obj["spec"]["templates"][0]["volumes"][0].get("name") == "workflow-data-ingress"
+            else None
         ),
     ],
     opts=ResourceOptions(
