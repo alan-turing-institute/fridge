@@ -111,6 +111,22 @@ minio = components.ObjectStorage(
     ),
 )
 
+minio_config = components.MinioConfigJob(
+    "minio-config-job",
+    args=components.MinioConfigArgs(
+        minio_cluster_url=minio.minio_cluster_url,
+        minio_credentials={
+            "minio_root_user": config.require_secret("minio_root_user"),
+            "minio_root_password": config.require_secret("minio_root_password"),
+        },
+        minio_tenant_ns=minio.minio_tenant_ns,
+        minio_tenant=minio.minio_tenant,
+    ),
+    opts=ResourceOptions(
+        depends_on=[minio],
+    ),
+)
+
 # Argo Workflows
 argo_workflows = components.WorkflowServer(
     "argo-workflows",
@@ -145,8 +161,10 @@ api_server = components.ApiServer(
 # Network policies should be deployed last to ensure that none of them interfere with the deployment process
 
 resources = [
+    api_server,
     argo_workflows,
     minio,
+    minio_config,
     storage_classes,
 ]
 
