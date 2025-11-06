@@ -122,19 +122,6 @@ class WorkflowServer(ComponentResource):
         if argo_sso_secret is not None:
             argo_depends_on.append(argo_sso_secret)
 
-        workflow_data_pvc = PersistentVolumeClaim(
-            "workflow-data-pvc",
-            metadata=ObjectMetaArgs(
-                name="workflow-data-ingress",
-                namespace=argo_workflows_ns.metadata.name,
-            ),
-            spec=PersistentVolumeClaimSpecArgs(
-                access_modes=["ReadWriteMany"],
-                storage_class_name="fridge",
-                resources=VolumeResourceRequirementsArgs(requests={"storage": "2Gi"}),
-            ),
-        )
-
         argo_workflows = Chart(
             "argo-workflows",
             namespace=argo_server_ns.metadata.name,

@@ -154,14 +154,18 @@ argo_workflows = components.WorkflowServer(
     ),
 )
 
-# Workflow templates
-workflow_templates = ConfigFile(
-    "workflow-templates",
+argo_workflow_templates = ConfigFile(
+    "argo-workflow-templates",
     file="./k8s/argo_workflows/templates.yaml",
+    transformations=[
+        lambda obj, opts: (
+            obj["spec"]["templates"][0]["volumes"][0].update(
+                {"persistentVolumeClaim": {"claimName": "workflow-data-ingress"}} # Replace this with PVC created in block_storage.py
+            )
+        ),
+    ],
     opts=ResourceOptions(
-        depends_on=[
-            argo_workflows,
-        ]
+        depends_on=[argo_workflows],
     ),
 )
 
