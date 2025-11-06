@@ -27,7 +27,7 @@ class ObjectStorage(ComponentResource):
         super().__init__("fridge:ObjectStorage", name, {}, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
-        minio_operator_ns = Namespace(
+        self.minio_operator_ns = Namespace(
             "minio-operator-ns",
             metadata=ObjectMetaArgs(
                 name="minio-operator",
@@ -36,7 +36,7 @@ class ObjectStorage(ComponentResource):
             opts=child_opts,
         )
 
-        minio_tenant_ns = Namespace(
+        self.minio_tenant_ns = Namespace(
             "minio-tenant-ns",
             metadata=ObjectMetaArgs(
                 name="argo-artifacts",
@@ -45,9 +45,9 @@ class ObjectStorage(ComponentResource):
             opts=child_opts,
         )
 
-        minio_operator = Chart(
+        self.minio_operator = Chart(
             "minio-operator",
-            namespace=minio_operator_ns.metadata.name,
+            namespace=self.minio_operator_ns.metadata.name,
             chart="operator",
             repository_opts=RepositoryOptsArgs(
                 repo="https://operator.min.io",
@@ -55,12 +55,12 @@ class ObjectStorage(ComponentResource):
             version="7.1.1",
             opts=ResourceOptions.merge(
                 child_opts,
-                ResourceOptions(depends_on=[minio_operator_ns]),
+                ResourceOptions(depends_on=[self.minio_operator_ns]),
             ),
         )
 
-        minio_cluster_url = pulumi.Output.concat(
-            "minio.", minio_tenant_ns.metadata.name, ".svc.cluster.local"
+        self.minio_cluster_url = pulumi.Output.concat(
+            "minio.", self.minio_tenant_ns.metadata.name, ".svc.cluster.local"
         )
 
         minio_config_env = Output.format(
@@ -73,7 +73,7 @@ class ObjectStorage(ComponentResource):
             "minio-env-secret",
             metadata=ObjectMetaArgs(
                 name="argo-artifacts-env-configuration",
-                namespace=minio_tenant_ns.metadata.name,
+                namespace=self.minio_tenant_ns.metadata.name,
             ),
             type="Opaque",
             string_data={
@@ -81,13 +81,13 @@ class ObjectStorage(ComponentResource):
             },
             opts=ResourceOptions.merge(
                 child_opts,
-                ResourceOptions(depends_on=[minio_tenant_ns]),
+                ResourceOptions(depends_on=[self.minio_tenant_ns]),
             ),
         )
 
-        minio_tenant = Chart(
+        self.minio_tenant = Chart(
             "minio-tenant",
-            namespace=minio_tenant_ns.metadata.name,
+            namespace=self.minio_tenant_ns.metadata.name,
             chart="tenant",
             name="argo-artifacts",
             version="7.1.1",
@@ -98,7 +98,8 @@ class ObjectStorage(ComponentResource):
                 "tenant": {
                     "name": "argo-artifacts",
                     "buckets": [
-                        {"name": "argo-artifacts"},
+                        {"name": "ingress"},
+                        {"name": "egress"},
                     ],
                     "certificate": {
                         "requestAutoCert": "false",
@@ -115,7 +116,7 @@ class ObjectStorage(ComponentResource):
                     "features": {
                         "domains": {
                             "minio": [
-                                minio_cluster_url,
+                                self.minio_cluster_url,
                             ],
                         }
                     },
@@ -145,20 +146,19 @@ class ObjectStorage(ComponentResource):
                 ResourceOptions(
                     depends_on=[
                         minio_env_secret,
-                        minio_operator,
-                        minio_tenant_ns,
+                        self.minio_operator,
+                        self.minio_tenant_ns,
                     ]
                 ),
             ),
         )
 
-        self.minio_cluster_url = minio_cluster_url
         self.register_outputs(
             {
-                "minio_tenant": minio_tenant,
-                "minio_operator": minio_operator,
+                "minio_tenant": self.minio_tenant,
+                "minio_operator": self.minio_operator,
                 "minio_env_secret": minio_env_secret,
-                "minio_tenant_ns": minio_tenant_ns,
-                "minio_operator_ns": minio_operator_ns,
+                "minio_tenant_ns": self.minio_tenant_ns,
+                "minio_operator_ns": self.minio_operator_ns,
             }
         )
