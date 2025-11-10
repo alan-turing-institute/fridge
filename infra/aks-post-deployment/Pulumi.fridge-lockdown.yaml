@@ -1,0 +1,8 @@
+config:
+  fridge-lockdown:k8s_env: AKS
+  fridge-lockdown:azure_subscription_id: "36cfe11d-bfcd-4dce-9b70-c3905a4f3d01"
+  fridge-lockdown:azure_resource_group: fridge-multiple
+  fridge-lockdown:infrastructure_stack_name: isolated-aks
+  fridge-lockdown:organization_name: organization
+  fridge-lockdown:project_name: fridge_aks
+encryptionsalt: v1:5NbOBexeJpY=:v1:TWfZ8KMtI0Ut+xn9:Ue2E3YE+tGFpwuMZmnHcwhNtghO0LA==

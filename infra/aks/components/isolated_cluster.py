@@ -140,4 +140,5 @@ class IsolatedCluster(ComponentResource):
 
         self.name = self.isolated_cluster.name
         self.private_fqdn = self.isolated_cluster.private_fqdn
+        self.fqdn = self.isolated_cluster.fqdn
         self.register_outputs({"isolated_cluster": self.isolated_cluster})
