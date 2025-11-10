@@ -32,7 +32,7 @@ from pulumi_kubernetes.rbac.v1 import (
     SubjectArgs,
 )
 
-from enums import PodSecurityStandard
+from enums import K8sEnvironment, PodSecurityStandard
 
 API_SERVER_IMAGE = "ghcr.io/alan-turing-institute/fridge:main"
 
@@ -232,17 +232,25 @@ class ApiServer(ComponentResource):
             opts=child_opts,
         )
 
+        # Azure specific annotations for internal load balancer
+        api_service_annotations = (
+            {
+                "service.beta.kubernetes.io/azure-load-balancer-internal": "true",
+                "service.beta.kubernetes.io/azure-load-balancer-ipv4": args.config.require(
+                    "fridge_api_ip"
+                ),
+            }
+            if K8sEnvironment(args.config.get("k8s_env")) == K8sEnvironment.AKS
+            else {}
+        )
+
         self.api_service = Service(
             "fridge-api-service",
             metadata=ObjectMetaArgs(
                 name="fridge-api",
                 namespace=api_server_ns.metadata.name,
                 labels={"app": "fridge-api-server"},
-                # Azure specific annotations for internal load balancer
-                annotations={
-                    "service.beta.kubernetes.io/azure-load-balancer-internal": "true",
-                    "service.beta.kubernetes.io/azure-load-balancer-ipv4": "10.20.1.60/32",
-                },
+                annotations=api_service_annotations,
             ),
             spec=ServiceSpecArgs(
                 type="LoadBalancer",
