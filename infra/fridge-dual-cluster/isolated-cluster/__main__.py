@@ -127,6 +127,7 @@ minio_config = components.MinioConfigJob(
     ),
 )
 
+
 # Argo Workflows
 argo_workflows = components.WorkflowServer(
     "argo-workflows",
@@ -138,6 +139,19 @@ argo_workflows = components.WorkflowServer(
         depends_on=[
             cert_manager,
         ]
+    ),
+)
+
+# Block storage for Argo Workflow jobs
+block_storage = components.BlockStorage(
+    "block-storage",
+    components.BlockStorageArgs(
+        config=config,
+        storage_classes=storage_classes,
+        storage_volume_claim_ns=argo_workflows.argo_workflows_ns,
+    ),
+    opts=ResourceOptions(
+        depends_on=[storage_classes],
     ),
 )
 
