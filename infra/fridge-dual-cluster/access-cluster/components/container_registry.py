@@ -2,13 +2,25 @@ from string import Template
 
 import pulumi
 from pulumi import ComponentResource, ResourceOptions
-from pulumi_kubernetes.core.v1 import Namespace
+from pulumi_kubernetes.batch.v1 import (
+    Job,
+    JobSpecArgs,
+)
+from pulumi_kubernetes.core.v1 import (
+    ContainerArgs,
+    EnvVarArgs,
+    Namespace,
+    PodSpecArgs,
+    PodTemplateSpecArgs,
+    SecurityContextArgs,
+)
 from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.networking.v1 import Ingress
 from pulumi_kubernetes.yaml import ConfigGroup
 
 from .storage_classes import StorageClasses
+
 
 from enums import PodSecurityStandard, TlsEnvironment, tls_issuer_names
 
@@ -51,7 +63,7 @@ class ContainerRegistry(ComponentResource):
             )
         )
 
-        self.harbor_external_url = f"https://{harbor_fqdn}"
+        self.harbor_external_url = f"https://{self.harbor_fqdn}"
         self.harbor_storage_settings = {
             "storageClass": args.storage_classes.standard_storage_name,
             "accessMode": "ReadWriteMany"
@@ -184,6 +196,79 @@ class ContainerRegistry(ComponentResource):
             yaml=[self.skip_harbor_tls],
             opts=ResourceOptions(
                 depends_on=[self.harbor],
+            ),
+        )
+
+        self.configure_harbor = Job(
+            "configure-harbor",
+            metadata=ObjectMetaArgs(
+                name="harbor-config-job",
+                namespace=self.harbor_ns.metadata.name,
+                labels={"app": "harbor-config-job"},
+            ),
+            spec=JobSpecArgs(
+                backoff_limit=2,
+                template=PodTemplateSpecArgs(
+                    spec=PodSpecArgs(
+                        containers=[
+                            ContainerArgs(
+                                name="harbor-config-job",
+                                image="curlimages/curl:8.17.0",
+                                env=[
+                                    EnvVarArgs(
+                                        name="HARBOR_URL",
+                                        value="10.0.50.50",
+                                    ),
+                                    EnvVarArgs(
+                                        name="HARBOR_ADMIN_USER",
+                                        value="admin",
+                                    ),
+                                    EnvVarArgs(
+                                        name="HARBOR_ADMIN_PASSWORD",
+                                        value=args.config.require_secret(
+                                            "harbor_admin_password"
+                                        ),
+                                    ),
+                                ],
+                                command=[
+                                    "/bin/sh",
+                                    "-c",
+                                    """
+                                    #!/bin/sh
+                                    echo "Configuring Harbor..."
+                                    # Example: Add additional configuration commands here
+                                    # curl -k PUT -u "$HARBOR_ADMIN_USER:$HARBOR_ADMIN_PASSWORD" -H "Content-Type: application/json" -ki "$HARBOR_URL/api/v.2configurations" -d '{"isolated-cluster":"newpassword"}'
+                                    curl -X 'POST' \
+                                        -u "$HARBOR_ADMIN_USER:$HARBOR_ADMIN_PASSWORD" \
+                                        'http://10.0.50.50/api/v2.0/users' \
+                                        -H 'accept: application/json' \
+                                        -H 'Content-Type: application/json' \
+                                        -d '{
+                                            "email": "string",
+                                            "realname": "string",
+                                            "comment": "string",
+                                            "password": "string",
+                                            "username": "string"
+                                            }'
+                                    """,
+                                ],
+                                security_context=SecurityContextArgs(
+                                    allow_privilege_escalation=False,
+                                    capabilities={"drop": ["ALL"]},
+                                    run_as_group=1000,
+                                    run_as_non_root=True,
+                                    run_as_user=1000,
+                                    seccomp_profile={"type": "RuntimeDefault"},
+                                ),
+                            ),
+                        ],
+                        restart_policy="Never",
+                    )
+                ),
+            ),
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(depends_on=[self.harbor_ns]),
             ),
         )
 
