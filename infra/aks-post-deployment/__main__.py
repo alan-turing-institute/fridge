@@ -6,11 +6,13 @@ organization = config.require("organization_name")
 project_name = config.require("project_name")
 stack = config.require("infrastructure_stack_name")
 
-test_stack_reference = pulumi.StackReference(f"{organization}/{project_name}/{stack}")
+infrastructure_stack_reference = pulumi.StackReference(
+    f"{organization}/{project_name}/{stack}"
+)
 
-isolated_kubeconfig = test_stack_reference.get_output("isolated_kubeconfig")
-access_subnet_nsg = test_stack_reference.get_output("access_subnet_nsg")
-isolated_subnet_nsg = test_stack_reference.get_output("isolated_subnet_nsg")
+isolated_kubeconfig = infrastructure_stack_reference.get_output("isolated_kubeconfig")
+access_subnet_nsg = infrastructure_stack_reference.get_output("access_subnet_nsg")
+isolated_subnet_nsg = infrastructure_stack_reference.get_output("isolated_subnet_nsg")
 
 
 def create_nsg_lockdown(nsg_info):
