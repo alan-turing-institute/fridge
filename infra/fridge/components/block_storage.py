@@ -1,10 +1,14 @@
 import pulumi
 from pulumi import ComponentResource, Output, ResourceOptions
-from pulumi_kubernetes.core.v1 import PersistentVolumeClaim, PersistentVolumeClaimSpecArgs
+from pulumi_kubernetes.core.v1 import (
+    PersistentVolumeClaim,
+    PersistentVolumeClaimSpecArgs,
+)
 from pulumi_kubernetes.core.v1 import ResourceRequirementsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 
 from .storage_classes import StorageClasses
+
 
 class BlockStorageArgs:
     def __init__(
@@ -16,6 +20,7 @@ class BlockStorageArgs:
         self.config = config
         self.storage_classes = storage_classes
         self.storage_volume_claim_ns = storage_volume_claim_ns
+
 
 class BlockStorage(ComponentResource):
     def __init__(
@@ -34,14 +39,18 @@ class BlockStorage(ComponentResource):
                 name="block-storage-pvc",
                 namespace=args.storage_volume_claim_ns,
             ),
-            spec = PersistentVolumeClaimSpecArgs(
+            spec=PersistentVolumeClaimSpecArgs(
                 storage_class_name=args.storage_classes.standard_storage_name,
-                access_modes=["ReadWriteMany" if args.storage_classes.standard_supports_rwm else "ReadWriteOnce"],
+                access_modes=[
+                    "ReadWriteMany"
+                    if args.storage_classes.standard_supports_rwm
+                    else "ReadWriteOnce"
+                ],
                 resources=ResourceRequirementsArgs(
                     requests={
                         "storage": args.config.require("block_storage_size"),
                     },
-                )
+                ),
             ),
         )
 
