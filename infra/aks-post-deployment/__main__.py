@@ -10,8 +10,14 @@ infrastructure_stack_reference = pulumi.StackReference(
     f"{organization}/{project_name}/{stack}"
 )
 
-isolated_kubeconfig = infrastructure_stack_reference.get_output("isolated_kubeconfig")
+access_nodes_subnet_cidr = infrastructure_stack_reference.get_output(
+    "access_nodes_subnet_cidr"
+)
 access_subnet_nsg = infrastructure_stack_reference.get_output("access_subnet_nsg")
+isolated_kubeconfig = infrastructure_stack_reference.get_output("isolated_kubeconfig")
+isolated_nodes_subnet_cidr = infrastructure_stack_reference.get_output(
+    "isolated_nodes_subnet_cidr"
+)
 isolated_subnet_nsg = infrastructure_stack_reference.get_output("isolated_subnet_nsg")
 
 
@@ -30,7 +36,7 @@ def create_nsg_lockdown(nsg_info):
                 protocol=network.SecurityRuleProtocol.TCP,
                 source_port_range="*",
                 destination_port_range="443",
-                source_address_prefix="10.10.1.0/24",
+                source_address_prefix=access_nodes_subnet_cidr,
                 destination_address_prefix="*",
                 description="Allow FRIDGE API access from access cluster API Proxy",
             ),
@@ -56,7 +62,7 @@ def create_nsg_lockdown(nsg_info):
                 protocol=network.SecurityRuleProtocol.TCP,
                 source_port_range="*",
                 destination_port_range="8080",
-                source_address_prefix="10.20.1.0/24",
+                source_address_prefix=isolated_nodes_subnet_cidr,
                 destination_address_prefix="10.10.50.50/32",
             ),
             network.SecurityRuleArgs(
