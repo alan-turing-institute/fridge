@@ -19,6 +19,7 @@ config:
     secure: v1:Cre1kldv85pjorE8:RBF5XK/QC+b4yRe9Kben7uOqz5OwV+d/MvBE
   fridge:minio_fqdn_prefix: minio
   fridge:minio_pool_size: 20Gi
+  fridge:block_storage_size: 10Gi
   fridge:oidc_client_id:
     secure: v1:GAUMCYCHoIpLIjSk:vmmzXnLfC0fuXDqrIXca4SYN9QHgBrIGC1EN/0ObKy4qn56IkpjrtzAB+qQvtiOVYyRmxQ==
   fridge:oidc_client_secret:
