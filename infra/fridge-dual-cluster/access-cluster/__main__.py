@@ -146,6 +146,7 @@ network_policies = components.NetworkPolicies(
 )
 
 # Pulumi exports
+pulumi.export("fridge_api_ip_address", config.require("fridge_api_ip"))
 pulumi.export("harbor_fqdn", harbor.harbor_fqdn)
 pulumi.export("harbor_ip_address", config.require("harbor_ip"))
 pulumi.export("ingress_ip", ingress_nginx.ingress_ip)
