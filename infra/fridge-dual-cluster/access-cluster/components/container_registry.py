@@ -35,7 +35,7 @@ class ContainerRegistry(ComponentResource):
         super().__init__("fridge:ContainerRegistry", name, {}, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
-        harbor_ns = Namespace(
+        self.harbor_ns = Namespace(
             "harbor-ns",
             metadata=ObjectMetaArgs(
                 name="harbor",
@@ -44,22 +44,22 @@ class ContainerRegistry(ComponentResource):
             opts=child_opts,
         )
 
-        harbor_fqdn = ".".join(
+        self.harbor_fqdn = ".".join(
             (
                 args.config.require("harbor_fqdn_prefix"),
                 args.config.require("base_fqdn"),
             )
         )
 
-        harbor_external_url = f"https://{harbor_fqdn}"
-        harbor_storage_settings = {
+        self.harbor_external_url = f"https://{harbor_fqdn}"
+        self.harbor_storage_settings = {
             "storageClass": args.storage_classes.standard_storage_name,
             "accessMode": "ReadWriteMany"
             if args.storage_classes.standard_supports_rwm
             else "ReadWriteOnce",
         }
 
-        harbor = Release(
+        self.harbor = Release(
             "harbor",
             ReleaseArgs(
                 chart="harbor",
@@ -79,15 +79,15 @@ class ContainerRegistry(ComponentResource):
                             "certSource": "none",
                         },
                     },
-                    "externalURL": harbor_external_url,
+                    "externalURL": self.harbor_external_url,
                     "harborAdminPassword": args.config.require_secret(
                         "harbor_admin_password"
                     ),
                     "persistence": {
                         "persistentVolumeClaim": {
-                            "registry": harbor_storage_settings,
+                            "registry": self.harbor_storage_settings,
                             "jobservice": {
-                                "jobLog": harbor_storage_settings,
+                                "jobLog": self.harbor_storage_settings,
                             },
                         },
                     },
@@ -95,15 +95,15 @@ class ContainerRegistry(ComponentResource):
             ),
             opts=ResourceOptions.merge(
                 child_opts,
-                ResourceOptions(depends_on=[harbor_ns]),
+                ResourceOptions(depends_on=[self.harbor_ns]),
             ),
         )
 
-        harbor_ingress = Ingress(
+        self.harbor_ingress = Ingress(
             "harbor-ingress",
             metadata=ObjectMetaArgs(
                 name="harbor-ingress",
-                namespace=harbor_ns.metadata.name,
+                namespace=self.harbor_ns.metadata.name,
                 annotations={
                     "nginx.ingress.kubernetes.io/force-ssl-redirect": "true",
                     "nginx.ingress.kubernetes.io/proxy-body-size": "0",
@@ -117,14 +117,14 @@ class ContainerRegistry(ComponentResource):
                 "tls": [
                     {
                         "hosts": [
-                            harbor_fqdn,
+                            self.harbor_fqdn,
                         ],
                         "secret_name": "harbor-ingress-tls",
                     }
                 ],
                 "rules": [
                     {
-                        "host": harbor_fqdn,
+                        "host": self.harbor_fqdn,
                         "http": {
                             "paths": [
                                 {
@@ -148,7 +148,7 @@ class ContainerRegistry(ComponentResource):
                 child_opts,
                 ResourceOptions(
                     depends_on=[
-                        harbor,
+                        self.harbor,
                     ]
                 ),
             ),
@@ -158,45 +158,41 @@ class ContainerRegistry(ComponentResource):
         # This is needed while using staging/self-signed certificates for Harbor
         # A daemonset is used to run the configuration on all nodes in the cluster
 
-        containerd_config_ns = Namespace(
+        self.containerd_config_ns = Namespace(
             "containerd-config-ns",
             metadata=ObjectMetaArgs(
                 name="containerd-config",
                 labels={} | PodSecurityStandard.PRIVILEGED.value,
             ),
             opts=ResourceOptions(
-                depends_on=[harbor],
+                depends_on=[self.harbor],
             ),
         )
 
-        skip_harbor_tls = Template(
+        self.skip_harbor_tls = Template(
             open("k8s/harbor/skip_harbor_tls_verification.yaml", "r").read()
         ).substitute(
             namespace="containerd-config",
-            harbor_fqdn=harbor_fqdn,
-            harbor_url=harbor_external_url,
+            harbor_fqdn=self.harbor_fqdn,
+            harbor_url=self.harbor_external_url,
             harbor_ip=args.config.require("harbor_ip"),
             harbor_internal_url="http://" + args.config.require("harbor_ip"),
         )
 
-        configure_containerd_daemonset = ConfigGroup(
+        self.configure_containerd_daemonset = ConfigGroup(
             "configure-containerd-daemon",
-            yaml=[skip_harbor_tls],
+            yaml=[self.skip_harbor_tls],
             opts=ResourceOptions(
-                depends_on=[harbor],
+                depends_on=[self.harbor],
             ),
         )
 
-        self.harbor_fqdn = harbor_fqdn
-        self.harbor_external_url = harbor_external_url
-        self.configure_containerd_daemonset = configure_containerd_daemonset
-
         self.register_outputs(
             {
-                "configure_containerd_daemonset": configure_containerd_daemonset,
-                "containerd_config_ns": containerd_config_ns,
-                "harbor": harbor,
-                "harbor_ingress": harbor_ingress,
-                "harbor_ns": harbor_ns,
+                "configure_containerd_daemonset": self.configure_containerd_daemonset,
+                "containerd_config_ns": self.containerd_config_ns,
+                "harbor": self.harbor,
+                "harbor_ingress": self.harbor_ingress,
+                "harbor_ns": self.harbor_ns,
             }
         )
