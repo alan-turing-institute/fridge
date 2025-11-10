@@ -4,7 +4,7 @@ from pulumi import ResourceOptions
 from pulumi_kubernetes.batch.v1 import CronJobPatch, CronJobSpecPatchArgs
 from pulumi_kubernetes.core.v1 import NamespacePatch
 from pulumi_kubernetes.meta.v1 import ObjectMetaPatchArgs
-from pulumi_kubernetes.yaml import ConfigFile
+from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
 
 import components
 from enums import K8sEnvironment, PodSecurityStandard, TlsEnvironment
@@ -166,6 +166,16 @@ if enable_sso:
             depends_on=[argo_workflows],
         ),
     )
+
+argo_example = ConfigGroup(
+    "argo-example",
+    files=["./k8s/argo_workflows/examples/*.yaml"],
+    opts=ResourceOptions(
+        depends_on=[
+            argo_workflows,
+        ]
+    ),
+)
 
 # Harbor
 harbor = components.ContainerRegistry(
