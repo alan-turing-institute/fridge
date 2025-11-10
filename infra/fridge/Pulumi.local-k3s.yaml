@@ -10,6 +10,7 @@ config:
   fridge:lets_encrypt_email: safehavendevs@turing.ac.uk
   fridge:minio_fqdn_prefix: minio
   fridge:minio_pool_size: 20Gi
+  fridge:block_storage_size: 10Gi
   fridge:harbor_admin_password:
     secure: v1:6iZJ140HBBbDKDvf:00vlri4jfH+Xr1ayLDj7R6jL+7VrqbKi7CM4
   fridge:fridge_api_admin:
