@@ -20,6 +20,30 @@ curl -X 'POST' \
         "name": "DockerHub"
         }'
 
+curl -X 'POST' \
+    -u "$HARBOR_ADMIN_USER:$HARBOR_ADMIN_PASSWORD" \
+    "http://$HARBOR_URL/api/v2.0/registries" \
+    -H 'accept: application/json' \
+    -H 'Content-Type: application/json' \
+    -d '{
+        "url": "https://quay.io",
+        "type": "quay",
+        "credential": {},
+        "name": "QuayIO"
+        }'
+
+curl -X 'POST' \
+    -u "$HARBOR_ADMIN_USER:$HARBOR_ADMIN_PASSWORD" \
+    "http://$HARBOR_URL/api/v2.0/registries" \
+    -H 'accept: application/json' \
+    -H 'Content-Type: application/json' \
+    -d '{
+        "url": "https://ghcr.io",
+        "type": "github-ghcr",
+        "credential": {},
+        "name": "GithubGHCR"
+        }'
+
 # Create a project for Docker proxy caching
 curl -X 'POST' \
     -u "$HARBOR_ADMIN_USER:$HARBOR_ADMIN_PASSWORD" \
