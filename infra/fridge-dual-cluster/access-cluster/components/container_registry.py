@@ -7,12 +7,15 @@ from pulumi_kubernetes.batch.v1 import (
     JobSpecArgs,
 )
 from pulumi_kubernetes.core.v1 import (
+    ConfigMap,
     ContainerArgs,
     EnvVarArgs,
     Namespace,
     PodSpecArgs,
     PodTemplateSpecArgs,
     SecurityContextArgs,
+    VolumeArgs,
+    VolumeMountArgs,
 )
 from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
@@ -176,8 +179,11 @@ class ContainerRegistry(ComponentResource):
                 name="containerd-config",
                 labels={} | PodSecurityStandard.PRIVILEGED.value,
             ),
-            opts=ResourceOptions(
-                depends_on=[self.harbor],
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(
+                    depends_on=[self.harbor],
+                ),
             ),
         )
 
@@ -194,8 +200,27 @@ class ContainerRegistry(ComponentResource):
         self.configure_containerd_daemonset = ConfigGroup(
             "configure-containerd-daemon",
             yaml=[self.skip_harbor_tls],
-            opts=ResourceOptions(
-                depends_on=[self.harbor],
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(
+                    depends_on=[self.harbor],
+                ),
+            ),
+        )
+
+        with open("components/scripts/harbor_config.sh", "r") as f:
+            config_script = f.read()
+
+        harbor_config_script = ConfigMap(
+            "harbor-config-script",
+            metadata=ObjectMetaArgs(
+                name="harbor-config-script",
+                namespace=self.harbor_ns.metadata.name,
+            ),
+            data={"configure_harbor.sh": config_script},
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(depends_on=[self.harbor]),
             ),
         )
 
@@ -230,39 +255,13 @@ class ContainerRegistry(ComponentResource):
                                         ),
                                     ),
                                 ],
-                                command=[
-                                    "/bin/sh",
-                                    "-c",
-                                    """
-                                    #!/bin/sh
-                                    echo "Configuring Harbor..."
-                                    curl -X 'POST' \
-                                        -u "$HARBOR_ADMIN_USER:$HARBOR_ADMIN_PASSWORD" \
-                                        'http://10.0.50.50/api/v2.0/registries' \
-                                        -H 'accept: application/json' \
-                                        -H 'Content-Type: application/json' \
-                                        -d '{
-                                            "id": 1,
-                                            "url": "https://hub.docker.com",
-                                            "type": "docker-hub",
-                                            "credential": {},
-                                            "name": "DockerHub",
-                                            }'
-                                    curl -X 'POST' \
-                                        -u "$HARBOR_ADMIN_USER:$HARBOR_ADMIN_PASSWORD" \
-                                        'http://10.0.50.50/api/v2.0/projects' \
-                                        -H 'accept: application/json' \
-                                        -H 'Content-Type: application/json' \
-                                        -d '{
-                                            "project_name": "docker-proxy",
-                                            "public": true,
-                                            "cve_allowlist": {},
-                                            "registry_id": 1,
-                                            "metadata": {
-                                                "proxy_speed_kb": "-1",
-                                                }
-                                            }'
-                                    """,
+                                command=["/bin/sh", "/scripts/configure_harbor.sh"],
+                                volume_mounts=[
+                                    VolumeMountArgs(
+                                        name="harbor-config-script-volume",
+                                        mount_path="/scripts",
+                                        read_only=True,
+                                    )
                                 ],
                                 security_context=SecurityContextArgs(
                                     allow_privilege_escalation=False,
@@ -274,13 +273,21 @@ class ContainerRegistry(ComponentResource):
                                 ),
                             ),
                         ],
+                        volumes=[
+                            VolumeArgs(
+                                name="harbor-config-script-volume",
+                                config_map={
+                                    "name": harbor_config_script.metadata.name,
+                                },
+                            )
+                        ],
                         restart_policy="Never",
                     )
                 ),
             ),
             opts=ResourceOptions.merge(
                 child_opts,
-                ResourceOptions(depends_on=[self.harbor_ns]),
+                ResourceOptions(depends_on=[self.harbor_ns, harbor_config_script]),
             ),
         )
 
