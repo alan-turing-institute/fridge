@@ -13,6 +13,7 @@ from pulumi_kubernetes.core.v1 import (
     Namespace,
     PodSpecArgs,
     PodTemplateSpecArgs,
+    Secret,
     SecurityContextArgs,
     VolumeArgs,
     VolumeMountArgs,
@@ -224,6 +225,23 @@ class ContainerRegistry(ComponentResource):
             ),
         )
 
+        harbor_admin_secret = Secret(
+            "harbor-admin-secret",
+            metadata=ObjectMetaArgs(
+                name="harbor-admin-credentials",
+                namespace=self.harbor_ns.metadata.name,
+            ),
+            type="Opaque",
+            string_data={
+                "username": "admin",
+                "password": args.config.require_secret("harbor_admin_password"),
+            },
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(depends_on=[self.harbor]),
+            ),
+        )
+
         self.configure_harbor = Job(
             "configure-harbor",
             metadata=ObjectMetaArgs(
@@ -242,26 +260,31 @@ class ContainerRegistry(ComponentResource):
                                 env=[
                                     EnvVarArgs(
                                         name="HARBOR_URL",
-                                        value="10.0.50.50",
+                                        value="harbor.harbor.svc.cluster.local",  # args.config.require("harbor_ip"),
                                     ),
-                                    EnvVarArgs(
-                                        name="HARBOR_ADMIN_USER",
-                                        value="admin",
-                                    ),
-                                    EnvVarArgs(
-                                        name="HARBOR_ADMIN_PASSWORD",
-                                        value=args.config.require_secret(
-                                            "harbor_admin_password"
-                                        ),
-                                    ),
+                                    # EnvVarArgs(
+                                    #     name="HARBOR_ADMIN_USER",
+                                    #     value="admin",
+                                    # ),
+                                    # EnvVarArgs(
+                                    #     name="HARBOR_ADMIN_PASSWORD",
+                                    #     value=args.config.require_secret(
+                                    #         "harbor_admin_password"
+                                    #     ),
+                                    # ),
                                 ],
                                 command=["/bin/sh", "/scripts/configure_harbor.sh"],
                                 volume_mounts=[
                                     VolumeMountArgs(
+                                        name="harbor-credentials",
+                                        mount_path="/run/secrets/harbor",
+                                        read_only=True,
+                                    ),
+                                    VolumeMountArgs(
                                         name="harbor-config-script-volume",
                                         mount_path="/scripts",
                                         read_only=True,
-                                    )
+                                    ),
                                 ],
                                 security_context=SecurityContextArgs(
                                     allow_privilege_escalation=False,
@@ -275,11 +298,17 @@ class ContainerRegistry(ComponentResource):
                         ],
                         volumes=[
                             VolumeArgs(
+                                name="harbor-credentials",
+                                secret={
+                                    "secret_name": harbor_admin_secret.metadata.name,
+                                },
+                            ),
+                            VolumeArgs(
                                 name="harbor-config-script-volume",
                                 config_map={
                                     "name": harbor_config_script.metadata.name,
                                 },
-                            )
+                            ),
                         ],
                         restart_policy="Never",
                     )
