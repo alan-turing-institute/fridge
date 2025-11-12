@@ -1,18 +1,13 @@
-from string import Template
-
 import pulumi
 
 from pulumi import ResourceOptions
 from pulumi_kubernetes.batch.v1 import CronJobPatch, CronJobSpecPatchArgs
-from pulumi_kubernetes.core.v1 import Namespace, NamespacePatch
-from pulumi_kubernetes.helm.v3 import Release
-from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
-from pulumi_kubernetes.meta.v1 import ObjectMetaArgs, ObjectMetaPatchArgs
-
-from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
+from pulumi_kubernetes.core.v1 import NamespacePatch
+from pulumi_kubernetes.meta.v1 import ObjectMetaPatchArgs
+from pulumi_kubernetes.yaml import ConfigFile
 
 import components
-from enums import K8sEnvironment, PodSecurityStandard, TlsEnvironment, tls_issuer_names
+from enums import K8sEnvironment, PodSecurityStandard, TlsEnvironment
 
 
 def patch_namespace(name: str, pss: PodSecurityStandard) -> NamespacePatch:
@@ -37,6 +32,7 @@ except ValueError:
         f"Supported values are {', '.join([item.value for item in K8sEnvironment])}."
     )
 
+# START hubble
 # Hubble UI
 # Interface for Cilium
 if k8s_environment == K8sEnvironment.AKS:
@@ -44,90 +40,39 @@ if k8s_environment == K8sEnvironment.AKS:
         "hubble-ui",
         file="./k8s/hubble/hubble_ui.yaml",
     )
+# END
 
-match k8s_environment:
-    case K8sEnvironment.AKS | K8sEnvironment.K3S:
-        # Ingress NGINX (ingress provider)
-        ingress_nginx_ns = Namespace(
-            "ingress-nginx-ns",
-            metadata=ObjectMetaArgs(
-                name="ingress-nginx",
-                labels={} | PodSecurityStandard.RESTRICTED.value,
-            ),
-        )
+ingress_nginx = components.Ingress(
+    "ingress-nginx",
+    args=components.IngressArgs(k8s_environment=k8s_environment),
+)
 
-        ingress_nginx = ConfigFile(
-            "ingress-nginx",
-            file="https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.12.1/deploy/static/provider/cloud/deploy.yaml",
-            opts=ResourceOptions(
-                depends_on=[ingress_nginx_ns],
-            ),
-        )
+cert_manager = components.CertManager(
+    "cert-manager",
+    args=components.CertManagerArgs(
+        config=config,
+        k8s_environment=k8s_environment,
+        tls_environment=tls_environment,
+    ),
+)
 
-        # CertManager (TLS automation)
-        cert_manager_ns = Namespace(
-            "cert-manager-ns",
-            metadata=ObjectMetaArgs(
-                name="cert-manager",
-                labels={} | PodSecurityStandard.RESTRICTED.value,
-            ),
-        )
+if k8s_environment == K8sEnvironment.DAWN:
+    dawn_managed_namespaces = ["cert-manager", "ingress-nginx"]
+    for namespace in dawn_managed_namespaces:
+        patch_namespace(namespace, PodSecurityStandard.RESTRICTED)
 
-        cert_manager = Chart(
-            "cert-manager",
-            namespace=cert_manager_ns.metadata.name,
-            chart="cert-manager",
-            version="1.17.1",
-            repository_opts=RepositoryOptsArgs(
-                repo="https://charts.jetstack.io",
-            ),
-            values={
-                "crds": {"enabled": True},
-                "extraArgs": ["--acme-http01-solver-nameservers=8.8.8.8:53,1.1.1.1:53"],
-            },
-            opts=ResourceOptions(
-                depends_on=[cert_manager_ns],
-            ),
-        )
-        # Get public IP address and ports of Ingress Nginx loadbalancer service
-        # Note that this relies on Ingress-Nginx being installed as for AKS
-        # On Dawn it is installed using a Helm chart and has different properties.
-        pulumi.export(
-            "ingress_ip",
-            ingress_nginx.resources["v1/Service:ingress-nginx/ingress-nginx-controller"]
-            .status.load_balancer.ingress[0]
-            .ip,
-        )
-        pulumi.export(
-            "ingress_ports",
-            ingress_nginx.resources[
-                "v1/Service:ingress-nginx/ingress-nginx-controller"
-            ].spec.ports.apply(lambda ports: [item.port for item in ports]),
-        )
-
-    case K8sEnvironment.DAWN:
-        dawn_managed_namespaces = ["cert-manager", "ingress-nginx"]
-        cert_manager_ns = Namespace.get("cert-manager-ns", "cert-manager")
-        ingress_nginx_ns = Namespace.get("ingress-nginx-ns", "ingress-nginx")
-        for namespace in dawn_managed_namespaces:
-            patch_namespace(namespace, PodSecurityStandard.RESTRICTED)
-        cert_manager = Release.get("cert-manager", "cert-manager")
-        ingress_nginx = Release.get("ingress-nginx", "ingress-nginx")
-
-        # Add label to etcd-defrag jobs to allow Cilium to permit them to communicate with the API server
-        # These jobs are installed automatically on DAWN using Helm, and do not otherwise have a consistent label
-        # so cannot be selected by Cilium.
-        CronJobPatch(
-            "etcd-defrag-cronjob-label",
-            metadata=ObjectMetaPatchArgs(name="etcd-defrag", namespace="kube-system"),
-            spec=CronJobSpecPatchArgs(
-                job_template={
-                    "spec": {
-                        "template": {"metadata": {"labels": {"etcd-defrag": "true"}}}
-                    }
-                }
-            ),
-        )
+    # Add label to etcd-defrag jobs to allow Cilium to permit them to communicate with the API server
+    # These jobs are installed automatically on DAWN using Helm, and do not otherwise have a consistent label
+    # so cannot be selected by Cilium.
+    CronJobPatch(
+        "etcd-defrag-cronjob-label",
+        metadata=ObjectMetaPatchArgs(name="etcd-defrag", namespace="kube-system"),
+        spec=CronJobSpecPatchArgs(
+            job_template={
+                "spec": {"template": {"metadata": {"labels": {"etcd-defrag": "true"}}}}
+            }
+        ),
+    )
 
 # Storage classes
 storage_classes = components.StorageClasses(
@@ -157,23 +102,7 @@ standard_namespaces = ["default", "kube-node-lease", "kube-public"]
 for namespace in standard_namespaces:
     patch_namespace(namespace, PodSecurityStandard.RESTRICTED)
 
-cluster_issuer_config = Template(
-    open("k8s/cert_manager/clusterissuer.yaml", "r").read()
-).substitute(
-    lets_encrypt_email=config.require("lets_encrypt_email"),
-    issuer_name_staging=tls_issuer_names[TlsEnvironment.STAGING],
-    issuer_name_production=tls_issuer_names[TlsEnvironment.PRODUCTION],
-)
-
-cert_manager_issuers = ConfigGroup(
-    "cert-manager-issuers",
-    yaml=[cluster_issuer_config],
-    opts=ResourceOptions(
-        depends_on=[cert_manager, cert_manager_ns],
-    ),
-)
-
-# Minio
+# MinIO
 minio = components.ObjectStorage(
     "minio",
     args=components.ObjectStorageArgs(
@@ -185,9 +114,25 @@ minio = components.ObjectStorage(
         depends_on=[
             ingress_nginx,
             cert_manager,
-            cert_manager_issuers,
             storage_classes,
         ]
+    ),
+)
+
+# MinIO configuration
+minio_config = components.MinioConfigJob(
+    name=f"{stack_name}-minio-config-job",
+    args=components.MinioConfigArgs(
+        minio_cluster_url=minio.minio_cluster_url,
+        minio_credentials={
+            "minio_root_user": config.require_secret("minio_root_user"),
+            "minio_root_password": config.require_secret("minio_root_password"),
+        },
+        minio_tenant_ns=minio.minio_tenant_ns,
+        minio_tenant=minio.minio_tenant,
+    ),
+    opts=ResourceOptions(
+        depends_on=[minio],
     ),
 )
 
@@ -205,7 +150,6 @@ argo_workflows = components.WorkflowServer(
         depends_on=[
             ingress_nginx,
             cert_manager,
-            cert_manager_issuers,
         ]
     ),
 )
@@ -251,10 +195,9 @@ harbor = components.ContainerRegistry(
         storage_classes=storage_classes,
     ),
     opts=ResourceOptions(
-        depends_on=[ingress_nginx, cert_manager, cert_manager_issuers, storage_classes],
+        depends_on=[ingress_nginx, cert_manager, storage_classes],
     ),
 )
-
 
 # API Server
 api_server = components.ApiServer(
@@ -274,8 +217,20 @@ api_server = components.ApiServer(
     ),
 )
 
-# Network policy (through Cilium)
+# Block storage for Argo Workflow jobs
+block_storage = components.BlockStorage(
+    "block-storage",
+    components.BlockStorageArgs(
+        config=config,
+        storage_classes=storage_classes,
+        storage_volume_claim_ns=argo_workflows.argo_workflows_ns,
+    ),
+    opts=ResourceOptions(
+        depends_on=[storage_classes],
+    ),
+)
 
+# Network policy (through Cilium)
 # Network policies should be deployed last to ensure that none of them interfere with the deployment process
 
 resources = [
@@ -299,3 +254,5 @@ network_policies = components.NetworkPolicies(
 pulumi.export("argo_fqdn", argo_workflows.argo_fqdn)
 pulumi.export("harbor_fqdn", harbor.harbor_fqdn)
 pulumi.export("minio_fqdn", minio.minio_fqdn)
+pulumi.export("ingress_ip", ingress_nginx.ingress_ip)
+pulumi.export("ingress_ports", ingress_nginx.ingress_ports)

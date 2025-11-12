@@ -1,7 +1,7 @@
 encryptionsalt: v1:ykjzeFXxJjM=:v1:lelRqe5sSoksTSch:PoR4OU+t4z2i7P1rWQorCrsPlKOT4w==
 config:
   kubernetes:context: default
-  fridge:tls_environment: staging
+  fridge:tls_environment: development
   fridge:k8s_env: K3s
   fridge:argo_fqdn_prefix: argo
   fridge:base_fqdn: fridge.internal
@@ -10,6 +10,7 @@ config:
   fridge:lets_encrypt_email: safehavendevs@turing.ac.uk
   fridge:minio_fqdn_prefix: minio
   fridge:minio_pool_size: 20Gi
+  fridge:block_storage_size: 10Gi
   fridge:harbor_admin_password:
     secure: v1:6iZJ140HBBbDKDvf:00vlri4jfH+Xr1ayLDj7R6jL+7VrqbKi7CM4
   fridge:fridge_api_admin:

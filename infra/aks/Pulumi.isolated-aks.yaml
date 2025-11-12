@@ -1,0 +1,11 @@
+config:
+  azure-native:location: uksouth
+  azure-native:subscriptionId: "36cfe11d-bfcd-4dce-9b70-c3905a4f3d01"
+  azure-native:tenantId: "4395f4a7-e455-4f95-8a9f-1fbaef6384f9"
+  fridge_aks:access_vnet_cidr: 10.10.0.0/16
+  fridge_aks:access_nodes_subnet_cidr: 10.10.1.0/24
+  fridge_aks:cluster_name: multi
+  fridge_aks:isolated_vnet_cidr: 10.20.0.0/16
+  fridge_aks:isolated_nodes_subnet_cidr: 10.20.1.0/24
+  fridge_aks:resource_group_name: fridge-multiple
+encryptionsalt: v1:XBpaTjggKcw=:v1:41YCg4hIzDzwVlbX:Yvfvy1JBOr1PpWoyZ8ebIwwXlkyr/g==

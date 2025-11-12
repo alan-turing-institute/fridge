@@ -6,11 +6,15 @@ from enums import K8sEnvironment
 
 class NetworkPolicies(ComponentResource):
     def __init__(
-        self, name: str, k8s_environment: K8sEnvironment, opts=ResourceOptions
+        self,
+        name: str,
+        k8s_environment: K8sEnvironment,
+        opts: ResourceOptions | None = None,
     ) -> None:
         super().__init__("fridge:k8s:NetworkPolicies", name, {}, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
+        # START network policies
         match k8s_environment:
             case K8sEnvironment.AKS:
                 # AKS uses Konnectivity to mediate some API/webhook traffic, and uses a different external DNS server
@@ -19,6 +23,7 @@ class NetworkPolicies(ComponentResource):
                     file="./k8s/cilium/aks.yaml",
                     opts=child_opts,
                 )
+            # END
             case K8sEnvironment.DAWN:
                 # Dawn uses a different external DNS server to AKS, and also runs regular jobs that do not run on AKS
                 ConfigFile(
