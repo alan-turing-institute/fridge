@@ -1,0 +1,68 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: containerd-registry-mirrors
+  namespace: ${namespace}
+data:
+  docker-io-hosts.toml: |
+    server = "https://registry-1.docker.io"
+
+    [host."https://${harbor_fqdn}/v2/docker-proxy"]
+      capabilities = ["pull", "resolve"]
+      skip_verify = true
+
+  gchr-io-hosts.toml: |
+    server = "https://ghcr.io"
+
+    [host."https://${harbor_fqdn}/v2/ghcr-proxy"]
+      capabilities = ["pull", "resolve"]
+      skip_verify = true
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: configure-containerd-mirrors
+  namespace: ${namespace}
+spec:
+  selector:
+    matchLabels:
+      app: configure-containerd-mirrors
+  template:
+    metadata:
+      labels:
+        app: configure-containerd-mirrors
+    spec:
+      initContainers:
+      - name: configure-containerd
+        image: busybox
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          mkdir -p /host/etc/containerd/certs.d/docker.io
+          mkdir -p /host/etc/containerd/certs.d/ghcr.io
+
+          cp /config/docker-io-hosts.toml /host/etc/containerd/certs.d/docker.io/hosts.toml
+          cp /config/ghcr-io-hosts.toml /host/etc/containerd/certs.d/ghcr.io/hosts.toml
+
+          # Restart containerd to pick up new config
+          nsenter -t 1 -m -u -n -i -- systemctl restart containerd || true
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: host-fs
+          mountPath: /host
+        - name: config
+          mountPath: /config
+      containers:
+      - name: sleep
+        image: alpine:3.18
+        command: ["sleep", "infinity"]
+      volumes:
+      - name: host-fs
+        hostPath:
+          path: /
+      - name: config
+        configMap:
+          name: containerd-registry-mirrors
