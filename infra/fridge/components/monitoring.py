@@ -19,7 +19,9 @@ class MonitoringArgs:
 
 
 class Monitoring(ComponentResource):
-    def __init__(self, name: str, args: MonitoringArgs, opts=ResourceOptions) -> None:
+    def __init__(
+        self, name: str, args: MonitoringArgs, opts: ResourceOptions | None = None
+    ) -> None:
         super().__init__("fridge:k8s:Monitoring", name, {}, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
