@@ -120,7 +120,6 @@ class ObjectStorage(ComponentResource):
                 "tenant": {
                     "name": "argo-artifacts",
                     "buckets": [
-                        {"name": "argo-artifacts"},
                         {"name": "ingress"},
                         {"name": "egress"},
                     ],
