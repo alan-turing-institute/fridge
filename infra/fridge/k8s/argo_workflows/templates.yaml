@@ -17,26 +17,12 @@ spec:
           persistentVolumeClaim:
             claimName: replace_me
       container:
-        name: mc
-        image: minio/mc:latest
+        name: copy
+        image: busybox:1.36.1
         command: ["/bin/sh", "-c"]
         args:
           - |
-            mc --insecure alias set artifacts http://minio.argo-artifacts.svc.cluster.local $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
-            mc cp artifacts/{{inputs.parameters.bucket}}/{{inputs.parameters.file}} /data/
-        env:
-          - name: MC_CONFIG_DIR
-            value: /tmp/.mc
-          - name: MINIO_ACCESS_KEY
-            valueFrom:
-              secretKeyRef:
-                name: argo-artifacts-minio
-                key: accesskey
-          - name: MINIO_SECRET_KEY
-            valueFrom:
-              secretKeyRef:
-                name: argo-artifacts-minio
-                key: secretkey
+            wget -O /data/{{inputs.parameters.file}} http://minio.argo-artifacts.svc.cluster.local/{{inputs.parameters.bucket}}/{{inputs.parameters.file}}
         volumeMounts:
           - name: workflow-data-ingress
             mountPath: /data
