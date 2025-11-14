@@ -2,7 +2,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: WorkflowTemplate
 metadata:
-  name: minio-data-copy
+  name: data-copy
   namespace: argo-workflows
 spec:
   entrypoint: pull-data-from-minio
@@ -22,7 +22,26 @@ spec:
         command: ["/bin/sh", "-c"]
         args:
           - |
-            wget -O /data/{{inputs.parameters.file}} http://minio.argo-artifacts.svc.cluster.local/{{inputs.parameters.bucket}}/{{inputs.parameters.file}}
+            copy_jobs=""
+            for file in $(echo "{{inputs.parameters.file}}" | tr ";" " "); do
+              wget -O /data/$file http://minio.argo-artifacts.svc.cluster.local/{{inputs.parameters.bucket}}/$file &
+              copy_jobs="$copy_jobs $!"
+            done
+
+            # Monitor copy job background tasks
+            for pid in $copy_jobs; do
+                wait "$pid"
+                code=$?
+
+                if [ "$code" -ne 0 ]; then
+                    echo "Copy failed (PID $pid, exit code $code)"
+                    kill $pids 2>/dev/null   # Stop all remaining downloads
+                    exit "$code"
+                fi
+            done
+
+            echo "All copy jobs complete."
+            exit 0
         volumeMounts:
           - name: workflow-data-ingress
             mountPath: /data
