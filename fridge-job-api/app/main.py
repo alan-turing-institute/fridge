@@ -382,9 +382,11 @@ async def get_object(
 
 
 # Trigger Argo workflow
-@app.post("/object/move/{file_name}", tags=["s3"])
+@app.post("/object/move", tags=["s3"])
 async def move_object(
-    file_name: str,
+    files: Annotated[
+        str, "The name of files to move (Separate with ; for multiple files)"
+    ],
     version: str = None,
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
@@ -402,7 +404,7 @@ async def move_object(
                     "generateName": "data-copy-",
                     "parameters": [
                         f"bucket=ingress",
-                        f"file={file_name}",
+                        f"files={files}",
                     ],
                 },
             }
@@ -415,7 +417,7 @@ async def move_object(
         )
     return {
         "status": r.status_code,
-        "file": {file_name},
+        "files": files.split(";"),
         "workflow": r.json()["metadata"]["name"],
     }
 

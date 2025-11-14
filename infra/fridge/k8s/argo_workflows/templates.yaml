@@ -11,7 +11,7 @@ spec:
       inputs:
         parameters:
           - name: bucket
-          - name: file
+          - name: files
       volumes:
         - name: workflow-data-ingress
           persistentVolumeClaim:
@@ -23,7 +23,7 @@ spec:
         args:
           - |
             copy_jobs=""
-            for file in $(echo "{{inputs.parameters.file}}" | tr ";" " "); do
+            for file in $(echo "{{inputs.parameters.files}}" | tr ";" " "); do
               wget -O /data/$file http://minio.argo-artifacts.svc.cluster.local/{{inputs.parameters.bucket}}/$file &
               copy_jobs="$copy_jobs $!"
             done

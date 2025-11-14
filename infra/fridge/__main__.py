@@ -217,9 +217,14 @@ argo_workflow_templates = ConfigFile(
     transformations=[
         lambda obj, opts: (
             obj["spec"]["templates"][0]["volumes"][0].update(
-                {"persistentVolumeClaim": {"claimName": block_storage.block_storage_pvc}}
+                {
+                    "persistentVolumeClaim": {
+                        "claimName": block_storage.block_storage_pvc
+                    }
+                }
             )
-            if obj["spec"]["templates"][0]["volumes"][0].get("name") == "workflow-data-ingress"
+            if obj["spec"]["templates"][0]["volumes"][0].get("name")
+            == "workflow-data-ingress"
             else None
         ),
     ],
