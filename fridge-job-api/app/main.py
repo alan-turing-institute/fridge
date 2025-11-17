@@ -387,7 +387,7 @@ async def move_object(
     files: Annotated[
         str, "The name of files to move (Separate with ; for multiple files)"
     ],
-    version: str = None,
+    version: str | None = None,
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
     ),
@@ -403,7 +403,7 @@ async def move_object(
                 "submitOptions": {
                     "generateName": "data-copy-",
                     "parameters": [
-                        f"bucket=ingress",
+                        "bucket=ingress",
                         f"files={files}",
                     ],
                 },
@@ -437,7 +437,7 @@ async def create_bucket(
 async def delete_object(
     bucket: str,
     file_name: str,
-    version: str = None,
+    version: str | None = None,
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
     ),
