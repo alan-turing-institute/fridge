@@ -206,7 +206,7 @@ class ApiServer(ComponentResource):
                                         name="token-vol",
                                         mount_path="/service-account",
                                         read_only=True,
-                                    )
+                                    ),
                                 ],
                             )
                         ],

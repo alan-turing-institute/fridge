@@ -211,6 +211,28 @@ block_storage = components.BlockStorage(
     ),
 )
 
+argo_workflow_templates = ConfigFile(
+    "argo-workflow-templates",
+    file="./k8s/argo_workflows/templates.yaml",
+    transformations=[
+        lambda obj, opts: (
+            obj["spec"]["templates"][0]["volumes"][0].update(
+                {
+                    "persistentVolumeClaim": {
+                        "claimName": block_storage.block_storage_pvc
+                    }
+                }
+            )
+            if obj["spec"]["templates"][0]["volumes"][0].get("name")
+            == "workflow-data-ingress"
+            else None
+        ),
+    ],
+    opts=ResourceOptions(
+        depends_on=[argo_workflows, block_storage],
+    ),
+)
+
 # Network policy (through Cilium)
 # Network policies should be deployed last to ensure that none of them interfere with the deployment process
 

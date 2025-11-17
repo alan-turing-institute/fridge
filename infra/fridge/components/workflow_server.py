@@ -1,6 +1,9 @@
 import pulumi
 from pulumi import ComponentResource, FileAsset, Output, ResourceOptions
-from pulumi_kubernetes.core.v1 import Namespace, Secret
+from pulumi_kubernetes.core.v1 import (
+    Namespace,
+    Secret,
+)
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 
