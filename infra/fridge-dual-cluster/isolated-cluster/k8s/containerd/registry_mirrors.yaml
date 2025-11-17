@@ -11,12 +11,20 @@ data:
       capabilities = ["pull", "resolve"]
       skip_verify = true
 
-  gchr-io-hosts.toml: |
+    # Fall back to Docker Hub if Harbor fails
+    [host."https://registry-1.docker.io"]
+      capabilities = ["pull", "resolve"]
+
+  ghcr-io-hosts.toml: |
     server = "https://ghcr.io"
 
     [host."https://${harbor_fqdn}/v2/ghcr-proxy"]
       capabilities = ["pull", "resolve"]
       skip_verify = true
+
+    # Fall back to GHCR if Harbor fails
+    [host."https://ghcr.io"]
+      capabilities = ["pull", "resolve"]
 ---
 apiVersion: apps/v1
 kind: DaemonSet
