@@ -190,5 +190,17 @@ network_policies = components.NetworkPolicies(
     ),
 )
 
+# Container runtime configuration (containerd)
+container_runtime_config = components.ContainerRuntimeConfig(
+    "container-runtime-config",
+    args=components.ContainerRuntimeConfigArgs(
+        config=config,
+        harbor_ip=config.require("harbor_ip"),
+    ),
+    opts=ResourceOptions(
+        depends_on=resources,
+    ),
+)
+
 # Pulumi stack outputs
 pulumi.export("fridge_api_ip", config.require("fridge_api_ip"))
