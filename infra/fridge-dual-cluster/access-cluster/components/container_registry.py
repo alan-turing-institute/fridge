@@ -2,7 +2,12 @@ from string import Template
 
 import pulumi
 from pulumi import ComponentResource, ResourceOptions
-from pulumi_kubernetes.core.v1 import Namespace
+from pulumi_kubernetes.core.v1 import (
+    Namespace,
+    Service,
+    ServiceSpecArgs,
+    ServicePortArgs,
+)
 from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.networking.v1 import Ingress
@@ -10,7 +15,7 @@ from pulumi_kubernetes.yaml import ConfigGroup
 
 from .storage_classes import StorageClasses
 
-from enums import PodSecurityStandard, TlsEnvironment, tls_issuer_names
+from enums import K8sEnvironment, PodSecurityStandard, TlsEnvironment, tls_issuer_names
 
 
 class ContainerRegistryArgs:
@@ -51,7 +56,7 @@ class ContainerRegistry(ComponentResource):
             )
         )
 
-        self.harbor_external_url = f"https://{harbor_fqdn}"
+        self.harbor_external_url = f"https://{self.harbor_fqdn}"
         self.harbor_storage_settings = {
             "storageClass": args.storage_classes.standard_storage_name,
             "accessMode": "ReadWriteMany"
@@ -70,9 +75,9 @@ class ContainerRegistry(ComponentResource):
                 ),
                 values={
                     "expose": {
-                        "clusterIP": {
-                            "staticClusterIP": args.config.require("harbor_ip"),
-                        },
+                        # "clusterIP": {
+                        #     "staticClusterIP": args.config.require("harbor_ip"),
+                        # },
                         "type": "clusterIP",
                         "tls": {
                             "enabled": False,
@@ -152,6 +157,44 @@ class ContainerRegistry(ComponentResource):
                     ]
                 ),
             ),
+        )
+
+        api_service_annotations = (
+            {
+                "service.beta.kubernetes.io/azure-load-balancer-internal": "true",
+                "service.beta.kubernetes.io/azure-load-balancer-internal-subnet": "networking-access-nodes",
+            }
+            if K8sEnvironment(args.config.get("k8s_env")) == K8sEnvironment.AKS
+            else {}
+        )
+
+        self.harbor_internal_loadbalancer = Service(
+            "harbor-internal-lb",
+            metadata=ObjectMetaArgs(
+                name="harbor-internal-lb",
+                namespace=self.harbor_ns.metadata.name,
+                annotations=api_service_annotations,
+            ),
+            spec=ServiceSpecArgs(
+                type="LoadBalancer",
+                selector={"app": "harbor"},
+                ports=[ServicePortArgs(port=80, target_port=8080)],
+            ),
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(
+                    depends_on=[
+                        self.harbor,
+                    ]
+                ),
+            ),
+        )
+
+        # Extract the dynamically assigned IP address
+        self.harbor_lb_ip = self.harbor_internal_loadbalancer.status.apply(
+            lambda status: status.load_balancer.ingress[0].ip
+            if status and status.load_balancer and status.load_balancer.ingress
+            else None
         )
 
         # Create a daemonset to skip TLS verification for the harbor registry
