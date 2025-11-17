@@ -64,6 +64,15 @@ class ContainerRegistry(ComponentResource):
             else "ReadWriteOnce",
         }
 
+        api_service_annotations = (
+            {
+                "service.beta.kubernetes.io/azure-load-balancer-internal": "true",
+                "service.beta.kubernetes.io/azure-load-balancer-internal-subnet": "networking-access-nodes",
+            }
+            if K8sEnvironment(args.config.get("k8s_env")) == K8sEnvironment.AKS
+            else {}
+        )
+
         self.harbor = Release(
             "harbor",
             ReleaseArgs(
@@ -75,10 +84,8 @@ class ContainerRegistry(ComponentResource):
                 ),
                 values={
                     "expose": {
-                        # "clusterIP": {
-                        #     "staticClusterIP": args.config.require("harbor_ip"),
-                        # },
-                        "type": "clusterIP",
+                        "type": "loadBalancer",
+                        "loadBalancer": {"annotations": api_service_annotations},
                         "tls": {
                             "enabled": False,
                             "certSource": "none",
@@ -159,27 +166,9 @@ class ContainerRegistry(ComponentResource):
             ),
         )
 
-        api_service_annotations = (
-            {
-                "service.beta.kubernetes.io/azure-load-balancer-internal": "true",
-                "service.beta.kubernetes.io/azure-load-balancer-internal-subnet": "networking-access-nodes",
-            }
-            if K8sEnvironment(args.config.get("k8s_env")) == K8sEnvironment.AKS
-            else {}
-        )
-
-        self.harbor_internal_loadbalancer = Service(
+        self.harbor_internal_loadbalancer = Service.get(
             "harbor-internal-lb",
-            metadata=ObjectMetaArgs(
-                name="harbor-internal-lb",
-                namespace=self.harbor_ns.metadata.name,
-                annotations=api_service_annotations,
-            ),
-            spec=ServiceSpecArgs(
-                type="LoadBalancer",
-                selector={"app": "harbor"},
-                ports=[ServicePortArgs(port=80, target_port=8080)],
-            ),
+            id=pulumi.Output.concat(self.harbor_ns.metadata.name, "/harbor"),
             opts=ResourceOptions.merge(
                 child_opts,
                 ResourceOptions(
