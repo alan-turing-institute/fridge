@@ -23,6 +23,13 @@ def patch_namespace(name: str, pss: PodSecurityStandard) -> NamespacePatch:
 config = pulumi.Config()
 tls_environment = TlsEnvironment(config.require("tls_environment"))
 stack_name = pulumi.get_stack()
+organization = config.require("organization_name")
+project_name = config.require("project_name")
+access_stack_name = config.require("access_cluster_stack")
+
+access_stack = pulumi.StackReference(
+    f"{organization}/{project_name}/{access_stack_name}"
+)
 
 try:
     k8s_environment = K8sEnvironment(config.get("k8s_env"))
@@ -195,7 +202,7 @@ container_runtime_config = components.ContainerRuntimeConfig(
     "container-runtime-config",
     args=components.ContainerRuntimeConfigArgs(
         config=config,
-        harbor_ip=config.require("harbor_ip"),
+        harbor_ip=access_stack.get_output("harbor_ip_address"),
     ),
     opts=ResourceOptions(
         depends_on=resources,
