@@ -195,43 +195,6 @@ class ApiServer(ComponentResource):
                 template=PodTemplateSpecArgs(
                     metadata=ObjectMetaArgs(labels={"app": "fridge-api-server"}),
                     spec=PodSpecArgs(
-                        # Init container to trus the k8s root certificate needed to talk to minio STS
-                        # init_containers=[
-                        #     ContainerArgs(
-                        #         name="install-ca",
-                        #         image="debian:bookworm-slim",
-                        #         command=["/bin/bash", "-c"],
-                        #         args=[
-                        #             """
-                        #             set -e
-                        #             apt-get update -qq
-                        #             apt-get install -y -qq ca-certificates
-                        #             mkdir -p /usr/local/share/ca-certificates
-                        #             cp /var/run/secrets/kubernetes.io/serviceaccount/ca.crt /usr/local/share/ca-certificates/k8s-ca.crt
-                        #             update-ca-certificates
-                        #             cp -r /etc/ssl/certs/* /ca-cert/
-                        #             """
-                        #         ],
-                        #         security_context=SecurityContextArgs(
-                        #             allow_privilege_escalation=False,
-                        #             capabilities=CapabilitiesArgs(
-                        #                 drop=["ALL"],
-                        #             ),
-                        #             run_as_user=1001,
-                        #             run_as_group=3000,
-                        #             run_as_non_root=True,
-                        #             seccomp_profile=SeccompProfileArgs(
-                        #                 type="RuntimeDefault"
-                        #             ),
-                        #         ),
-                        #         volume_mounts=[
-                        #             VolumeMountArgs(
-                        #                 name="ca-cert",
-                        #                 mount_path="/ca-cert"
-                        #             ),
-                        #         ]
-                        #     )
-                        # ],
                         containers=[
                             ContainerArgs(
                                 name="fridge-api-server",
