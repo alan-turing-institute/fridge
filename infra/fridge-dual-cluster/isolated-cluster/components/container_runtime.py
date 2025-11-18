@@ -1,5 +1,5 @@
 import pulumi
-from pulumi import ComponentResource, ResourceOptions
+from pulumi import ComponentResource, Output, ResourceOptions
 from string import Template
 from enums import PodSecurityStandard
 from pulumi_kubernetes.core.v1 import Namespace
@@ -11,7 +11,7 @@ class ContainerRuntimeConfigArgs:
     def __init__(
         self,
         config: pulumi.config.Config,
-        harbor_ip: str,
+        harbor_ip: Output[str],
     ) -> None:
         self.config = config
         self.harbor_ip = harbor_ip
@@ -36,22 +36,27 @@ class ContainerRuntimeConfig(ComponentResource):
             opts=child_opts,
         )
 
-        registry_mirror_config = Template(
-            open("k8s/containerd/registry_mirrors.yaml", "r").read()
-        ).substitute(
+        yaml_template = open("k8s/containerd/registry_mirrors.yaml", "r").read()
+
+        registry_mirror_config = Output.all(
             namespace=self.config_ns.metadata.name,
             harbor_ip=args.harbor_ip,
+        ).apply(
+            lambda args: Template(yaml_template).substitute(
+                namespace=args["namespace"],
+                harbor_ip=args["harbor_ip"],
+            )
         )
 
-        self.configure_runtime = ConfigGroup(
-            "configure-container-runtime",
-            files={
-                "registry_mirrors.yaml": registry_mirror_config,
-            },
-            opts=ResourceOptions.merge(
-                child_opts,
-                ResourceOptions(
-                    depends_on=[self.config_ns],
+        self.configure_runtime = registry_mirror_config.apply(
+            lambda yaml_content: ConfigGroup(
+                "configure-container-runtime",
+                yaml=[yaml_content],
+                opts=ResourceOptions.merge(
+                    child_opts,
+                    ResourceOptions(
+                        depends_on=[self.config_ns],
+                    ),
                 ),
-            ),
+            )
         )
