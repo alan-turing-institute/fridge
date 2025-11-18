@@ -7,9 +7,10 @@ data:
   docker-io-hosts.toml: |
     server = "https://registry-1.docker.io"
 
-    [host."https://${harbor_fqdn}/v2/docker-proxy"]
+    [host."http://${harbor_ip}/v2/docker-proxy"]
       capabilities = ["pull", "resolve"]
       skip_verify = true
+      override_path = true
 
     # Fall back to Docker Hub if Harbor fails
     [host."https://registry-1.docker.io"]
@@ -18,9 +19,10 @@ data:
   ghcr-io-hosts.toml: |
     server = "https://ghcr.io"
 
-    [host."https://${harbor_fqdn}/v2/ghcr-proxy"]
+    [host."http://${harbor_ip}/v2/ghcr-proxy"]
       capabilities = ["pull", "resolve"]
       skip_verify = true
+      override_path = true
 
     # Fall back to GHCR if Harbor fails
     [host."https://ghcr.io"]
@@ -53,9 +55,6 @@ spec:
 
           cp /config/docker-io-hosts.toml /host/etc/containerd/certs.d/docker.io/hosts.toml
           cp /config/ghcr-io-hosts.toml /host/etc/containerd/certs.d/ghcr.io/hosts.toml
-
-          # Restart containerd to pick up new config
-          nsenter -t 1 -m -u -n -i -- systemctl restart containerd || true
         securityContext:
           privileged: true
         volumeMounts:
@@ -64,9 +63,15 @@ spec:
         - name: config
           mountPath: /config
       containers:
-      - name: sleep
-        image: alpine:3.18
-        command: ["sleep", "infinity"]
+        - name: wait
+          image: registry.k8s.io/pause:3.8
+          resources:
+            requests:
+              cpu: 10m
+              memory: 10Mi
+            limits:
+              cpu: 50m
+              memory: 50Mi
       volumes:
       - name: host-fs
         hostPath:
