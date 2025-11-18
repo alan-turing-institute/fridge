@@ -27,6 +27,18 @@ data:
     # Fall back to GHCR if Harbor fails
     [host."https://ghcr.io"]
       capabilities = ["pull", "resolve"]
+
+  quay-io-hosts.toml: |
+    server = "https://quay.io"
+
+    [host."http://${harbor_ip}/v2/quay-proxy"]
+      capabilities = ["pull", "resolve"]
+      skip_verify = true
+      override_path = true
+
+    # Fall back to Quay if Harbor fails
+    [host."https://quay.io"]
+      capabilities = ["pull", "resolve"]
 ---
 apiVersion: apps/v1
 kind: DaemonSet
@@ -52,9 +64,11 @@ spec:
           set -e
           mkdir -p /host/etc/containerd/certs.d/docker.io
           mkdir -p /host/etc/containerd/certs.d/ghcr.io
+          mkdir -p /host/etc/containerd/certs.d/quay.io
 
           cp /config/docker-io-hosts.toml /host/etc/containerd/certs.d/docker.io/hosts.toml
           cp /config/ghcr-io-hosts.toml /host/etc/containerd/certs.d/ghcr.io/hosts.toml
+          cp /config/quay-io-hosts.toml /host/etc/containerd/certs.d/quay.io/hosts.toml
         securityContext:
           privileged: true
         volumeMounts:
