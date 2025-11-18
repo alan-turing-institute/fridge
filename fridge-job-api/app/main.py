@@ -45,7 +45,7 @@ and submit workflows based on templates.
 
 """
 
-app = FastAPI(title="FRIDGE API", description=description, version="0.2.0")
+app = FastAPI(title="FRIDGE API", description=description, version="0.3.0")
 
 
 # On the Kubernetes cluster, the Argo token is stored in a service account token file on a projected volume
