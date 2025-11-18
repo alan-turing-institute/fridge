@@ -14,17 +14,17 @@ class MinioClient:
     def __init__(
         self,
         endpoint: str,
-        sts_endpoint: str = None,
-        tenant: str = None,
-        access_key: str = None,
-        secret_key: str = None,
+        sts_endpoint: str | None = None,
+        tenant: str | None = None,
+        access_key: str | None = None,
+        secret_key: str | None = None,
         secure: bool = False,
     ):
         retry_count = 0
         st = None  # Default session token to None if not using STS
 
         # Try STS auth if access or secret key is not defined
-        while (access_key == None or secret_key == None) and retry_count < 5:
+        while (access_key is None or secret_key is None) and retry_count < 5:
             print("Attempting Minio authentication with STS")
             retry_count = retry_count + 1
             try:
@@ -33,7 +33,7 @@ class MinioClient:
                 print(f"Failed to get keys for minio client: {e}")
 
         # Exit if minio client keys are not available
-        if access_key == None or secret_key == None:
+        if access_key is None or secret_key is None:
             print("Failed to initialise Minio client")
             exit(1)
 
