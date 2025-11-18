@@ -167,7 +167,11 @@ class MinioClient:
             if self.check_object_exists(bucket, file_name, version):
                 self.client.remove_object(bucket, file_name, version_id=version)
             else:
-                return {"status": 404, "response": f"{file_name} not found in {bucket}", "version": version}
+                return {
+                    "status": 404,
+                    "response": f"{file_name} not found in {bucket}",
+                    "version": version,
+                }
         except S3Error as error:
             self.handle_minio_error(error)
         except Exception as error:
