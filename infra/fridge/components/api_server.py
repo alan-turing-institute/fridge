@@ -32,7 +32,7 @@ from pulumi_kubernetes.yaml import ConfigFile
 
 from enums import PodSecurityStandard
 
-API_SERVER_IMAGE = "ghcr.io/alan-turing-institute/fridge:api-minio-sts-auth"
+API_SERVER_IMAGE = "ghcr.io/alan-turing-institute/fridge:main"
 
 
 class ApiServerArgs:
