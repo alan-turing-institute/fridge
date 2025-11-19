@@ -54,6 +54,8 @@ class MinioClient:
         KUBE_CA_CRT = os.getenv(
             "STS_CA_CERT_FILE", "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
         )
+        # Set the environment variable for minio client to use the k8s certificate
+        os.environ["SSL_CERT_FILE"] = KUBE_CA_CRT
 
         # Read service account token
         sa_token = Path(SA_TOKEN_FILE).read_text().strip()

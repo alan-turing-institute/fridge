@@ -189,7 +189,7 @@ api_server = components.ApiServer(
         fridge_api_admin=config.require_secret("fridge_api_admin"),
         fridge_api_password=config.require_secret("fridge_api_password"),
         minio_url=minio.minio_cluster_url,
-        minio_tenant=minio.minio_tenant_name,
+        minio_tenant_name=minio.minio_tenant_name,
         verify_tls=tls_environment is TlsEnvironment.PRODUCTION,
     ),
     opts=ResourceOptions(

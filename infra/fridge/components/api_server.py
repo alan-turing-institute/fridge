@@ -43,7 +43,7 @@ class ApiServerArgs:
         fridge_api_admin: str,
         fridge_api_password: str,
         minio_url: str,
-        minio_tenant: str,
+        minio_tenant_name: str,
         verify_tls: bool = True,
     ) -> None:
         self.argo_server_ns = argo_server_ns
@@ -51,7 +51,7 @@ class ApiServerArgs:
         self.fridge_api_admin = fridge_api_admin
         self.fridge_api_password = fridge_api_password
         self.minio_url = minio_url
-        self.minio_tenant = minio_tenant
+        self.minio_tenant_name = minio_tenant_name
         self.verify_tls = verify_tls
 
 
@@ -128,7 +128,7 @@ class ApiServer(ComponentResource):
             kind="PolicyBinding",
             metadata=ObjectMetaArgs(
                 name=f"fridge-api-minio-readwrite",
-                namespace=args.minio_tenant,
+                namespace=args.minio_tenant_name,
             ),
             spec={
                 "application": {
@@ -153,7 +153,7 @@ class ApiServer(ComponentResource):
                 "FRIDGE_API_ADMIN": args.fridge_api_admin,
                 "FRIDGE_API_PASSWORD": args.fridge_api_password,
                 "MINIO_URL": args.minio_url,
-                "MINIO_TENANT_NAME": args.minio_tenant,
+                "MINIO_TENANT_NAME": args.minio_tenant_name,
                 "VERIFY_TLS": str(args.verify_tls),
             },
             opts=child_opts,

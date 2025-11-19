@@ -26,7 +26,8 @@ spec:
             copy_jobs=""
 
             for file in $(echo "{{inputs.parameters.files}}" | tr ";" " "); do
-              curl --cacert $cert_file https://minio.argo-artifacts.svc.cluster.local/{{inputs.parameters.bucket}}/$file > /data/$file &
+              echo "Copying $file"
+              curl -s --cacert $cert_file https://minio.argo-artifacts.svc.cluster.local/{{inputs.parameters.bucket}}/$file > /data/$file &
               copy_jobs="$copy_jobs $!"
             done
 
