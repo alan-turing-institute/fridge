@@ -9,7 +9,6 @@ from secrets import compare_digest
 from typing import Annotated, Any, Union
 from app.minio_client import MinioClient
 
-
 # Check if running in the Kubernetes cluster
 # If not in the cluster, load environment variables from .env file
 if os.getenv("KUBERNETES_SERVICE_HOST"):
@@ -25,9 +24,6 @@ else:
     FRIDGE_API_ADMIN = os.getenv("FRIDGE_API_ADMIN")
     FRIDGE_API_PASSWORD = os.getenv("FRIDGE_API_PASSWORD")
     ARGO_SERVER = os.getenv("ARGO_SERVER")
-    MINIO_URL = os.getenv("MINIO_URL")
-    MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY")
-    MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY")
 
 # Disable TLS verification in development mode
 VERIFY_TLS = os.getenv("VERIFY_TLS", "False") == "True"
@@ -49,7 +45,7 @@ and submit workflows based on templates.
 
 """
 
-app = FastAPI(title="FRIDGE API", description=description, version="0.2.0")
+app = FastAPI(title="FRIDGE API", description=description, version="0.3.0")
 
 
 # On the Kubernetes cluster, the Argo token is stored in a service account token file on a projected volume
@@ -75,11 +71,16 @@ def argo_token() -> str:
 
 security = HTTPBasic()
 
-# Init minio client (insecure enabled for dev)
+# Init minio client. Will fallback to STS if access/secret key are not set
 minio_client = MinioClient(
     endpoint=os.getenv("MINIO_URL"),
-    access_key=os.getenv("MINIO_ACCESS_KEY"),
-    secret_key=os.getenv("MINIO_SECRET_KEY"),
+    sts_endpoint=os.getenv(
+        "MINIO_STS_URL", "https://sts.minio-operator.svc.cluster.local:4223"
+    ),
+    tenant=os.getenv("MINIO_TENANT_NAME", "argo-artifacts"),
+    access_key=os.getenv("MINIO_ACCESS_KEY", None),
+    secret_key=os.getenv("MINIO_SECRET_KEY", None),
+    secure=os.getenv("MINIO_SECURE", True),
 )
 
 
@@ -372,8 +373,8 @@ async def upload_object(
 async def get_object(
     bucket: str,
     file_name: str,
-    target_file: str = None,
-    version: str = None,
+    target_file: str | None = None,
+    version: str | None = None,
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
     ),

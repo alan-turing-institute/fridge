@@ -21,50 +21,59 @@ spec:
       app: fridge-api-server
   ingress:
     - fromEndpoints:
-      - matchLabels:
-          app: server
-          k8s:io.kubernetes.pod.namespace: argo-server
+        - matchLabels:
+            app: server
+            k8s:io.kubernetes.pod.namespace: argo-server
       toPorts:
         - ports:
-          - port: "2746"
-            protocol: TCP
+            - port: "2746"
+              protocol: TCP
     - fromEndpoints:
-      - matchLabels:
-          v1.min.io/tenant: argo-artifacts
-          k8s:io.kubernetes.pod.namespace: argo-artifacts
+        - matchLabels:
+            v1.min.io/tenant: argo-artifacts
+            k8s:io.kubernetes.pod.namespace: argo-artifacts
       toPorts:
         - ports:
-          - port: "9000"
-            protocol: TCP
+            - port: "9000"
+              protocol: TCP
   egress:
     - toEndpoints:
-      - matchLabels:
-          app: server
-          k8s:io.kubernetes.pod.namespace: argo-server
+        - matchLabels:
+            app: server
+            k8s:io.kubernetes.pod.namespace: argo-server
       toPorts:
         - ports:
-          - port: "2746"
-            protocol: TCP
+            - port: "2746"
+              protocol: TCP
     - toEndpoints:
-      - matchLabels:
-          v1.min.io/tenant: argo-artifacts
-          k8s:io.kubernetes.pod.namespace: argo-artifacts
+        - matchLabels:
+            v1.min.io/tenant: argo-artifacts
+            k8s:io.kubernetes.pod.namespace: argo-artifacts
       toPorts:
         - ports:
-          - port: "9000"
-            protocol: TCP
+            - port: "9000"
+              protocol: TCP
     - toEndpoints:
-      - matchLabels:
-          k8s-app: kube-dns
-          k8s:io.kubernetes.pod.namespace: kube-system
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: minio-operator
       toPorts:
         - ports:
-          - port: "53"
-            protocol: ANY
+            - port: "4223"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            k8s-app: kube-dns
+            k8s:io.kubernetes.pod.namespace: kube-system
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
           rules:
             dns:
               - matchName: "argo-workflows-server.argo-server.svc.cluster.local"
               - matchName: "minio.argo-artifacts.svc.cluster.local"
+              - matchName: "sts.minio-operator.svc.cluster.local"
     - toFQDNs:
-      - matchName: "argo-workflows-server.argo-server.svc.cluster.local"
-      - matchName: "minio.argo-artifacts.svc.cluster.local"
+        - matchName: "argo-workflows-server.argo-server.svc.cluster.local"
+        - matchName: "minio.argo-artifacts.svc.cluster.local"
+        - matchName: "sts.minio-operator.svc.cluster.local"

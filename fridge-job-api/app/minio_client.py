@@ -1,24 +1,98 @@
-from fastapi import File, UploadFile
+from fastapi import File, UploadFile, HTTPException
 from fastapi.responses import StreamingResponse
 from minio import Minio, versioningconfig, commonconfig
 from io import BytesIO
 from minio.error import S3Error
+import urllib3
+import ssl
+from pathlib import Path
+import xml.etree.ElementTree as ET
+import os
 
 
 class MinioClient:
-    def __init__(self, endpoint: str, access_key: str, secret_key: str):
+    def __init__(
+        self,
+        endpoint: str,
+        sts_endpoint: str | None = None,
+        tenant: str | None = None,
+        access_key: str | None = None,
+        secret_key: str | None = None,
+        secure: bool = False,
+    ):
+        retry_count = 0
+        st = None  # Default session token to None if not using STS
+
+        # Try STS auth if access or secret key is not defined
+        while (access_key is None or secret_key is None) and retry_count < 5:
+            print("Attempting Minio authentication with STS")
+            retry_count = retry_count + 1
+            try:
+                access_key, secret_key, st = self.handle_sts_auth(sts_endpoint, tenant)
+            except Exception as e:
+                print(f"Failed to get keys for minio client: {e}")
+
+        # Exit if minio client keys are not available
+        if access_key is None or secret_key is None:
+            print("Failed to initialise Minio client")
+            exit(1)
+
         self.client = Minio(
-            endpoint, access_key=access_key, secret_key=secret_key, secure=False
+            endpoint,
+            access_key=access_key,
+            secret_key=secret_key,
+            session_token=st,
+            secure=secure,
+        )
+        print("Successfully configured Minio client")
+
+    def handle_sts_auth(self, sts_endpoint, tenant):
+        # Mounted in from the service account to include sts.min.io audience
+        SA_TOKEN_FILE = os.getenv("MINIO_SA_TOKEN_PATH", "/minio/token")
+
+        # Kube CA cert path added by mounted service account, needed for TLS with Minio STS
+        KUBE_CA_CRT = os.getenv(
+            "STS_CA_CERT_FILE", "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+        )
+        # Set the environment variable for minio client to use the k8s certificate
+        os.environ["SSL_CERT_FILE"] = KUBE_CA_CRT
+
+        # Read service account token
+        sa_token = Path(SA_TOKEN_FILE).read_text().strip()
+
+        ssl_context = ssl.create_default_context(cafile=KUBE_CA_CRT)
+
+        # Create urllib3 client which accepts kube CA cert
+        http = urllib3.PoolManager(ssl_context=ssl_context)
+
+        # Send the token to the MinIO STS endpoint
+        response = http.request(
+            "POST",
+            f"{sts_endpoint}/sts/{tenant}?Action=AssumeRoleWithWebIdentity&Version=2011-06-15&WebIdentityToken={sa_token}",
         )
 
+        if response.status != 200:
+            print(f"STS request failed: {response.status} {response.data.decode()}")
+            return None, None, None
+        else:
+            root = ET.fromstring(response.data)
+            ns = {"sts": "https://sts.amazonaws.com/doc/2011-06-15/"}
+            credentials = root.find(".//sts:Credentials", ns)
+            access_key = credentials.find("sts:AccessKeyId", ns).text
+            secret_key = credentials.find("sts:SecretAccessKey", ns).text
+            session_token = credentials.find("sts:SessionToken", ns).text
+
+            return access_key, secret_key, session_token
+
     def handle_minio_error(self, error: S3Error):
-        status = 500
         if error._code in ["NoSuchBucket", "NoSuchKey"]:
             status = 404
-        return {"response": error._message, "error": error, "status": status}
+        elif error._code in ["AccessDenied"]:
+            status = 403
+        else:
+            status = 500
 
-    def handle_500_error(self, msg=""):
-        return {"status": 500, "response": f"Unexpected error: {msg}"}
+        raise HTTPException(status_code=status, detail=error.message)
 
     def create_bucket(self, name, enable_versioning=False):
         try:
@@ -30,9 +104,9 @@ class MinioClient:
                     name, versioningconfig.VersioningConfig(commonconfig.ENABLED)
                 )
         except S3Error as error:
-            return self.handle_minio_error(error)
+            self.handle_minio_error(error)
         except ValueError as error:
-            return self.handle_500_error("Unable to create bucket")
+            raise HTTPException(status_code=500, detail="Unable to create bucket")
 
         return {"response": name, "status": 201}
 
@@ -47,9 +121,11 @@ class MinioClient:
                 content_type=file.content_type,
             )
         except S3Error as error:
-            return self.handle_minio_error(error)
+            self.handle_minio_error(error)
         except Exception as error:
-            return self.handle_500_error("Unable to upload object")
+            raise HTTPException(
+                status_code=500, detail=f"Unable to upload object: {error}"
+            )
 
         return {
             "status": 201,
@@ -70,9 +146,11 @@ class MinioClient:
                 },
             )
         except S3Error as error:
-            return self.handle_minio_error(error)
+            self.handle_minio_error(error)
         except Exception as error:
-            return self.handle_500_error("Unable to get object from bucket")
+            raise HTTPException(
+                status_code=500, detail=f"Unable to get object from bucket: {error}"
+            )
 
     def check_object_exists(self, bucket, file_name, version=None):
         try:
@@ -91,11 +169,16 @@ class MinioClient:
             if self.check_object_exists(bucket, file_name, version):
                 self.client.remove_object(bucket, file_name, version_id=version)
             else:
-                # Use this path if stat_object result could not be determined
-                return {"status": 500, "response": "Object not deleted"}
+                return {
+                    "status": 404,
+                    "response": f"{file_name} not found in {bucket}",
+                    "version": version,
+                }
         except S3Error as error:
-            return self.handle_minio_error(error)
+            self.handle_minio_error(error)
         except Exception as error:
-            return self.handle_500_error("Unable to delete object from bucket")
+            raise HTTPException(
+                status_code=500, detail="Unable to delete object from bucket"
+            )
 
         return {"status": 200, "response": file_name, "version": version}

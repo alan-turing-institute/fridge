@@ -18,13 +18,16 @@ spec:
             claimName: replace_me
       container:
         name: copy
-        image: busybox:1.36.1
+        image: buildpack-deps:curl
         command: ["/bin/sh", "-c"]
         args:
           - |
+            cert_file=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
             copy_jobs=""
+
             for file in $(echo "{{inputs.parameters.files}}" | tr ";" " "); do
-              wget -O /data/$file http://minio.argo-artifacts.svc.cluster.local/{{inputs.parameters.bucket}}/$file &
+              echo "Copying $file"
+              curl -s --cacert $cert_file https://minio.argo-artifacts.svc.cluster.local/{{inputs.parameters.bucket}}/$file > /data/$file &
               copy_jobs="$copy_jobs $!"
             done
 
