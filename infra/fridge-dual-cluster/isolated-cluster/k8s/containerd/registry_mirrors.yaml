@@ -10,7 +10,6 @@ data:
     [host."http://${harbor_ip}/v2/docker-proxy"]
       capabilities = ["pull", "resolve"]
       skip_verify = true
-      override_path = true
 
     # Fall back to Docker Hub if Harbor fails
     [host."https://registry-1.docker.io"]
