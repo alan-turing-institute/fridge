@@ -1,0 +1,94 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: containerd-registry-mirrors
+  namespace: ${namespace}
+data:
+  docker-io-hosts.toml: |
+    server = "https://registry-1.docker.io"
+
+    [host."http://${harbor_ip}/v2/docker-proxy"]
+      capabilities = ["pull", "resolve"]
+      skip_verify = true
+
+    # Fall back to Docker Hub if Harbor fails
+    [host."https://registry-1.docker.io"]
+      capabilities = ["pull", "resolve"]
+
+  ghcr-io-hosts.toml: |
+    server = "https://ghcr.io"
+
+    [host."http://${harbor_ip}/v2/ghcr-proxy"]
+      capabilities = ["pull", "resolve"]
+      skip_verify = true
+      override_path = true
+
+    # Fall back to GHCR if Harbor fails
+    [host."https://ghcr.io"]
+      capabilities = ["pull", "resolve"]
+
+  quay-io-hosts.toml: |
+    server = "https://quay.io"
+
+    [host."http://${harbor_ip}/v2/quay-proxy"]
+      capabilities = ["pull", "resolve"]
+      skip_verify = true
+      override_path = true
+
+    # Fall back to Quay if Harbor fails
+    [host."https://quay.io"]
+      capabilities = ["pull", "resolve"]
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: configure-containerd-mirrors
+  namespace: ${namespace}
+spec:
+  selector:
+    matchLabels:
+      app: configure-containerd-mirrors
+  template:
+    metadata:
+      labels:
+        app: configure-containerd-mirrors
+    spec:
+      initContainers:
+      - name: configure-containerd
+        image: busybox
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          mkdir -p /host/etc/containerd/certs.d/docker.io
+          mkdir -p /host/etc/containerd/certs.d/ghcr.io
+          mkdir -p /host/etc/containerd/certs.d/quay.io
+
+          cp /config/docker-io-hosts.toml /host/etc/containerd/certs.d/docker.io/hosts.toml
+          cp /config/ghcr-io-hosts.toml /host/etc/containerd/certs.d/ghcr.io/hosts.toml
+          cp /config/quay-io-hosts.toml /host/etc/containerd/certs.d/quay.io/hosts.toml
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: host-fs
+          mountPath: /host
+        - name: config
+          mountPath: /config
+      containers:
+        - name: wait
+          image: registry.k8s.io/pause:3.8
+          resources:
+            requests:
+              cpu: 10m
+              memory: 10Mi
+            limits:
+              cpu: 50m
+              memory: 50Mi
+      volumes:
+      - name: host-fs
+        hostPath:
+          path: /
+      - name: config
+        configMap:
+          name: containerd-registry-mirrors
