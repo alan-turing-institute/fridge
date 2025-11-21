@@ -51,7 +51,7 @@ class ContainerRegistry(ComponentResource):
             )
         )
 
-        self.harbor_external_url = f"https://{harbor_fqdn}"
+        self.harbor_external_url = f"https://{self.harbor_fqdn}"
         self.harbor_storage_settings = {
             "storageClass": args.storage_classes.standard_storage_name,
             "accessMode": "ReadWriteMany"
