@@ -11,10 +11,10 @@ class ContainerRuntimeConfigArgs:
     def __init__(
         self,
         config: pulumi.config.Config,
-        harbor_ip: Output[str],
+        harbor_fqdn: Output[str],
     ) -> None:
         self.config = config
-        self.harbor_ip = harbor_ip
+        self.harbor_fqdn = harbor_fqdn
 
 
 class ContainerRuntimeConfig(ComponentResource):
@@ -40,11 +40,11 @@ class ContainerRuntimeConfig(ComponentResource):
 
         registry_mirror_config = Output.all(
             namespace=self.config_ns.metadata.name,
-            harbor_ip=args.harbor_ip,
+            harbor_fqdn=args.harbor_fqdn,
         ).apply(
             lambda args: Template(yaml_template).substitute(
                 namespace=args["namespace"],
-                harbor_ip=args["harbor_ip"],
+                harbor_fqdn=args["harbor_fqdn"],
             )
         )
 

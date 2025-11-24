@@ -225,7 +225,7 @@ container_runtime_config = components.ContainerRuntimeConfig(
     "container-runtime-config",
     args=components.ContainerRuntimeConfigArgs(
         config=config,
-        harbor_ip=access_stack.get_output("harbor_ip_address"),
+        harbor_fqdn=access_stack.get_output("harbor_fqdn"),
     ),
     opts=ResourceOptions(
         depends_on=resources,
