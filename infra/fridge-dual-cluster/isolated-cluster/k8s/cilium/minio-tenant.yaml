@@ -48,6 +48,13 @@ spec:
         - ports:
             - port: "9000"
               protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            job-name: minio-config-job
+      toPorts:
+        - ports:
+            - port: "9000"
+              protocol: TCP
   egress:
     # Outbound to k8s DNS to look up IPs
     - toEndpoints:

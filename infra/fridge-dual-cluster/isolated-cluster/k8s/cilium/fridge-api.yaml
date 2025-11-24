@@ -61,6 +61,13 @@ spec:
             protocol: TCP
     - toEndpoints:
       - matchLabels:
+          k8s:io.kubernetes.pod.namespace: minio-operator
+      toPorts:
+        - ports:
+          - port: "4223"
+            protocol: TCP
+    - toEndpoints:
+      - matchLabels:
           k8s-app: kube-dns
           k8s:io.kubernetes.pod.namespace: kube-system
       toPorts:
@@ -71,6 +78,8 @@ spec:
             dns:
               - matchName: "argo-workflows-server.argo-server.svc.cluster.local"
               - matchName: "minio.argo-artifacts.svc.cluster.local"
+              - matchName: "sts.minio-operator.svc.cluster.local"
     - toFQDNs:
       - matchName: "argo-workflows-server.argo-server.svc.cluster.local"
       - matchName: "minio.argo-artifacts.svc.cluster.local"
+      - matchName: "sts.minio-operator.svc.cluster.local"
