@@ -42,7 +42,9 @@ class MinioConfigJob(ComponentResource):
 
         minio_setup_sh = """
             #!/bin/sh
-            mc --insecure alias set "$MINIO_ALIAS" "$MINIO_URL" "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
+            mkdir -p /tmp/.mc/certs/CAs/
+            cp /var/run/secrets/kubernetes.io/serviceaccount/ca.crt /tmp/.mc/certs/CAs/
+            mc alias set "$MINIO_ALIAS" "$MINIO_URL" "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
             echo "Configuring ingress and egress buckets with anonymous S3 policies"
             mc anonymous set upload "$MINIO_ALIAS/egress"
             mc anonymous set download "$MINIO_ALIAS/ingress"
@@ -70,7 +72,7 @@ class MinioConfigJob(ComponentResource):
                 labels={"app": "minio-config-job"},
             ),
             spec=JobSpecArgs(
-                backoff_limit=1,
+                backoff_limit=2,
                 template=PodTemplateSpecArgs(
                     spec=PodSpecArgs(
                         containers=[
@@ -103,7 +105,7 @@ class MinioConfigJob(ComponentResource):
                                     EnvVarArgs(
                                         name="MINIO_URL",
                                         value=Output.concat(
-                                            "http://", args.minio_cluster_url, ":80"
+                                            "https://", args.minio_cluster_url, ":443"
                                         ),
                                     ),
                                     EnvVarArgs(

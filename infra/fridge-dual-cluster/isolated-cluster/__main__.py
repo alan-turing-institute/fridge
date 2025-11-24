@@ -186,6 +186,7 @@ api_server = components.ApiServer(
         argo_workflows_ns=argo_workflows.argo_workflows_ns,
         config=config,
         minio_url=minio.minio_cluster_url,
+        minio_tenant_name=minio.minio_tenant_name,
         verify_tls=tls_environment is TlsEnvironment.PRODUCTION,
     ),
     opts=ResourceOptions(
