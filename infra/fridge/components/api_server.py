@@ -1,5 +1,6 @@
 from pulumi import ComponentResource, ResourceOptions
 from pulumi_kubernetes.apps.v1 import Deployment, DeploymentSpecArgs
+from pulumi_kubernetes.apiextensions import CustomResource
 from pulumi_kubernetes.core.v1 import (
     CapabilitiesArgs,
     ContainerArgs,
@@ -27,6 +28,7 @@ from pulumi_kubernetes.rbac.v1 import (
     RoleRefArgs,
     SubjectArgs,
 )
+from pulumi_kubernetes.yaml import ConfigFile
 
 from enums import PodSecurityStandard
 
@@ -41,8 +43,7 @@ class ApiServerArgs:
         fridge_api_admin: str,
         fridge_api_password: str,
         minio_url: str,
-        minio_access_key: str,
-        minio_secret_key: str,
+        minio_tenant_name: str,
         verify_tls: bool = True,
     ) -> None:
         self.argo_server_ns = argo_server_ns
@@ -50,8 +51,7 @@ class ApiServerArgs:
         self.fridge_api_admin = fridge_api_admin
         self.fridge_api_password = fridge_api_password
         self.minio_url = minio_url
-        self.minio_access_key = minio_access_key
-        self.minio_secret_key = minio_secret_key
+        self.minio_tenant_name = minio_tenant_name
         self.verify_tls = verify_tls
 
 
@@ -121,6 +121,27 @@ class ApiServer(ComponentResource):
             opts=child_opts,
         )
 
+        # Policy binding for the Service account to auth with minio
+        CustomResource(
+            resource_name=f"minio-policy-readwrite",
+            api_version="sts.min.io/v1alpha1",
+            kind="PolicyBinding",
+            metadata=ObjectMetaArgs(
+                name=f"fridge-api-minio-readwrite",
+                namespace=args.minio_tenant_name,
+            ),
+            spec={
+                "application": {
+                    # The namespace that contains the service account for the application
+                    "namespace": fridge_api_sa.metadata.namespace,
+                    # The service account to use for the application
+                    "serviceaccount": fridge_api_sa.metadata.name,
+                },
+                "policies": ["readwrite"],
+            },
+            opts=ResourceOptions(depends_on=[fridge_api_sa]),
+        )
+
         fridge_api_config = Secret(
             "fridge-api-config",
             metadata=ObjectMetaArgs(
@@ -132,8 +153,7 @@ class ApiServer(ComponentResource):
                 "FRIDGE_API_ADMIN": args.fridge_api_admin,
                 "FRIDGE_API_PASSWORD": args.fridge_api_password,
                 "MINIO_URL": args.minio_url,
-                "MINIO_ACCESS_KEY": args.minio_access_key,
-                "MINIO_SECRET_KEY": args.minio_secret_key,
+                "MINIO_TENANT_NAME": args.minio_tenant_name,
                 "VERIFY_TLS": str(args.verify_tls),
             },
             opts=child_opts,
@@ -175,7 +195,6 @@ class ApiServer(ComponentResource):
                 template=PodTemplateSpecArgs(
                     metadata=ObjectMetaArgs(labels={"app": "fridge-api-server"}),
                     spec=PodSpecArgs(
-                        automount_service_account_token=False,
                         containers=[
                             ContainerArgs(
                                 name="fridge-api-server",
@@ -207,6 +226,11 @@ class ApiServer(ComponentResource):
                                         mount_path="/service-account",
                                         read_only=True,
                                     ),
+                                    VolumeMountArgs(
+                                        name="minio-sa",
+                                        mount_path="/minio",
+                                        read_only=True,
+                                    ),
                                 ],
                             )
                         ],
@@ -218,6 +242,20 @@ class ApiServer(ComponentResource):
                                     sources=[
                                         VolumeProjectionArgs(
                                             service_account_token=ServiceAccountTokenProjectionArgs(
+                                                expiration_seconds=3600,
+                                                path="token",
+                                            ),
+                                        )
+                                    ]
+                                ),
+                            ),
+                            VolumeArgs(
+                                name="minio-sa",
+                                projected=ProjectedVolumeSourceArgs(
+                                    sources=[
+                                        VolumeProjectionArgs(
+                                            service_account_token=ServiceAccountTokenProjectionArgs(
+                                                audience="sts.min.io",
                                                 expiration_seconds=3600,
                                                 path="token",
                                             )
