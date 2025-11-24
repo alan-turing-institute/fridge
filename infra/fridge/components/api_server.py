@@ -28,7 +28,6 @@ from pulumi_kubernetes.rbac.v1 import (
     RoleRefArgs,
     SubjectArgs,
 )
-from pulumi_kubernetes.yaml import ConfigFile
 
 from enums import PodSecurityStandard
 
