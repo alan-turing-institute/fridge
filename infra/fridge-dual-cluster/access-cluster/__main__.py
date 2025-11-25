@@ -65,24 +65,6 @@ cert_manager = components.CertManager(
     ),
 )
 
-# if k8s_environment == K8sEnvironment.DAWN:
-#     dawn_managed_namespaces = ["cert-manager", "ingress-nginx"]
-#     for namespace in dawn_managed_namespaces:
-#         patch_namespace(namespace, PodSecurityStandard.RESTRICTED)
-
-#     # Add label to etcd-defrag jobs to allow Cilium to permit them to communicate with the API server
-#     # These jobs are installed automatically on DAWN using Helm, and do not otherwise have a consistent label
-#     # so cannot be selected by Cilium.
-#     CronJobPatch(
-#         "etcd-defrag-cronjob-label",
-#         metadata=ObjectMetaPatchArgs(name="etcd-defrag", namespace="kube-system"),
-#         spec=CronJobSpecPatchArgs(
-#             job_template={
-#                 "spec": {"template": {"metadata": {"labels": {"etcd-defrag": "true"}}}}
-#             }
-#         ),
-#     )
-
 # Storage classes
 storage_classes = components.StorageClasses(
     "storage_classes",
