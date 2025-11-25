@@ -297,7 +297,6 @@ class ApiServer(ComponentResource):
             spec=ServiceSpecArgs(
                 type="LoadBalancer",
                 selector=fridge_api_server.spec.template.metadata.labels,
-                # load_balancer_source_ranges=[args.config.require("access_cluster_node_cidr")],
                 ports=[
                     ServicePortArgs(
                         protocol="TCP",
