@@ -1,12 +1,12 @@
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
 metadata:
-  name: api-proxy-access
-  namespace: api-proxy
+  name: api-jumpbox-access
+  namespace: api-jumpbox
 spec:
   endpointSelector:
     matchLabels:
-      app: api-proxy
+      app: api-jumpbox
   ingress:
     - fromEndpoints:
         - matchLabels:

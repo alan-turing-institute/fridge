@@ -33,7 +33,7 @@ config:
   lets_encrypt_email:
     type: string
     description: Email for Let's Encrypt registration
-  private_api_ssh_public_key:
+  jumpbox_ssh_public_key:
     type: string
     description: Public SSH key for the private API proxy
     secret: true

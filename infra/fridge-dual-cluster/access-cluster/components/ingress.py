@@ -2,15 +2,15 @@ from pulumi import ComponentResource, Output, ResourceOptions
 from pulumi_kubernetes.core.v1 import Namespace, Service
 from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
-from .private_api_proxy import PrivateAPIProxy
+from .fridge_api_jumpbox import FridgeAPIJumpbox
 
 from enums import K8sEnvironment, PodSecurityStandard
 
 
 class IngressArgs:
-    def __init__(self, api_proxy: PrivateAPIProxy, k8s_environment: K8sEnvironment):
+    def __init__(self, api_jumpbox: FridgeAPIJumpbox, k8s_environment: K8sEnvironment):
         self.k8s_environment = k8s_environment
-        self.api_proxy = api_proxy
+        self.api_jumpbox = api_jumpbox
 
 
 class Ingress(ComponentResource):
@@ -52,9 +52,9 @@ class Ingress(ComponentResource):
                             },
                             "tcp": {
                                 "2500": Output.concat(
-                                    args.api_proxy.api_proxy_ns.metadata.name,
+                                    args.api_jumpbox.api_jumpbox_ns.metadata.name,
                                     "/",
-                                    args.api_proxy.api_proxy_service.metadata.name,
+                                    args.api_jumpbox.api_jumpbox_service.metadata.name,
                                     ":",
                                     "2500",
                                 ),

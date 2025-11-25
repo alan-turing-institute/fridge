@@ -54,13 +54,13 @@ class NetworkPolicies(ComponentResource):
                     opts=child_opts,
                 )
 
-        self.api_proxy_cnp = CustomResource(
-            "network_policy_api_proxy",
+        self.api_jumpbox_cnp = CustomResource(
+            "network_policy_api_jumpbox",
             api_version="cilium.io/v2",
             kind="CiliumNetworkPolicy",
-            metadata={"name": "api-proxy-access", "namespace": "api-proxy"},
+            metadata={"name": "api-jumpbox-access", "namespace": "api-jumpbox"},
             spec={
-                "endpointSelector": {"matchLabels": {"app": "api-proxy"}},
+                "endpointSelector": {"matchLabels": {"app": "api-jumpbox"}},
                 "ingress": [
                     {
                         "fromEndpoints": [
