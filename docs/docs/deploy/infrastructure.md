@@ -18,28 +18,28 @@ To deploy the infrastructure, follow these steps:
 
 1. Set up a virtual environment for the project:
 
-    ```console
-    python3 -m venv .venv
-    source .venv/bin/activate
-    pip install -r requirements.txt
-    ```
+```console
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
 
 2. Create a new Pulumi stack:
 
-    ```console
-    pulumi stack init <stack-name>
-    ```
+```console
+pulumi stack init <stack-name>
+```
 
 3. Configure the stack with the necessary settings, such as the Azure region, resource group name, and SSH public key:
 
-    ```console
-    pulumi config set azure:location <region>
-    pulumi config set resource_group_name <resource-group-name>
-    pulumi config set ssh_public_key "<your-ssh-public-key>"
-    ```
+```console
+pulumi config set azure:location <region>
+pulumi config set resource_group_name <resource-group-name>
+pulumi config set ssh_public_key "<your-ssh-public-key>"
+```
 
 4. Deploy the infrastructure:
 
-    ```console
-    pulumi up
-    ```
+```console
+pulumi up
+```
