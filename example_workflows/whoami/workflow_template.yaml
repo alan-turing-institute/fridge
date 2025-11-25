@@ -1,0 +1,30 @@
+metadata:
+  name: whoami
+  namespace: argo-workflows
+spec:
+  serviceAccountName: argo-workflow
+  entrypoint: steps
+  templates:
+    - name: steps
+      steps:
+        - - name: whoami
+            template: whoami
+          - name: id
+            template: id
+    - name: whoami
+      container:
+        name: main
+        image: ubuntu:noble
+        command:
+          - whoami
+    - name: id
+      container:
+        name: main
+        image: ubuntu:noble
+        command:
+          - id
+  ttlStrategy:
+    secondsAfterCompletion: 300
+  podGC:
+    strategy: OnPodCompletion
+    deleteDelayDuration: 300s
