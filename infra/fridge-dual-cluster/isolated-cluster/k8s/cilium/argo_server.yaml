@@ -17,22 +17,6 @@ spec:
           - port: "2746"
             protocol: TCP
   egress:
-    - toEndpoints:
-      - matchLabels:
-          k8s:io.kubernetes.pod.namespace: kube-system
-          k8s-app: kube-dns
-      toPorts:
-        - ports:
-            - port: "53"
-              protocol: ANY
-          rules:
-            dns:
-              - matchPattern: "login.microsoftonline.com"
-    - toFQDNs:
-      - matchName: login.microsoftonline.com
-      toPorts:
-        - ports:
-            - port: "443"
     - toEntities:
         - kube-apiserver
 ---
