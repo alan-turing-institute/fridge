@@ -181,9 +181,7 @@ api_server = components.ApiServer(
 )
 
 # Network policy (through Cilium)
-
 # Network policies should be deployed last to ensure that none of them interfere with the deployment process
-
 resources = [
     api_server,
     argo_workflows,
