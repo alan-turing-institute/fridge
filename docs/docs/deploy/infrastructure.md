@@ -8,15 +8,10 @@ This page explains how to deploy the Kubernetes cluster for FRIDGE using Pulumi,
 ## Azure Kubernetes Service (AKS)
 
 The FRIDGE infrastructure can be deployed to Azure using Azure Kubernetes Service (AKS).
-
 An example Pulumi project for deploying FRIDGE to AKS is available in the `fridge/infra/fridge-aks/` folder.
-
 This project deploys two AKS clusters: an access cluster, which will host the Harbor container registry and an SSH server for accessing the isolated cluster; and an isolated cluster, which will host the FRIDGE services.
-
 The access cluster has a public API server endpoint, while the isolated cluster has a private API server endpoint, accessible only from within the access cluster.
-
 The example project also deploys the necessary networking components, such as virtual networks, subnets, and network security groups, to ensure secure communication between the clusters.
-
 You will need to supply a public SSH key for accessing the SSH server in the access cluster.
 
 To deploy the infrastructure, follow these steps:
