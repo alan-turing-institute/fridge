@@ -12,7 +12,7 @@ sed -i '/^AllowTcpForwarding/c\AllowTcpForwarding yes' "${CONFIG_FILE_PATH}"
 sed -i '/^GatewayPorts/c\GatewayPorts clientspecified' "${CONFIG_FILE_PATH}"
 echo "TcpForwarding is enabled"
 
-
+# Prevent shell login for the user
 if [ "$SHELL_NOLOGIN" == 'true' ]; then
   USER_NAME=${USER_NAME:-linuxserver.io}
 
