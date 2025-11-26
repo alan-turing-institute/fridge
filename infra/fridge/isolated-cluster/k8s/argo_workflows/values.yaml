@@ -1,0 +1,57 @@
+singleNamespace: false
+controller:
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    runAsGroup: 8737
+    runAsNonRoot: true
+    runAsUser: 8737
+    seccompProfile:
+      type: RuntimeDefault
+executor:
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    runAsGroup: 8737
+    runAsNonRoot: true
+    runAsUser: 8737
+    seccompProfile:
+      type: RuntimeDefault
+mainContainer:
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    runAsGroup: 8737
+    runAsNonRoot: true
+    runAsUser: 8737
+    seccompProfile:
+      type: RuntimeDefault
+workflow:
+  serviceAccount:
+    create: true
+    name: argo-workflow
+  rbac:
+    create: true
+server:
+  secure: true
+  securityContext:
+    seccompProfile:
+      type: RuntimeDefault
+artifactRepository:
+  s3:
+    bucket: argo-artifacts
+    endpoint: minio.argo-artifacts.svc.cluster.local:80
+    region: eu-west-2 # note this is not a real region! this is just a placeholder necessary for s3 compatibility
+    accessKeySecret:
+      name: argo-artifacts-minio
+      key: accesskey
+    secretKeySecret:
+      name: argo-artifacts-minio
+      key: secretkey
+    insecure: true

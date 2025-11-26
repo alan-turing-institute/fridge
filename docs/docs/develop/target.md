@@ -7,13 +7,13 @@ FRIDGE is deployed to a Kubernetes (k8s) cluster that must meet certain requirem
 
 ## Define a new K8s environment
 
-The targets are defined in an Enum object in `infra/fridge/enums/__init__.py`.
+The targets are defined in an Enum object in `infra/fridge/access-cluster/enums/__init__.py`.
 These environments are used in flow control to make target specific changes.
 Add your target to the Enum like the examples here
 
 ```python
 {%
-    include "../../../infra/fridge/enums/__init__.py"
+    include "../../../infra/fridge/access-cluster/enums/__init__.py"
     start="# START env enum"
     end="# END"
 %}
@@ -27,7 +27,7 @@ Ideally this needs to support passing a key to encrypt volumes.
 This depends on the K8s implementations having a [CSI](https://kubernetes.io/docs/concepts/storage/volumes/#csi) that supports this.
 If your K8s implementation does not have a CSI capable of this, you can instead use Longhorn.
 
-Storage classes used by FRIDGE are defined, for each K8s environment, in `infra/fridge/components/storage_classes.py`
+Storage classes used by FRIDGE are defined, for each K8s environment, in `infra/fridge/access-cluster/components/storage_classes.py`
 Each target must define,
 
 `storage_class`
@@ -42,7 +42,7 @@ Each target must define,
 
 ```python
 {%
-    include "../../../infra/fridge/components/storage_classes.py"
+    include "../../../infra/fridge/access-cluster/components/storage_classes.py"
     start="# START storage classes"
     end="# END"
 %}
@@ -51,29 +51,29 @@ Each target must define,
 ## Network Policies
 
 Some K8s providers might require some tweaks to the Cilium network policies.
-These are collected, similarly to storage classes in `infra/fridge/components/network_policies.py`.
+These are collected, similarly to storage classes in `infra/fridge/access-cluster/components/network_policies.py`.
 For example with AKS,
 
 ```python
 {%
-    include "../../../infra/fridge/components/network_policies.py"
+    include "../../../infra/fridge/access-cluster/components/network_policies.py"
     start="# START network policies"
     end="# END"
 %}
 ```
 
-Here the policy manifests are defined in `./k8s/cilium/aks.yaml`.
+Here the policy manifests are defined in `./access-cluster/k8s/cilium/aks.yaml`.
 
 ## Service Changes
 
 You may also need to deploy extra services, or you may want to avoid replacing services which are already deployed.
-This may be most convenient to do in `infra/fridge/__main__.py`.
+This may be most convenient to do in `infra/fridge/access-cluster/__main__.py`.
 
 For example, the Hubble interface for Cilium is not provisioned automatically on AKS, so it is deployed here,
 
 ```python
 {%
-    include "../../../infra/fridge/__main__.py"
+    include "../../../infra/fridge/access-cluster/__main__.py"
     start="# START hubble"
     end="# END"
 %}

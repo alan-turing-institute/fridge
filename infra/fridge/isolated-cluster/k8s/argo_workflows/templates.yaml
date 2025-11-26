@@ -1,0 +1,49 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: data-copy
+  namespace: argo-workflows
+spec:
+  entrypoint: pull-data-from-minio
+  templates:
+    - name: pull-data-from-minio
+      inputs:
+        parameters:
+          - name: bucket
+          - name: files
+      volumes:
+        - name: workflow-data-ingress
+          persistentVolumeClaim:
+            claimName: replace_me
+      container:
+        name: copy
+        image: buildpack-deps:curl
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            cert_file=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+            copy_jobs=""
+            for file in $(echo "{{inputs.parameters.files}}" | tr ";" " "); do
+              echo "Copying $file"
+              curl -s --cacert $cert_file https://minio.argo-artifacts.svc.cluster.local/{{inputs.parameters.bucket}}/$file > /data/$file &
+              copy_jobs="$copy_jobs $!"
+            done
+
+            # Monitor copy job background tasks
+            for pid in $copy_jobs; do
+                wait "$pid"
+                code=$?
+
+                if [ "$code" -ne 0 ]; then
+                    echo "Copy failed (PID $pid, exit code $code)"
+                    kill $pids 2>/dev/null   # Stop all remaining downloads
+                    exit "$code"
+                fi
+            done
+
+            echo "All copy jobs complete."
+            exit 0
+        volumeMounts:
+          - name: workflow-data-ingress
+            mountPath: /data
