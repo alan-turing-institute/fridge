@@ -11,6 +11,13 @@ infrastructure_stack_reference = pulumi.StackReference(
     f"{organization}/{project_name}/{stack}"
 )
 
+# Import access cluster stack outputs
+access_stack = config.require("access_cluster_stack_name")
+access_project = "fridge-access"
+access_stack_reference = pulumi.StackReference(
+    f"{organization}/{access_project}/{access_stack}"
+)
+
 access_nodes_subnet_cidr = infrastructure_stack_reference.get_output(
     "access_nodes_subnet_cidr"
 )
@@ -64,7 +71,9 @@ def create_nsg_lockdown(nsg_info):
                 source_port_range="*",
                 destination_port_range="8080,80,443",
                 source_address_prefix=isolated_nodes_subnet_cidr,
-                destination_address_prefix="10.10.1.9/32",
+                destination_address_prefix=access_stack_reference.get_output(
+                    "harbor_ip_address"
+                ),
             ),
             network.SecurityRuleArgs(
                 name="DenyAccessClusterOutBound",
