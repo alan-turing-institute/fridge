@@ -2,10 +2,11 @@ import pulumi
 from pulumi_azure_native import network
 
 config = pulumi.Config()
+
+# Import infrastructure stack outputs
 organization = config.require("organization_name")
 project_name = config.require("project_name")
 stack = config.require("infrastructure_stack_name")
-
 infrastructure_stack_reference = pulumi.StackReference(
     f"{organization}/{project_name}/{stack}"
 )
@@ -61,9 +62,9 @@ def create_nsg_lockdown(nsg_info):
                 access=network.SecurityRuleAccess.ALLOW,
                 protocol=network.SecurityRuleProtocol.TCP,
                 source_port_range="*",
-                destination_port_range="8080",
+                destination_port_range="8080,80,443",
                 source_address_prefix=isolated_nodes_subnet_cidr,
-                destination_address_prefix="10.10.50.50/32",
+                destination_address_prefix="10.10.1.9/32",
             ),
             network.SecurityRuleArgs(
                 name="DenyAccessClusterOutBound",
@@ -76,6 +77,18 @@ def create_nsg_lockdown(nsg_info):
                 source_address_prefix="*",
                 destination_address_prefix="10.10.0.0/16",
                 description="Deny all other outbound to access cluster",
+            ),
+            network.SecurityRuleArgs(
+                name="DenyInternetOutBound",
+                priority=4100,
+                direction=network.SecurityRuleDirection.OUTBOUND,
+                access=network.SecurityRuleAccess.DENY,
+                protocol=network.SecurityRuleProtocol.ASTERISK,
+                source_port_range="*",
+                destination_port_range="*",
+                source_address_prefix="*",
+                destination_address_prefix="Internet",
+                description="Deny all outbound to internet",
             ),
         ],
         opts=pulumi.ResourceOptions(import_=nsg_info["id"]),
