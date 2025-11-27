@@ -82,7 +82,7 @@ class NetworkSecurityRules(ComponentResource):
                         protocol=network.SecurityRuleProtocol.ASTERISK,
                         source_port_range="*",
                         destination_port_range="*",
-                        source_address_prefix="10.10.0.0/16",
+                        source_address_prefix=args.access_nodes_subnet_cidr,
                         destination_address_prefix="*",
                         description="Deny all other traffic from access cluster VNet",
                     ),
@@ -110,7 +110,7 @@ class NetworkSecurityRules(ComponentResource):
                         source_port_range="*",
                         destination_port_range="*",
                         source_address_prefix="*",
-                        destination_address_prefix="10.10.0.0/16",
+                        destination_address_prefix=args.access_nodes_subnet_cidr,
                         description="Deny all other outbound to access cluster",
                     ),
                     network.SecurityRuleArgs(
