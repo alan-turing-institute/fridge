@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Configure Harbor settings via its API
 
 set -e
@@ -6,57 +6,108 @@ set -e
 HARBOR_ADMIN_USER=$(cat /run/secrets/harbor/username)
 HARBOR_ADMIN_PASSWORD=$(cat /run/secrets/harbor/password)
 
-echo "Configuring Harbor..."
-# Create a registry entry for Docker Hub
-curl -X 'POST' \
-    -u "$HARBOR_ADMIN_USER:$HARBOR_ADMIN_PASSWORD" \
-    "http://$HARBOR_URL/api/v2.0/registries" \
-    -H 'accept: application/json' \
-    -H 'Content-Type: application/json' \
-    -d '{
-        "url": "https://hub.docker.com",
-        "type": "docker-hub",
-        "credential": {},
-        "name": "DockerHub"
-        }'
+FRIDGE_ROBOT_ACCOUNT="fridge"
+FRIDGE_ROBOT_SECRET=""
 
-curl -X 'POST' \
-    -u "$HARBOR_ADMIN_USER:$HARBOR_ADMIN_PASSWORD" \
-    "http://$HARBOR_URL/api/v2.0/registries" \
-    -H 'accept: application/json' \
-    -H 'Content-Type: application/json' \
-    -d '{
-        "url": "https://quay.io",
-        "type": "quay",
-        "credential": {},
-        "name": "QuayIO"
-        }'
+function main() {
+    echo "Configuring Harbor..."
 
-curl -X 'POST' \
-    -u "$HARBOR_ADMIN_USER:$HARBOR_ADMIN_PASSWORD" \
-    "http://$HARBOR_URL/api/v2.0/registries" \
-    -H 'accept: application/json' \
-    -H 'Content-Type: application/json' \
-    -d '{
-        "url": "https://ghcr.io",
-        "type": "github-ghcr",
-        "credential": {},
-        "name": "GithubGHCR"
-        }'
+    # Create remote registries
+    make_remote_registry "DockerHub" "docker-hub" "https://hub.docker.com"
+    make_remote_registry "QuayIO" "quay" "https://quay.io"
+    make_remote_registry "GitHubCR" "github-ghcr" "https://ghcr.io"
+    
+    # Retrieve internal IDs of above remote registries
+    registries=$( \
+        curl -s \
+            -u $HARBOR_ADMIN_USER:$HARBOR_ADMIN_PASSWORD \
+            -H 'Content-Type: application/json' \
+            http://$HARBOR_URL/api/v2.0/registries \
+    )
+    dockerhub_id=$(get_registry_id $registries "DockerHub")
+    quayio_id=$(get_registry_id $registries "QuayIO")
+    githubcr_id=$(get_registry_id $registries "GitHubCR")
 
-# Create a project for Docker proxy caching
-curl -X 'POST' \
-    -u "$HARBOR_ADMIN_USER:$HARBOR_ADMIN_PASSWORD" \
-    "http://$HARBOR_URL/api/v2.0/projects" \
-    -H 'accept: application/json' \
-    -H 'Content-Type: application/json' \
-    -d '{
-        "project_name": "docker-proxy",
-        "public": true,
-        "registry_id": 1,
+    # Create proxy projects for remote registries
+    make_proxy_project "proxy-docker.io" $dockerhub_id
+    make_proxy_project "proxy-quay.io" $quayio_id
+    make_proxy_project "proxy-ghcr.io" $githubcr_id
+
+    # Create robot account for pulling images
+    make_robot_account $FRIDGE_ROBOT_ACCOUNT
+
+    echo "Harbor configuration complete."
+}
+
+function make_remote_registry() {
+    body=$(printf \
+    '{
+        "name": "%s",
+        "type": "%s",
+        "url": "%s",
+        "insecure": false
+    }' \
+    $1 $2 $3)
+    curl -s -X POST \
+        -u $HARBOR_ADMIN_USER:$HARBOR_ADMIN_PASSWORD \
+        -H 'Accept: application/json' \
+        -H 'Content-Type: application/json' \
+        -d "$body" \
+        http://$HARBOR_URL/api/v2.0/registries
+}
+
+function make_proxy_project {
+    body=$(printf \
+    '{
+        "project_name": "%s",
         "metadata": {
-            "proxy_speed_kb": "-1"
-            }
-        }'
+            "public": "true"
+        },
+        "registry_id": %s
+    }' \
+    $1 $2)
+    curl -s -X POST \
+        -u $HARBOR_ADMIN_USER:$HARBOR_ADMIN_PASSWORD \
+        -H 'Accept: application/json' \
+        -H 'Content-Type: application/json' \
+        -d "$body" \
+        http://$HARBOR_URL/api/v2.0/projects
+}
 
-echo "Harbor configuration complete."
+function get_registry_id() {
+    echo $(jq --arg regname $2 '.[] | select(.name==$regname) | .id' <<< $1)
+}
+
+function make_robot_account() {
+    body=$(printf \
+    '{
+        "name": "%s",
+        "description": "FRIDGE robot account",
+        "disable": false,
+        "duration": -1,
+        "expires_at": -1,
+        "level": "system",
+        "permissions": [{
+            "kind": "project",
+            "namespace": "*",
+            "access": [{
+                "action": "pull",
+                "resource": "repository"
+            }]
+        }]
+    }' \
+    $1)
+    resp=$(curl -s -X POST \
+    -u $HARBOR_ADMIN_USER:$HARBOR_ADMIN_PASSWORD \
+    -H 'Accept: application/json' \
+    -H 'Content-Type: application/json' \
+    -d "$body" \
+    http://$HARBOR_URL/api/v2.0/robots)
+    
+    # Extract account name and secret
+    FRIDGE_ROBOT_ACCOUNT=$(jq -r '.name' <<< $resp)
+    FRIDGE_ROBOT_SECRET=$(jq -r '.secret' <<< $resp)
+}
+
+# Entrypoint
+main "$@"
