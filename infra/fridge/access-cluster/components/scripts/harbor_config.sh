@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # Configure Harbor settings via its API
 
 set -e
@@ -56,7 +56,7 @@ function make_remote_registry() {
         http://$HARBOR_URL/api/v2.0/registries
 }
 
-function make_proxy_project {
+function make_proxy_project() {
     body=$(printf \
     '{
         "project_name": "%s",
@@ -75,7 +75,7 @@ function make_proxy_project {
 }
 
 function get_registry_id() {
-    echo $(jq --arg regname $2 '.[] | select(.name==$regname) | .id' <<< $1)
+    printf '%s' "$1" | jq --arg regname "$2" -r '.[] | select(.name==$regname) | .id'
 }
 
 function make_robot_account() {
@@ -105,8 +105,8 @@ function make_robot_account() {
     http://$HARBOR_URL/api/v2.0/robots)
 
     # Extract account name and secret
-    FRIDGE_ROBOT_ACCOUNT=$(jq -r '.name' <<< $resp)
-    FRIDGE_ROBOT_SECRET=$(jq -r '.secret' <<< $resp)
+    FRIDGE_ROBOT_ACCOUNT=$(printf '%s' "$resp" | jq -r '.name')
+    FRIDGE_ROBOT_SECRET=$(printf '%s' "$resp" | jq -r '.secret')
 }
 
 # Entrypoint
