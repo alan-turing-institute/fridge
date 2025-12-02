@@ -256,22 +256,12 @@ class ContainerRegistry(ComponentResource):
                         containers=[
                             ContainerArgs(
                                 name="harbor-config-job",
-                                image="curlimages/curl:8.17.0",
+                                image="badouralix/curl-jq:latest",
                                 env=[
                                     EnvVarArgs(
                                         name="HARBOR_URL",
-                                        value="harbor.harbor.svc.cluster.local",  # args.config.require("harbor_ip"),
+                                        value="harbor.harbor.svc.cluster.local",
                                     ),
-                                    # EnvVarArgs(
-                                    #     name="HARBOR_ADMIN_USER",
-                                    #     value="admin",
-                                    # ),
-                                    # EnvVarArgs(
-                                    #     name="HARBOR_ADMIN_PASSWORD",
-                                    #     value=args.config.require_secret(
-                                    #         "harbor_admin_password"
-                                    #     ),
-                                    # ),
                                 ],
                                 command=["/bin/sh", "/scripts/configure_harbor.sh"],
                                 volume_mounts=[
