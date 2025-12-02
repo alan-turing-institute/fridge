@@ -56,7 +56,7 @@ class MinioClient:
 
     def _create_client(
         self, access_key: str, secret_key: str, session_token: str | None
-    ) -> Minio:
+    ) -> None:
         try:
             self.client = Minio(
                 self.endpoint,
@@ -126,9 +126,7 @@ class MinioClient:
                 access_key, secret_key, session_token = self.handle_sts_auth()
 
                 if access_key and secret_key:
-                    self.client = self._create_client(
-                        access_key, secret_key, session_token
-                    )
+                    self._create_client(access_key, secret_key, session_token)
                     print("Minio client token refreshed successfully")
                 else:
                     print("Failed to refresh Minio client token")
