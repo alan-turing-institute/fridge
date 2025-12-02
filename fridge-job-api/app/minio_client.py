@@ -57,13 +57,18 @@ class MinioClient:
     def _create_client(
         self, access_key: str, secret_key: str, session_token: str | None
     ) -> Minio:
-        self.client = Minio(
-            self.endpoint,
-            access_key=access_key,
-            secret_key=secret_key,
-            session_token=session_token,
-            secure=self.secure,
-        )
+        try:
+            self.client = Minio(
+                self.endpoint,
+                access_key=access_key,
+                secret_key=secret_key,
+                session_token=session_token,
+                secure=self.secure,
+            )
+        except Exception as e:
+            print(f"Failed to create Minio client: {e}")
+            self.client = None
+            raise HTTPException(status_code=500, detail="Failed to create Minio client")
 
     def handle_sts_auth(self):
         """Handle STS authentication with MinIO using Kubernetes service account token."""
