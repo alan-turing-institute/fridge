@@ -113,12 +113,24 @@ class MinioClient:
                 self.sts_endpoint,
                 self.tenant,
             )
+
+            if access_key and secret_key:
+                self.client = Minio(
+                    self.endpoint,
+                    access_key=access_key,
+                    secret_key=secret_key,
+                    session_token=session_token,
+                    secure=self.secure,
+                )
+                print("Minio client token refreshed successfully")
+            else:
+                print("Failed to refresh Minio client token")
         except Exception as e:
             print(f"Failed to refresh Minio client token: {e}")
-            return
+            raise HTTPException(status_code=500, detail="Failed to refresh Minio token")
 
     def _ensure_valid_token(self):
-        # Placeholder for token validation logic if needed
+        """Check if the token needs to be refreshed"""
         if self._token_has_changed():
             self._refresh_token()
 
