@@ -5,7 +5,7 @@ metadata:
   namespace: ${namespace}
 data:
   docker-io-hosts.toml: |
-    [host."http://${harbor_fqdn}/v2/docker-proxy"]
+    [host."http://${harbor_fqdn}/v2/proxy-docker.io"]
       capabilities = ["pull", "resolve"]
       skip_verify = true
       override_path = true
@@ -15,7 +15,7 @@ data:
       capabilities = ["pull", "resolve"]
 
   ghcr-io-hosts.toml: |
-    [host."http://${harbor_fqdn}/v2/ghcr-proxy"]
+    [host."http://${harbor_fqdn}/v2/proxy-ghcr.io"]
       capabilities = ["pull", "resolve"]
       skip_verify = true
       override_path = true
@@ -25,7 +25,7 @@ data:
       capabilities = ["pull", "resolve"]
 
   quay-io-hosts.toml: |
-    [host."http://${harbor_fqdn}/v2/quay-proxy"]
+    [host."http://${harbor_fqdn}/v2/proxy-quay.io"]
       capabilities = ["pull", "resolve"]
       skip_verify = true
       override_path = true
