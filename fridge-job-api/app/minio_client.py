@@ -36,7 +36,7 @@ class MinioClient:
             print("Attempting Minio authentication with STS")
             retry_count = retry_count + 1
             try:
-                access_key, secret_key, st = self.handle_sts_auth(sts_endpoint, tenant)
+                access_key, secret_key, st = self.handle_sts_auth()
             except Exception as e:
                 print(f"Failed to get keys for minio client: {e}")
 
@@ -45,16 +45,21 @@ class MinioClient:
             print("Failed to initialise Minio client")
             exit(1)
 
-        self.client = Minio(
-            endpoint,
-            access_key=access_key,
-            secret_key=secret_key,
-            session_token=st,
-            secure=secure,
-        )
+        self._create_client(access_key, secret_key, st)
         print("Successfully configured Minio client")
 
-    def handle_sts_auth(self, sts_endpoint, tenant):
+    def _create_client(
+        self, access_key: str, secret_key: str, session_token: str | None
+    ):
+        self.client = Minio(
+            self.endpoint,
+            access_key=access_key,
+            secret_key=secret_key,
+            session_token=session_token,
+            secure=self.secure,
+        )
+
+    def handle_sts_auth(self):
         # Mounted in from the service account to include sts.min.io audience
         SA_TOKEN_FILE = os.getenv("MINIO_SA_TOKEN_PATH", "/minio/token")
 
@@ -79,7 +84,7 @@ class MinioClient:
         # Send the token to the MinIO STS endpoint
         response = http.request(
             "POST",
-            f"{sts_endpoint}/sts/{tenant}?Action=AssumeRoleWithWebIdentity&Version=2011-06-15&WebIdentityToken={sa_token}",
+            f"{self.sts_endpoint}/sts/{self.tenant}?Action=AssumeRoleWithWebIdentity&Version=2011-06-15&WebIdentityToken={sa_token}",
         )
 
         if response.status != 200:
@@ -112,18 +117,11 @@ class MinioClient:
                 return  # No change in token so refresh unnecessary
             print("Refreshing Minio client session token")
             try:
-                access_key, secret_key, session_token = self.handle_sts_auth(
-                    self.sts_endpoint,
-                    self.tenant,
-                )
+                access_key, secret_key, session_token = self.handle_sts_auth()
 
                 if access_key and secret_key:
-                    self.client = Minio(
-                        self.endpoint,
-                        access_key=access_key,
-                        secret_key=secret_key,
-                        session_token=session_token,
-                        secure=self.secure,
+                    self.client = self._create_client(
+                        access_key, secret_key, session_token
                     )
                     print("Minio client token refreshed successfully")
                 else:
