@@ -37,24 +37,15 @@ class StackOutputs(ComponentResource):
             f"{organization}/{isolated_project}/{isolated_stack}"
         )
 
-        def get_vnet_nsg(stack_name: FridgeStack) -> pulumi.Output[str]:
-            match stack_name:
-                case FridgeStack.ACCESS:
-                    return self.infrastructure_stack.get_output("access_subnet_nsg")
-                case FridgeStack.ISOLATED:
-                    return self.infrastructure_stack.get_output("isolated_subnet_nsg")
-                case _:
-                    raise ValueError(f"Unsupported stack name: {stack_name}")
-
-        def get_node_subnet_cidr(stack_name: FridgeStack) -> pulumi.Output[str]:
-            match stack_name:
-                case FridgeStack.ACCESS:
-                    return self.infrastructure_stack.get_output(
-                        "access_nodes_subnet_cidr"
-                    )
-                case FridgeStack.ISOLATED:
-                    return self.infrastructure_stack.get_output(
-                        "isolated_nodes_subnet_cidr"
-                    )
-                case _:
-                    raise ValueError(f"Unsupported stack name: {stack_name}")
+        self.access_subnet_nsg = self.infrastructure_stack.get_output(
+            "access_subnet_nsg"
+        )
+        self.isolated_subnet_nsg = self.infrastructure_stack.get_output(
+            "isolated_subnet_nsg"
+        )
+        self.access_nodes_subnet_cidr = self.infrastructure_stack.get_output(
+            "access_nodes_subnet_cidr"
+        )
+        self.isolated_nodes_subnet_cidr = self.infrastructure_stack.get_output(
+            "isolated_nodes_subnet_cidr"
+        )
