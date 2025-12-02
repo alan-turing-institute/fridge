@@ -13,6 +13,12 @@ import xml.etree.ElementTree as ET
 
 
 class MinioClient:
+    SA_TOKEN_FILE = os.getenv("MINIO_SA_TOKEN_PATH", "/minio/token")
+    # Kube CA cert path added by mounted service account, needed for TLS with Minio STS
+    KUBE_CA_CRT = os.getenv(
+        "STS_CA_CERT_FILE", "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+    )
+
     def __init__(
         self,
         endpoint: str,
@@ -50,7 +56,7 @@ class MinioClient:
 
     def _create_client(
         self, access_key: str, secret_key: str, session_token: str | None
-    ):
+    ) -> Minio:
         self.client = Minio(
             self.endpoint,
             access_key=access_key,
@@ -60,23 +66,18 @@ class MinioClient:
         )
 
     def handle_sts_auth(self):
-        # Mounted in from the service account to include sts.min.io audience
-        SA_TOKEN_FILE = os.getenv("MINIO_SA_TOKEN_PATH", "/minio/token")
+        """Handle STS authentication with MinIO using Kubernetes service account token."""
 
-        # Kube CA cert path added by mounted service account, needed for TLS with Minio STS
-        KUBE_CA_CRT = os.getenv(
-            "STS_CA_CERT_FILE", "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-        )
         # Set the environment variable for minio client to use the k8s certificate
-        os.environ["SSL_CERT_FILE"] = KUBE_CA_CRT
+        os.environ["SSL_CERT_FILE"] = self.KUBE_CA_CRT
 
         # Read service account token
-        sa_token = Path(SA_TOKEN_FILE).read_text().strip()
+        sa_token = Path(self.SA_TOKEN_FILE).read_text().strip()
 
         # Cache the token used here for change detection
         self._last_token = sa_token
 
-        ssl_context = ssl.create_default_context(cafile=KUBE_CA_CRT)
+        ssl_context = ssl.create_default_context(cafile=self.KUBE_CA_CRT)
 
         # Create urllib3 client which accepts kube CA cert
         http = urllib3.PoolManager(ssl_context=ssl_context)
@@ -103,8 +104,7 @@ class MinioClient:
     def _token_has_changed(self):
         """Check if the service account token has changed since last read."""
         try:
-            SA_TOKEN_FILE = os.getenv("MINIO_SA_TOKEN_PATH", "/minio/token")
-            current_token = Path(SA_TOKEN_FILE).read_text().strip()
+            current_token = Path(self.SA_TOKEN_FILE).read_text().strip()
             return current_token != self._last_token
         except Exception as e:
             print(f"Error reading token file: {e}")
