@@ -21,6 +21,11 @@ class MinioClient:
         secret_key: str | None = None,
         secure: bool = False,
     ):
+        self.endpoint = endpoint
+        self.sts_endpoint = sts_endpoint
+        self.tenant = tenant
+        self.secure = secure
+
         retry_count = 0
         st = None  # Default session token to None if not using STS
 
@@ -61,6 +66,9 @@ class MinioClient:
         # Read service account token
         sa_token = Path(SA_TOKEN_FILE).read_text().strip()
 
+        # Cache the token used here for change detection
+        self._last_token = sa_token
+
         ssl_context = ssl.create_default_context(cafile=KUBE_CA_CRT)
 
         # Create urllib3 client which accepts kube CA cert
@@ -86,12 +94,28 @@ class MinioClient:
             return access_key, secret_key, session_token
 
     def _token_has_changed(self):
-        # Placeholder for token change detection logic if needed
-        return False
+        """Check if the service account token has changed since last read."""
+        try:
+            SA_TOKEN_FILE = os.getenv("MINIO_SA_TOKEN_PATH", "/minio/token")
+            current_token = Path(SA_TOKEN_FILE).read_text().strip()
+            return current_token != self._last_token
+        except Exception as e:
+            print(f"Error reading token file: {e}")
+            return False
 
     def _refresh_token(self):
-        # Placeholder for token refresh logic if needed
-        pass
+        """Refresh the service account token and update the Minio client session token."""
+        if not self._token_has_changed():
+            return  # No change in token so refresh unnecessary
+        print("Refreshing Minio client session token")
+        try:
+            access_key, secret_key, session_token = self.handle_sts_auth(
+                self.sts_endpoint,
+                self.tenant,
+            )
+        except Exception as e:
+            print(f"Failed to refresh Minio client token: {e}")
+            return
 
     def _ensure_valid_token(self):
         # Placeholder for token validation logic if needed
