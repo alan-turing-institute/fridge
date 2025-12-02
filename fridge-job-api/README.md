@@ -38,6 +38,8 @@ The API will use this token to authenticate with the Argo Workflows server.
 
 Other variables can be set in the Pulumi configuration for the stack.
 
+Both `arm64` and `amd64` images are available from Github Container Registry.
+
 ## Configuration for Pulumi
 
 When configuring the Pulumi stack, some values need to be set as secrets. Use the following commands to set them:
