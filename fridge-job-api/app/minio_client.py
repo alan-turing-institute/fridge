@@ -1,4 +1,3 @@
-from datetime import datetime, timedelta
 from fastapi import File, UploadFile, HTTPException
 from fastapi.responses import StreamingResponse
 from io import BytesIO
@@ -85,6 +84,19 @@ class MinioClient:
             session_token = credentials.find("sts:SessionToken", ns).text
 
             return access_key, secret_key, session_token
+
+    def _token_has_changed(self):
+        # Placeholder for token change detection logic if needed
+        return False
+
+    def _refresh_token(self):
+        # Placeholder for token refresh logic if needed
+        pass
+
+    def _ensure_valid_token(self):
+        # Placeholder for token validation logic if needed
+        if self._token_has_changed():
+            self._refresh_token()
 
     def handle_minio_error(self, error: S3Error):
         if error._code in ["NoSuchBucket", "NoSuchKey"]:
