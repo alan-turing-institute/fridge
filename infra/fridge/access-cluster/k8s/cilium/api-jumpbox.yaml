@@ -35,6 +35,7 @@ spec:
         - ports:
             - port: "2222"
               protocol: TCP
+    # Access to the isolated cluster
     - toCIDRSet:
         - cidr: 10.20.1.0/16
       toPorts:

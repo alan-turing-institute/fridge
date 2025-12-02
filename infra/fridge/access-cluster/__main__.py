@@ -107,9 +107,7 @@ harbor = components.ContainerRegistry(
 )
 
 # Network policy (through Cilium)
-
 # Network policies should be deployed last to ensure that none of them interfere with the deployment process
-
 resources = [
     cert_manager,
     harbor.configure_containerd_daemonset,

@@ -65,10 +65,6 @@ class CertManager(ComponentResource):
                         ),
                     ),
                 )
-            # case K8sEnvironment.DAWN:
-            #     # Dawn specific configuration
-            #     cert_manager_ns = Namespace.get("cert-manager-ns", "cert-manager")
-            #     cert_manager = Release.get("cert-manager", "cert-manager")
 
         # Create ClusterIssuers
         issuer_outputs = {}
