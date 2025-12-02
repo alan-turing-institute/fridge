@@ -150,6 +150,7 @@ class MinioClient:
         raise HTTPException(status_code=status, detail=error.message)
 
     def create_bucket(self, name, enable_versioning=False):
+        self._ensure_valid_token()
         try:
             if not self.client.bucket_exists(name):
                 self.client.make_bucket(name)
@@ -166,6 +167,7 @@ class MinioClient:
         return {"response": name, "status": 201}
 
     async def put_object(self, bucket, file: UploadFile = File(...)):
+        self._ensure_valid_token()
         try:
             content = await file.read()
             result = self.client.put_object(
@@ -189,6 +191,7 @@ class MinioClient:
         }
 
     def get_object(self, bucket, file_name, target_file=None, version=None):
+        self._ensure_valid_token()
         if not target_file:
             target_file = file_name
         try:
@@ -208,6 +211,7 @@ class MinioClient:
             )
 
     def check_object_exists(self, bucket, file_name, version=None):
+        self._ensure_valid_token()
         try:
             self.client.stat_object(bucket, file_name, version_id=version)
             return True
@@ -219,6 +223,7 @@ class MinioClient:
             return False
 
     def delete_object(self, bucket, file_name, version=None):
+        self._ensure_valid_token()
         try:
             # Check that the object exists in the bucket before deleting
             if self.check_object_exists(bucket, file_name, version):
