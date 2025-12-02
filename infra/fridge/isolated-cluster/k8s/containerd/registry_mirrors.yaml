@@ -1,0 +1,108 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: containerd-registry-mirrors
+  namespace: ${namespace}
+data:
+  docker-io-hosts.toml: |
+    [host."http://${harbor_fqdn}/v2/proxy-docker.io"]
+      capabilities = ["pull", "resolve"]
+      skip_verify = true
+      override_path = true
+
+    # Fall back to Docker Hub if Harbor fails
+    [host."https://registry-1.docker.io"]
+      capabilities = ["pull", "resolve"]
+
+  ghcr-io-hosts.toml: |
+    [host."http://${harbor_fqdn}/v2/proxy-ghcr.io"]
+      capabilities = ["pull", "resolve"]
+      skip_verify = true
+      override_path = true
+
+    # Fall back to GHCR if Harbor fails
+    [host."https://ghcr.io"]
+      capabilities = ["pull", "resolve"]
+
+  quay-io-hosts.toml: |
+    [host."http://${harbor_fqdn}/v2/proxy-quay.io"]
+      capabilities = ["pull", "resolve"]
+      skip_verify = true
+      override_path = true
+
+    # Fall back to Quay if Harbor fails
+    [host."https://quay.io"]
+      capabilities = ["pull", "resolve"]
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: configure-containerd-mirrors
+  namespace: ${namespace}
+spec:
+  selector:
+    matchLabels:
+      app: configure-containerd-mirrors
+  template:
+    metadata:
+      labels:
+        app: configure-containerd-mirrors
+    spec:
+      initContainers:
+      - name: configure-containerd
+        image: busybox
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          echo "Configuring containerd registry mirrors..."
+          mkdir -p /host/etc/containerd/certs.d/docker.io
+          mkdir -p /host/etc/containerd/certs.d/ghcr.io
+          mkdir -p /host/etc/containerd/certs.d/quay.io
+
+          echo "Copying Docker, GHCR, and Quay registry mirror configurations..."
+          cp /config/docker-io-hosts.toml /host/etc/containerd/certs.d/docker.io/hosts.toml
+          cp /config/ghcr-io-hosts.toml /host/etc/containerd/certs.d/ghcr.io/hosts.toml
+          cp /config/quay-io-hosts.toml /host/etc/containerd/certs.d/quay.io/hosts.toml
+          echo "Containerd registry mirrors configured."
+        securityContext:
+          runAsUser: 0
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+            add:
+              - DAC_OVERRIDE
+        volumeMounts:
+        - name: host-fs
+          mountPath: /host/etc/containerd/certs.d
+        - name: config
+          mountPath: /config
+          readOnly: true
+      containers:
+        - name: wait
+          image: registry.k8s.io/pause:3.8
+          resources:
+            requests:
+              cpu: 10m
+              memory: 10Mi
+            limits:
+              cpu: 50m
+              memory: 50Mi
+          securityContext:
+            privileged: false
+            runAsNonRoot: true
+            runAsUser: 65532
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+      volumes:
+      - name: host-fs
+        hostPath:
+          path: /etc/containerd/certs.d
+          type: DirectoryOrCreate
+      - name: config
+        configMap:
+          name: containerd-registry-mirrors
