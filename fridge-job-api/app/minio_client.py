@@ -110,7 +110,8 @@ class MinioClient:
         """Check if the service account token has changed since last read."""
         try:
             current_token = Path(self.SA_TOKEN_FILE).read_text().strip()
-            return current_token != self._last_token
+            return True
+            # return current_token != self._last_token
         except Exception as e:
             print(f"Error reading token file: {e}")
             return False
