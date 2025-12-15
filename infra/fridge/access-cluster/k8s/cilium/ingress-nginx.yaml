@@ -1,0 +1,125 @@
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: ingress-nginx
+spec:
+  endpointSelector: {}
+  ingress:
+    - {}
+  egress:
+    - {}
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: enable-external-ingress
+  namespace: ingress-nginx
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s:app.kubernetes.io/name: ingress-nginx
+      k8s:app.kubernetes.io/component: controller
+  ingress:
+    # Allow HTTP/HTTPS from outside world
+    - fromEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP
+            - port: "443"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            k8s:app.kubernetes.io/name: cert-manager
+            k8s:io.kubernetes.pod.namespace: cert-manager
+      toPorts:
+        - ports:
+          - port: "80"
+            protocol: TCP
+    - fromEndpoints:
+        - matchExpressions:
+          - key: k8s:io.kubernetes.pod.namespace
+            operator: In
+            values: ["harbor", "argo-server", "argo-artifacts"]
+          - key: acme.cert-manager.io/http01-solver
+            operator: Exists
+      toPorts:
+        - ports:
+            - port: "8089"
+              protocol: TCP
+  egress:
+    # Allow egress to the Kubernetes API server for Ingress NGINX to manage
+    # resources.
+    - toEntities:
+        - kube-apiserver
+    # Allow forwarding traffic to the Harbor Nginx component, which redirects
+    # to the Harbor registry or web UI
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: harbor
+            app: harbor
+            component: nginx
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+    # Allow forwarding traffic to the Argo Server web UI
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: argo-server
+            app: server
+      toPorts:
+        - ports:
+            - port: "2746"
+              protocol: TCP
+    # Allow forwarding traffic to the MinIO tenant web UI
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: argo-artifacts
+            v1.min.io/tenant: argo-artifacts
+      toPorts:
+        - ports:
+            - port: "9090"
+              protocol: TCP
+    # Allow traffic to the ACME http01-solver during ingress creation
+    # Port 8089 is necessary for the ACME solver using during TLS certificate issuance
+    - toEndpoints:
+        - matchExpressions:
+          - key: k8s:io.kubernetes.pod.namespace
+            operator: In
+            values: ["harbor", "argo-server", "argo-artifacts"]
+          - key: acme.cert-manager.io/http01-solver
+            operator: Exists
+      toPorts:
+        - ports:
+            - port: "8089"
+              protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: enable-ssh-access
+  namespace: ingress-nginx
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s:app.kubernetes.io/name: ingress-nginx
+      k8s:app.kubernetes.io/component: controller
+  ingress:
+    - fromEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "2500"
+              protocol: TCP
+  egress:
+    - toServices:
+      - k8sService:
+          namespace: api-proxy
+          serviceName: api-proxy-service
+      toPorts:
+        - ports:
+            - port: "2222"
+              protocol: TCP

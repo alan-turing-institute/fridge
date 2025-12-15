@@ -1,0 +1,318 @@
+# See https://longhorn.io/docs/1.9.0/references/networking/ for more details on Longhorn networking policies
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-deny
+  namespace: longhorn-system
+spec:
+  # Apply to all pods in this namespace
+  endpointSelector: {}
+  ingress:
+    - {}
+  egress:
+    - {}
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: longhorn-manager
+  namespace: longhorn-system
+spec:
+  # Apply to longhorn-manager pods only
+  endpointSelector:
+    matchLabels:
+      app: longhorn-manager
+  ingress:
+    - fromEndpoints:
+        - matchExpressions:
+          - key: app
+            operator: In
+            values:
+              - longhorn-csi-plugin
+              - longhorn-driver-deployer
+              - longhorn-manager
+              - longhorn-ui
+          - key: k8s:io.kubernetes.pod.namespace
+            operator: In
+            values:
+              - longhorn-system
+      toPorts:
+        - ports:
+            - port: "9500"
+              endPort: 9502
+              protocol: TCP
+    # Share-manager needs to contact Longhorn manager during mounting of RWX volumes
+    - fromEndpoints:
+      - matchLabels:
+          longhorn.io/component: share-manager
+      toPorts:
+        - ports:
+          - port: "9503"
+            protocol: TCP
+    # Added remote-node for Dawn compatibility
+    - fromEntities:
+        - remote-node
+      toPorts:
+        - ports:
+          - port: "9501"
+            endPort: 9502
+            protocol: TCP
+  egress:
+    - toEndpoints:
+        - matchExpressions:
+          - key: app
+            operator: In
+            values:
+              - longhorn-manager
+      toPorts:
+        - ports:
+            - port: "9500"
+              endPort: 9502
+              protocol: TCP
+    - toEndpoints:
+        # This allows longhorn-manager to communicate with other Longhorn
+        # manager components, such as the instance manager and share manager
+        - matchLabels:
+            longhorn.io/managed-by: longhorn-manager
+    - toEndpoints:
+        - matchExpressions:
+          - { key: longhorn.io/job-task, operator: Exists }
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+    # Longhorn manager needs to be able to create and manage all Longhorn
+    # resources, such as volumes and recurring jobs
+    - toEntities:
+        - kube-apiserver
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: longhorn-csi-snapshotter
+  namespace: longhorn-system
+spec:
+  endpointSelector:
+    matchLabels:
+      app: csi-snapshotter
+  egress:
+    - toEntities:
+        - kube-apiserver
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: longhorn-csi-provisioner
+  namespace: longhorn-system
+spec:
+  endpointSelector:
+    matchLabels:
+      app: csi-provisioner
+  egress:
+    - toEntities:
+        - kube-apiserver
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: longhorn-csi-attacher
+  namespace: longhorn-system
+spec:
+  endpointSelector:
+    matchLabels:
+      app: csi-attacher
+  egress:
+    - toEntities:
+        - kube-apiserver
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: longhorn-csi-resizer
+  namespace: longhorn-system
+# Allow longhorn resizer service to resize longhorn pods.
+spec:
+  endpointSelector:
+    matchLabels:
+      app: csi-resizer
+  egress:
+    - toEntities:
+        - kube-apiserver
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: longhorn-allow-manager
+  namespace: longhorn-system
+spec:
+  endpointSelector:
+    matchLabels:
+      longhorn.io/managed-by: longhorn-manager
+  # Allow longhorn managed pods to communicate with each other
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app: longhorn-manager
+    - fromEndpoints:
+        - matchLabels:
+            longhorn.io/managed-by: longhorn-manager
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            longhorn.io/managed-by: longhorn-manager
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: longhorn-share-manager
+  namespace: longhorn-system
+spec:
+  endpointSelector:
+    matchLabels:
+      longhorn.io/component: share-manager
+  # Share-manager handles ReadWriteMany volumes
+  ingress:
+    # Allows cross-node traffic for the shared volume
+    # Within node traffic is allowed by default
+    - fromEntities:
+        - remote-node
+      toPorts:
+        - ports:
+            - port: "2049"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            app: longhorn-manager
+      toPorts:
+        - ports:
+            - port: "9503"
+              protocol: TCP
+            - port: "9600"
+              protocol: TCP
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+    - toEndpoints:
+        - matchLabels:
+            app: longhorn-manager
+            k8s:io.kubernetes.pod.namespace: longhorn-system
+      toPorts:
+        - ports:
+            - port: "9503"
+              protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: longhorn-csi-plugin
+  namespace: longhorn-system
+spec:
+  endpointSelector:
+    matchLabels:
+      app: longhorn-csi-plugin
+  egress:
+    # The longhorn CSI plugin needs to communicate with the Longhorn manager
+    # It is the Container Storage Interface (CSI) driver for Longhorn
+    # Note that the individual CSI components (provisioner, attacher, etc.) have their own policies
+    # and also require access to the kube-apiserver
+    - toEndpoints:
+        - matchLabels:
+            k8s-app: kube-dns
+            io.kubernetes.pod.namespace: kube-system
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+    - toEndpoints:
+        - matchLabels:
+            app: longhorn-manager
+      toPorts:
+        - ports:
+            - port: "9500"
+              protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: longhorn-ui
+  namespace: longhorn-system
+spec:
+  endpointSelector:
+    matchLabels:
+      app: longhorn-ui
+  egress:
+    # Allow longhorn-ui to instruct longhorn-manager to manage Longhorn resources
+    # Longhorn resources
+    - toEndpoints:
+        - matchLabels:
+            app: longhorn-manager
+      toPorts:
+        - ports:
+            - port: "9500"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: longhorn-instance-manager
+  namespace: longhorn-system
+spec:
+  endpointSelector:
+    matchLabels:
+      component: instance-manager
+  egress:
+    # Allow instance manager to instruct longhorn manager to manage engines and
+    # replicas on a node
+    - toEndpoints:
+        - matchLabels:
+            app: longhorn-manager
+      toPorts:
+        - ports:
+            - port: "9500"
+              protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: longhorn-driver-deployer
+  namespace: longhorn-system
+spec:
+  endpointSelector:
+    matchLabels:
+      app: longhorn-driver-deployer
+  egress:
+    - toEntities:
+      - kube-apiserver
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+    - toEndpoints:
+        - matchLabels:
+            app: longhorn-manager
+      toPorts:
+        - ports:
+            - port: "9500"
+              protocol: TCP
