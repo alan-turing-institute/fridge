@@ -129,6 +129,23 @@ argo_workflows = components.WorkflowServer(
     ),
 )
 
+# Set up monitoring
+monitoring_system = components.Monitoring(
+    name=f"{stack_name}-monitoring-system",
+    args=components.MonitoringArgs(
+        k8s_environment=k8s_environment,
+        argo_server_ns=argo_workflows.argo_server_ns,
+    ),
+    opts=ResourceOptions(
+        depends_on=[
+            argo_workflows,
+            cert_manager,
+            minio,
+            storage_classes,
+        ],
+    ),
+)
+
 # Block storage for Argo Workflow jobs
 block_storage = components.BlockStorage(
     "block-storage",
