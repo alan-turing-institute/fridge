@@ -1,5 +1,6 @@
 #!/bin/sh
 # Configure Harbor settings via its API
+# This script is execute in the access cluster
 
 set -e
 
