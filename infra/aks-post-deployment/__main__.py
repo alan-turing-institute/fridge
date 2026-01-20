@@ -34,8 +34,9 @@ nsg_rules = components.NetworkSecurityRules(
         config=config,
         resource_group_name=config.require("azure_resource_group"),
         access_nodes_subnet_cidr=access_nodes_subnet_cidr,
-        isolated_nodes_subnet_cidr=isolated_nodes_subnet_cidr,
+        access_stack_reference=access_stack_reference,
         access_subnet_nsg=access_subnet_nsg,
+        isolated_nodes_subnet_cidr=isolated_nodes_subnet_cidr,
         isolated_subnet_nsg=isolated_subnet_nsg,
     ),
 )
