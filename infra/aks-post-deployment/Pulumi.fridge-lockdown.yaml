@@ -5,5 +5,8 @@ config:
   fridge-lockdown:infrastructure_stack_name: isolated-aks
   fridge-lockdown:organization_name: organization
   fridge-lockdown:project_name: fridge_aks
-  fridge-lockdown:access_cluster_stack_name: new-access-cluster
+  fridge-lockdown:access_cluster_stack_name: access-aks-fridge
+  fridge-lockdown:access_cluster_project_name: fridge-access
+  fridge-lockdown:isolated_cluster_stack_name: isolated-aks-fridge
+  fridge-lockdown:isolated_cluster_project_name: fridge-isolated
 encryptionsalt: v1:5NbOBexeJpY=:v1:TWfZ8KMtI0Ut+xn9:Ue2E3YE+tGFpwuMZmnHcwhNtghO0LA==
