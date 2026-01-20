@@ -9,8 +9,9 @@ class NetworkSecurityRulesArgs:
         config: pulumi.config.Config,
         resource_group_name: str,
         access_nodes_subnet_cidr: pulumi.Output[str],
-        isolated_nodes_subnet_cidr: pulumi.Output[str],
+        access_stack_reference: pulumi.StackReference,
         access_subnet_nsg: pulumi.Output[str],
+        isolated_nodes_subnet_cidr: pulumi.Output[str],
         isolated_subnet_nsg: pulumi.Output[str],
     ):
         self.config = config
@@ -19,6 +20,7 @@ class NetworkSecurityRulesArgs:
         self.isolated_nodes_subnet_cidr = isolated_nodes_subnet_cidr
         self.access_subnet_nsg = access_subnet_nsg
         self.isolated_subnet_nsg = isolated_subnet_nsg
+        self.access_stack_reference = access_stack_reference
 
 
 class NetworkSecurityRules(ComponentResource):
@@ -33,102 +35,181 @@ class NetworkSecurityRules(ComponentResource):
         )
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
-        self.access_subnet_nsg_lockdown = network.NetworkSecurityGroup(
-            "access-subnet-nsg-lockdown",
-            resource_group_name=args.resource_group_name,
-            location="uksouth",
-            network_security_group_name=args.access_subnet_nsg,
-            security_rules=[
-                network.SecurityRuleArgs(
-                    name="DenyIsolatedVNetInBound",
-                    priority=2000,
-                    direction=network.SecurityRuleDirection.INBOUND,
-                    access=network.SecurityRuleAccess.DENY,
-                    protocol=network.SecurityRuleProtocol.ASTERISK,
-                    source_port_range="*",
-                    destination_port_range="*",
-                    source_address_prefix=args.isolated_nodes_subnet_cidr,
-                    destination_address_prefix="*",
-                    description="Deny access from isolated cluster VNet",
-                ),
-            ],
-            opts=child_opts,
-        )
+        access_cluster_nsg_rules = [
+            network.SecurityRuleArgs(
+                name="AllowHTTPSInbound",
+                priority=100,
+                direction=network.SecurityRuleDirection.INBOUND,
+                access=network.SecurityRuleAccess.ALLOW,
+                protocol=network.SecurityRuleProtocol.ASTERISK,
+                source_port_range="*",
+                destination_port_range="443",
+                source_address_prefix="Internet",
+                destination_address_prefix="*",
+                description="Allow HTTPS traffic for Harbor",
+            ),
+            network.SecurityRuleArgs(
+                name="AllowSSHServerInbound",
+                priority=200,
+                direction=network.SecurityRuleDirection.INBOUND,
+                access=network.SecurityRuleAccess.ALLOW,
+                protocol=network.SecurityRuleProtocol.TCP,
+                source_port_range="*",
+                destination_port_range="2500",
+                source_address_prefix="Internet",
+                destination_address_prefix="*",
+                description="Allow SSH traffic to API Proxy SSH server",
+            ),
+            # Allow Azure Load Balancer health probes
+            network.SecurityRuleArgs(
+                name="AllowAzureLoadBalancerInbound",
+                priority=400,
+                direction=network.SecurityRuleDirection.INBOUND,
+                access=network.SecurityRuleAccess.ALLOW,
+                protocol=network.SecurityRuleProtocol.ASTERISK,
+                source_port_range="*",
+                destination_port_range="*",
+                source_address_prefix="AzureLoadBalancer",
+                destination_address_prefix="*",
+                description="Allow Azure Load Balancer health probes",
+            ),
+            network.SecurityRuleArgs(
+                name="DenyIsolatedClusterInBound",
+                priority=1000,
+                direction=network.SecurityRuleDirection.INBOUND,
+                access=network.SecurityRuleAccess.DENY,
+                protocol=network.SecurityRuleProtocol.ASTERISK,
+                source_port_range="*",
+                destination_port_range="*",
+                source_address_prefix=args.isolated_nodes_subnet_cidr,
+                destination_address_prefix="*",
+                description="Deny all other inbound from Isolated cluster",
+            ),
+            # Outbound rules
+            # Note: this allows access to any node in the Isolated cluster on port 443
+            # The specific IP addresses of the API server and FRIDGE API are not known in advance
+            # so we allow access to the whole subnet. In practice, only the API Proxy pod
+            # will be making these requests. This can potentially be tightened after FRIDGE deployment.
+            network.SecurityRuleArgs(
+                name="AllowAPIProxyToIsolatedOutBound",
+                priority=100,
+                direction=network.SecurityRuleDirection.OUTBOUND,
+                access=network.SecurityRuleAccess.ALLOW,
+                protocol=network.SecurityRuleProtocol.TCP,
+                source_port_range="*",
+                destination_port_ranges=[
+                    "443",
+                ],
+                source_address_prefix="*",
+                destination_address_prefix=args.isolated_nodes_subnet_cidr,
+                description="Allow API Proxy to access k8s API and FRIDGE API in Isolated cluster",
+            ),
+            # Deny all other outbound to Isolated cluster (except allowed APIs)
+            network.SecurityRuleArgs(
+                name="DenyIsolatedClusterOutBound",
+                priority=4000,
+                direction=network.SecurityRuleDirection.OUTBOUND,
+                access=network.SecurityRuleAccess.DENY,
+                protocol=network.SecurityRuleProtocol.ASTERISK,
+                source_port_range="*",
+                destination_port_range="*",
+                source_address_prefix="*",
+                destination_address_prefix=args.isolated_nodes_subnet_cidr,
+                description="Deny all other outbound to Isolated cluster",
+            ),
+        ]
 
-        def create_nsg_lockdown(nsg_info):
+        isolated_cluster_nsg_rules = [
+            network.SecurityRuleArgs(
+                name="AllowFridgeAPIFromAccessInBound",
+                priority=100,
+                direction=network.SecurityRuleDirection.INBOUND,
+                access=network.SecurityRuleAccess.ALLOW,
+                protocol=network.SecurityRuleProtocol.TCP,
+                source_port_range="*",
+                destination_port_range="443",
+                source_address_prefix=args.access_nodes_subnet_cidr,
+                destination_address_prefix="*",
+                description="Allow FRIDGE API access from access cluster API Proxy",
+            ),
+            network.SecurityRuleArgs(
+                name="DenyAccessVNetInBound",
+                priority=2000,
+                direction=network.SecurityRuleDirection.INBOUND,
+                access=network.SecurityRuleAccess.DENY,
+                protocol=network.SecurityRuleProtocol.ASTERISK,
+                source_port_range="*",
+                destination_port_range="*",
+                source_address_prefix=args.access_nodes_subnet_cidr,
+                destination_address_prefix="*",
+                description="Deny all other traffic from access cluster VNet",
+            ),
+            # OUTBOUND RULES
+            # Deny all other outbound to access cluster
+            network.SecurityRuleArgs(
+                name="AllowHarborOutBound",
+                priority=100,
+                direction=network.SecurityRuleDirection.OUTBOUND,
+                access=network.SecurityRuleAccess.ALLOW,
+                protocol=network.SecurityRuleProtocol.TCP,
+                source_port_range="*",
+                destination_port_range="443",
+                source_address_prefix=args.isolated_nodes_subnet_cidr,
+                destination_address_prefix=args.access_stack_reference.get_output(
+                    "harbor_ip_address"
+                ),
+            ),
+            network.SecurityRuleArgs(
+                name="DenyAccessClusterOutBound",
+                priority=3900,
+                direction=network.SecurityRuleDirection.OUTBOUND,
+                access=network.SecurityRuleAccess.DENY,
+                protocol=network.SecurityRuleProtocol.ASTERISK,
+                source_port_range="*",
+                destination_port_range="*",
+                source_address_prefix="*",
+                destination_address_prefix=args.access_nodes_subnet_cidr,
+                description="Deny all other outbound to access cluster",
+            ),
+            network.SecurityRuleArgs(
+                name="DenyInternetOutBound",
+                priority=4000,
+                direction=network.SecurityRuleDirection.OUTBOUND,
+                access=network.SecurityRuleAccess.DENY,
+                protocol=network.SecurityRuleProtocol.ASTERISK,
+                source_port_range="*",
+                destination_port_range="*",
+                source_address_prefix="*",
+                destination_address_prefix="Internet",
+                description="Deny all outbound to internet",
+            ),
+        ]
+
+        # Create access NSG lockdown rules
+        def lockdown_access_nsg(nsg_info):
+            return network.NetworkSecurityGroup(
+                "access-subnet-nsg-lockdown",
+                resource_group_name=args.config.require("azure_resource_group"),
+                location="uksouth",
+                network_security_group_name=nsg_info["name"],
+                security_rules=access_cluster_nsg_rules,
+                opts=pulumi.ResourceOptions(import_=nsg_info["id"]),
+            )
+
+        def lockdown_isolated_nsg(nsg_info):
             return network.NetworkSecurityGroup(
                 "isolated-subnet-nsg-lockdown",
                 resource_group_name=args.config.require("azure_resource_group"),
                 location="uksouth",
                 network_security_group_name=nsg_info["name"],
-                security_rules=[
-                    network.SecurityRuleArgs(
-                        name="AllowFridgeAPIFromAccessInBound",
-                        priority=100,
-                        direction=network.SecurityRuleDirection.INBOUND,
-                        access=network.SecurityRuleAccess.ALLOW,
-                        protocol=network.SecurityRuleProtocol.TCP,
-                        source_port_range="*",
-                        destination_port_range="443",
-                        source_address_prefix=args.access_nodes_subnet_cidr,
-                        destination_address_prefix="*",
-                        description="Allow FRIDGE API access from access cluster API Proxy",
-                    ),
-                    network.SecurityRuleArgs(
-                        name="DenyAccessVNetInBound",
-                        priority=2000,
-                        direction=network.SecurityRuleDirection.INBOUND,
-                        access=network.SecurityRuleAccess.DENY,
-                        protocol=network.SecurityRuleProtocol.ASTERISK,
-                        source_port_range="*",
-                        destination_port_range="*",
-                        source_address_prefix=args.access_nodes_subnet_cidr,
-                        destination_address_prefix="*",
-                        description="Deny all other traffic from access cluster VNet",
-                    ),
-                    # OUTBOUND RULES
-                    # Deny all other outbound to access cluster
-                    network.SecurityRuleArgs(
-                        name="AllowHarborOutBound",
-                        priority=100,
-                        direction=network.SecurityRuleDirection.OUTBOUND,
-                        access=network.SecurityRuleAccess.ALLOW,
-                        protocol=network.SecurityRuleProtocol.TCP,
-                        source_port_range="*",
-                        destination_port_range="8080,80,443",
-                        source_address_prefix=args.isolated_nodes_subnet_cidr,
-                        destination_address_prefix=args.access_stack_reference.get_output(
-                            "harbor_ip_address"
-                        ),
-                    ),
-                    network.SecurityRuleArgs(
-                        name="DenyAccessClusterOutBound",
-                        priority=4000,
-                        direction=network.SecurityRuleDirection.OUTBOUND,
-                        access=network.SecurityRuleAccess.DENY,
-                        protocol=network.SecurityRuleProtocol.ASTERISK,
-                        source_port_range="*",
-                        destination_port_range="*",
-                        source_address_prefix="*",
-                        destination_address_prefix=args.access_nodes_subnet_cidr,
-                        description="Deny all other outbound to access cluster",
-                    ),
-                    network.SecurityRuleArgs(
-                        name="DenyInternetOutBound",
-                        priority=4100,
-                        direction=network.SecurityRuleDirection.OUTBOUND,
-                        access=network.SecurityRuleAccess.DENY,
-                        protocol=network.SecurityRuleProtocol.ASTERISK,
-                        source_port_range="*",
-                        destination_port_range="*",
-                        source_address_prefix="*",
-                        destination_address_prefix="Internet",
-                        description="Deny all outbound to internet",
-                    ),
-                ],
+                security_rules=isolated_cluster_nsg_rules,
                 opts=pulumi.ResourceOptions(import_=nsg_info["id"]),
             )
 
+        self.access_subnet_nsg_lockdown = args.access_subnet_nsg.apply(
+            lockdown_access_nsg
+        )
+
         self.isolated_subnet_nsg_lockdown = args.isolated_subnet_nsg.apply(
-            create_nsg_lockdown
+            lockdown_isolated_nsg
         )
