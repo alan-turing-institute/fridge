@@ -1,4 +1,5 @@
 import pulumi
+from .stack_outputs import StackOutputs
 from pulumi import ComponentResource, ResourceOptions
 from pulumi_azure_native import network
 
@@ -8,19 +9,11 @@ class NetworkSecurityRulesArgs:
         self,
         config: pulumi.config.Config,
         resource_group_name: str,
-        access_nodes_subnet_cidr: pulumi.Output[str],
-        access_stack_reference: pulumi.StackReference,
-        access_subnet_nsg: pulumi.Output[str],
-        isolated_nodes_subnet_cidr: pulumi.Output[str],
-        isolated_subnet_nsg: pulumi.Output[str],
+        stack_outputs: StackOutputs,
     ):
         self.config = config
         self.resource_group_name = resource_group_name
-        self.access_nodes_subnet_cidr = access_nodes_subnet_cidr
-        self.isolated_nodes_subnet_cidr = isolated_nodes_subnet_cidr
-        self.access_subnet_nsg = access_subnet_nsg
-        self.isolated_subnet_nsg = isolated_subnet_nsg
-        self.access_stack_reference = access_stack_reference
+        self.stack_outputs = stack_outputs
 
 
 class NetworkSecurityRules(ComponentResource):
@@ -34,6 +27,9 @@ class NetworkSecurityRules(ComponentResource):
             "fridge:aks-post-deployment:NetworkSecurityRules", name, {}, opts
         )
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
+
+        access_nodes_subnet_cidr = args.stack_outputs.access_nodes_subnet_cidr
+        isolated_nodes_subnet_cidr = args.stack_outputs.isolated_nodes_subnet_cidr
 
         access_cluster_nsg_rules = [
             network.SecurityRuleArgs(
@@ -81,7 +77,7 @@ class NetworkSecurityRules(ComponentResource):
                 protocol=network.SecurityRuleProtocol.ASTERISK,
                 source_port_range="*",
                 destination_port_range="*",
-                source_address_prefix=args.isolated_nodes_subnet_cidr,
+                source_address_prefix=isolated_nodes_subnet_cidr,
                 destination_address_prefix="*",
                 description="Deny all other inbound from Isolated cluster",
             ),
@@ -101,7 +97,7 @@ class NetworkSecurityRules(ComponentResource):
                     "443",
                 ],
                 source_address_prefix="*",
-                destination_address_prefix=args.isolated_nodes_subnet_cidr,
+                destination_address_prefix=isolated_nodes_subnet_cidr,
                 description="Allow API Proxy to access k8s API and FRIDGE API in Isolated cluster",
             ),
             # Deny all other outbound to Isolated cluster (except allowed APIs)
@@ -114,7 +110,7 @@ class NetworkSecurityRules(ComponentResource):
                 source_port_range="*",
                 destination_port_range="*",
                 source_address_prefix="*",
-                destination_address_prefix=args.isolated_nodes_subnet_cidr,
+                destination_address_prefix=isolated_nodes_subnet_cidr,
                 description="Deny all other outbound to Isolated cluster",
             ),
         ]
@@ -128,7 +124,7 @@ class NetworkSecurityRules(ComponentResource):
                 protocol=network.SecurityRuleProtocol.TCP,
                 source_port_range="*",
                 destination_port_range="443",
-                source_address_prefix=args.access_nodes_subnet_cidr,
+                source_address_prefix=access_nodes_subnet_cidr,
                 destination_address_prefix="*",
                 description="Allow FRIDGE API access from access cluster API Proxy",
             ),
@@ -140,7 +136,7 @@ class NetworkSecurityRules(ComponentResource):
                 protocol=network.SecurityRuleProtocol.ASTERISK,
                 source_port_range="*",
                 destination_port_range="*",
-                source_address_prefix=args.access_nodes_subnet_cidr,
+                source_address_prefix=args.stack_outputs.access_nodes_subnet_cidr,
                 destination_address_prefix="*",
                 description="Deny all other traffic from access cluster VNet",
             ),
@@ -154,10 +150,8 @@ class NetworkSecurityRules(ComponentResource):
                 protocol=network.SecurityRuleProtocol.TCP,
                 source_port_range="*",
                 destination_port_range="443",
-                source_address_prefix=args.isolated_nodes_subnet_cidr,
-                destination_address_prefix=args.access_stack_reference.get_output(
-                    "harbor_ip_address"
-                ),
+                source_address_prefix=isolated_nodes_subnet_cidr,
+                destination_address_prefix=args.stack_outputs.harbor_ip_address,
             ),
             network.SecurityRuleArgs(
                 name="DenyAccessClusterOutBound",
@@ -168,7 +162,7 @@ class NetworkSecurityRules(ComponentResource):
                 source_port_range="*",
                 destination_port_range="*",
                 source_address_prefix="*",
-                destination_address_prefix=args.access_nodes_subnet_cidr,
+                destination_address_prefix=access_nodes_subnet_cidr,
                 description="Deny all other outbound to access cluster",
             ),
             network.SecurityRuleArgs(
@@ -193,7 +187,10 @@ class NetworkSecurityRules(ComponentResource):
                 location="uksouth",
                 network_security_group_name=nsg_info["name"],
                 security_rules=access_cluster_nsg_rules,
-                opts=pulumi.ResourceOptions(import_=nsg_info["id"]),
+                opts=ResourceOptions.merge(
+                    ResourceOptions(import_=nsg_info["id"]),
+                    child_opts,
+                ),
             )
 
         def lockdown_isolated_nsg(nsg_info):
@@ -203,13 +200,16 @@ class NetworkSecurityRules(ComponentResource):
                 location="uksouth",
                 network_security_group_name=nsg_info["name"],
                 security_rules=isolated_cluster_nsg_rules,
-                opts=pulumi.ResourceOptions(import_=nsg_info["id"]),
+                opts=ResourceOptions.merge(
+                    ResourceOptions(import_=nsg_info["id"]),
+                    child_opts,
+                ),
             )
 
-        self.access_subnet_nsg_lockdown = args.access_subnet_nsg.apply(
+        self.access_subnet_nsg_lockdown = args.stack_outputs.access_subnet_nsg.apply(
             lockdown_access_nsg
         )
 
-        self.isolated_subnet_nsg_lockdown = args.isolated_subnet_nsg.apply(
-            lockdown_isolated_nsg
+        self.isolated_subnet_nsg_lockdown = (
+            args.stack_outputs.isolated_subnet_nsg.apply(lockdown_isolated_nsg)
         )
