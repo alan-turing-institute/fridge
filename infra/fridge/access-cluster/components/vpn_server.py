@@ -90,7 +90,9 @@ stream {
                                 "env": [
                                     {
                                         "name": "NB_SETUP_KEY",
-                                        "value": "AB27FECF-F4EC-4D43-82BE-B108609F871F",
+                                        "value": args.config.require_secret(
+                                            "netbird_setup_key"
+                                        ),
                                     },
                                 ],
                                 "volumeMounts": [
