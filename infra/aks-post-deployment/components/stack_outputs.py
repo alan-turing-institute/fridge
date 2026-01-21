@@ -37,15 +37,18 @@ class StackOutputs(ComponentResource):
             f"{organization}/{isolated_project}/{isolated_stack}"
         )
 
+        self.access_nodes_subnet_cidr = self.infrastructure_stack.get_output(
+            "access_nodes_subnet_cidr"
+        )
         self.access_subnet_nsg = self.infrastructure_stack.get_output(
             "access_subnet_nsg"
         )
+
         self.isolated_subnet_nsg = self.infrastructure_stack.get_output(
             "isolated_subnet_nsg"
-        )
-        self.access_nodes_subnet_cidr = self.infrastructure_stack.get_output(
-            "access_nodes_subnet_cidr"
         )
         self.isolated_nodes_subnet_cidr = self.infrastructure_stack.get_output(
             "isolated_nodes_subnet_cidr"
         )
+
+        self.harbor_ip_address = self.access_stack.get_output("harbor_ip_address")
