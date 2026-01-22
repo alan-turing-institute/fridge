@@ -92,6 +92,14 @@ spec:
         - ports:
           - port: "8080"
             protocol: TCP
+    # Temporarily allow ingress from the harbor-config-job pods
+    - fromEndpoints:
+      - matchLabels:
+          job-name: harbor-config-job
+      toPorts:
+        - ports:
+          - port: "8080"
+            protocol: TCP
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
