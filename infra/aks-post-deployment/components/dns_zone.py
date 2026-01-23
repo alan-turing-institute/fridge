@@ -52,4 +52,22 @@ class PrivateDNSZone(ComponentResource):
             ),
         )
 
+        self.vnet_dns_link = privatedns.VirtualNetworkLink(
+            "private-dns-vnet-link",
+            resource_group_name=args.resource_group_name,
+            private_zone_name=args.zone_name,
+            location="Global",
+            virtual_network_link_name="link-isolated-cluster-to-dns",
+            registration_enabled=False,
+            virtual_network=privatedns.SubResourceArgs(
+                id=args.stack_outputs.infrastructure_stack.get_output(
+                    "isolated_vnet_id"
+                )
+            ),
+            opts=ResourceOptions.merge(
+                ResourceOptions(depends_on=[self.dns_zone]),
+                child_opts,
+            ),
+        )
+
         self.register_outputs({"dns_zone": self.dns_zone})
