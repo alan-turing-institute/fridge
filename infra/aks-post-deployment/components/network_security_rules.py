@@ -154,6 +154,17 @@ class NetworkSecurityRules(ComponentResource):
                 destination_address_prefix=args.stack_outputs.harbor_ip_address,
             ),
             network.SecurityRuleArgs(
+                name="AllowAccessToStorageOutbound",
+                priority=200,
+                direction=network.SecurityRuleDirection.OUTBOUND,
+                access=network.SecurityRuleAccess.ALLOW,
+                protocol=network.SecurityRuleProtocol.TCP,
+                source_address_prefix=isolated_nodes_subnet_cidr,
+                destination_address_prefix="Storage",
+                source_port_range="*",
+                destination_port_range="445",
+            ),
+            network.SecurityRuleArgs(
                 name="DenyAccessClusterOutBound",
                 priority=3900,
                 direction=network.SecurityRuleDirection.OUTBOUND,
