@@ -20,21 +20,23 @@ class StackOutputs(ComponentResource):
         project_name = args.config.require("project_name")
         stack = args.config.require("infrastructure_stack_name")
         self.infrastructure_stack = pulumi.StackReference(
-            f"{organization}/{project_name}/{stack}"
+            f"{organization}/{project_name}/{stack}",
+            opts=child_opts,
         )
 
         # Import access cluster stack outputs
         access_stack = args.config.require("access_cluster_stack_name")
         access_project = "fridge-access"
         self.access_stack = pulumi.StackReference(
-            f"{organization}/{access_project}/{access_stack}"
+            f"{organization}/{access_project}/{access_stack}", opts=child_opts
         )
 
         # Import isolated cluster stack outputs
         isolated_stack = args.config.require("isolated_cluster_stack_name")
         isolated_project = "fridge-isolated"
         self.isolated_stack = pulumi.StackReference(
-            f"{organization}/{isolated_project}/{isolated_stack}"
+            f"{organization}/{isolated_project}/{isolated_stack}",
+            opts=child_opts,
         )
 
         self.access_nodes_subnet_cidr = self.infrastructure_stack.get_output(
