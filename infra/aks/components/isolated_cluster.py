@@ -2,10 +2,7 @@ import pulumi
 import pulumi_tls as tls
 
 from pulumi import ComponentResource, ResourceOptions
-from pulumi_azure_native import (
-    compute,
-    managedidentity,
-)
+from pulumi_azure_native import compute, managedidentity, network
 from pulumi_azure_native.containerservice import (
     AdvancedNetworkingArgs,
     AdvancedNetworkingObservabilityArgs,
@@ -138,7 +135,24 @@ class IsolatedCluster(ComponentResource):
             ),
         )
 
+        private_endpoint = network.get_private_endpoint_output(
+            resource_group_name=self.isolated_cluster.node_resource_group,
+            private_endpoint_name="kube-apiserver",
+        )
+
+        network_interface_id = private_endpoint.network_interfaces[0].id
+
+        self.fqdn = self.isolated_cluster.fqdn
+        self.isolated_cluster_ip = (
+            network.get_network_interface_output(
+                resource_group_name=self.isolated_cluster.node_resource_group,
+                network_interface_name=network_interface_id.apply(
+                    lambda id: id.split("/")[-1]
+                ),
+            )
+            .ip_configurations[0]
+            .private_ip_address
+        )
         self.name = self.isolated_cluster.name
         self.private_fqdn = self.isolated_cluster.private_fqdn
-        self.fqdn = self.isolated_cluster.fqdn
         self.register_outputs({"isolated_cluster": self.isolated_cluster})
