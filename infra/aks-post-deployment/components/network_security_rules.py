@@ -30,6 +30,8 @@ class NetworkSecurityRules(ComponentResource):
 
         access_nodes_subnet_cidr = args.stack_outputs.access_nodes_subnet_cidr
         isolated_nodes_subnet_cidr = args.stack_outputs.isolated_nodes_subnet_cidr
+        isolated_cluster_k8s_api_ip = args.stack_outputs.isolated_cluster_api_server_ip
+        fridge_api_ip = args.stack_outputs.fridge_api_ip
 
         access_cluster_nsg_rules = [
             network.SecurityRuleArgs(
@@ -110,8 +112,20 @@ class NetworkSecurityRules(ComponentResource):
                     "443",
                 ],
                 source_address_prefix="*",
-                destination_address_prefix=isolated_nodes_subnet_cidr,
+                destination_address_prefix=isolated_cluster_k8s_api_ip,  # isolated_nodes_subnet_cidr,
                 description="Allow API Proxy to access k8s API and FRIDGE API in Isolated cluster",
+            ),
+            network.SecurityRuleArgs(
+                name="AllowFridgeAPIOutBound",
+                priority=200,
+                direction=network.SecurityRuleDirection.OUTBOUND,
+                access=network.SecurityRuleAccess.ALLOW,
+                protocol=network.SecurityRuleProtocol.TCP,
+                source_port_range="*",
+                destination_port_range="443",
+                source_address_prefix="*",
+                destination_address_prefix=fridge_api_ip,
+                description="Allow access to FRIDGE API in Isolated cluster",
             ),
             # Deny all other outbound to Isolated cluster (except allowed APIs)
             network.SecurityRuleArgs(
@@ -138,8 +152,20 @@ class NetworkSecurityRules(ComponentResource):
                 source_port_range="*",
                 destination_port_range="443",
                 source_address_prefix=access_nodes_subnet_cidr,
-                destination_address_prefix="*",
+                destination_address_prefix=fridge_api_ip,
                 description="Allow FRIDGE API access from access cluster API Proxy",
+            ),
+            network.SecurityRuleArgs(
+                name="AllowK8sAPIFromAccessInBound",
+                priority=200,
+                direction=network.SecurityRuleDirection.INBOUND,
+                access=network.SecurityRuleAccess.ALLOW,
+                protocol=network.SecurityRuleProtocol.TCP,
+                source_port_range="*",
+                destination_port_range="443",
+                source_address_prefix=access_nodes_subnet_cidr,
+                destination_address_prefix=isolated_cluster_k8s_api_ip,
+                description="Allow k8s API access from access cluster API Proxy",
             ),
             network.SecurityRuleArgs(
                 name="DenyAccessVNetInBound",
