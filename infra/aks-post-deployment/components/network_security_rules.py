@@ -79,7 +79,7 @@ class NetworkSecurityRules(ComponentResource):
                 access=network.SecurityRuleAccess.ALLOW,
                 protocol=network.SecurityRuleProtocol.TCP,
                 source_port_range="*",
-                destination_port_range="80",
+                destination_port_ranges=["80", "443"],
                 source_address_prefix=isolated_nodes_subnet_cidr,
                 destination_address_prefix=args.stack_outputs.harbor_ip_address,
                 description="Allow Harbor access from Isolated cluster",
@@ -188,7 +188,10 @@ class NetworkSecurityRules(ComponentResource):
                 access=network.SecurityRuleAccess.ALLOW,
                 protocol=network.SecurityRuleProtocol.TCP,
                 source_port_range="*",
-                destination_port_range="80",
+                destination_port_ranges=[
+                    "80",
+                    "443",
+                ],  # Need to allow both HTTP and HTTPS to allow token authentication/redirects by Harbor
                 source_address_prefix=isolated_nodes_subnet_cidr,
                 destination_address_prefix=args.stack_outputs.harbor_ip_address,
             ),
