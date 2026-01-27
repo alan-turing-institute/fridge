@@ -207,16 +207,23 @@ network_policies = components.NetworkPolicies(
 )
 
 # Container runtime configuration (containerd)
-container_runtime_config = components.ContainerRuntimeConfig(
-    "container-runtime-config",
-    args=components.ContainerRuntimeConfigArgs(
-        config=config,
-        harbor_fqdn=access_stack.get_output("harbor_fqdn"),
-    ),
-    opts=ResourceOptions(
-        depends_on=resources,
-    ),
-)
+if k8s_environment == K8sEnvironment.AKS:
+    container_runtime_config = components.ContainerRuntimeConfig(
+        "container-runtime-config",
+        args=components.ContainerRuntimeConfigArgs(
+            config=config,
+            harbor_fqdn=access_stack.get_output("harbor_fqdn"),
+        ),
+        opts=ResourceOptions(
+            depends_on=resources,
+        ),
+    )
+else:
+    pulumi.log.warn(
+        "Container runtime configuration is only applied on AKS. "
+        "For Dawn AI and local K3s deployments, please ensure containerd is configured manually. "
+        "A script to configure containerd when using K3s is available in the `scripts` folder."
+    )
 
 # Pulumi stack outputs
 pulumi.export("fridge_api_ip", config.require("fridge_api_ip"))
