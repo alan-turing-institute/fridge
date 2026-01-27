@@ -2,6 +2,7 @@ from string import Template
 
 import pulumi
 from pulumi import ComponentResource, ResourceOptions
+
 from pulumi_kubernetes.batch.v1 import (
     Job,
     JobSpecArgs,
@@ -15,6 +16,9 @@ from pulumi_kubernetes.core.v1 import (
     PodTemplateSpecArgs,
     Secret,
     SecurityContextArgs,
+    Service,
+    ServicePortArgs,
+    ServiceSpecArgs,
     VolumeArgs,
     VolumeMountArgs,
 )
@@ -25,8 +29,7 @@ from pulumi_kubernetes.yaml import ConfigGroup
 
 from .storage_classes import StorageClasses
 
-
-from enums import PodSecurityStandard, TlsEnvironment, tls_issuer_names
+from enums import K8sEnvironment, PodSecurityStandard, TlsEnvironment, tls_issuer_names
 
 
 class ContainerRegistryArgs:
@@ -75,6 +78,15 @@ class ContainerRegistry(ComponentResource):
             else "ReadWriteOnce",
         }
 
+        api_service_annotations = (
+            {
+                "service.beta.kubernetes.io/azure-load-balancer-internal": "true",
+                "service.beta.kubernetes.io/azure-load-balancer-internal-subnet": "networking-access-nodes",
+            }
+            if K8sEnvironment(args.config.get("k8s_env")) == K8sEnvironment.AKS
+            else {}
+        )
+
         self.harbor = Release(
             "harbor",
             ReleaseArgs(
@@ -86,10 +98,8 @@ class ContainerRegistry(ComponentResource):
                 ),
                 values={
                     "expose": {
-                        "clusterIP": {
-                            "staticClusterIP": args.config.require("harbor_ip"),
-                        },
-                        "type": "clusterIP",
+                        "type": "loadBalancer",
+                        "loadBalancer": {"annotations": api_service_annotations},
                         "tls": {
                             "enabled": False,
                             "certSource": "none",
@@ -168,6 +178,26 @@ class ContainerRegistry(ComponentResource):
                     ]
                 ),
             ),
+        )
+
+        self.harbor_internal_loadbalancer = Service.get(
+            "harbor-internal-lb",
+            id=pulumi.Output.concat(self.harbor_ns.metadata.name, "/harbor"),
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(
+                    depends_on=[
+                        self.harbor,
+                    ]
+                ),
+            ),
+        )
+
+        # Extract the dynamically assigned IP address
+        self.harbor_lb_ip = self.harbor_internal_loadbalancer.status.apply(
+            lambda status: status.load_balancer.ingress[0].ip
+            if status and status.load_balancer and status.load_balancer.ingress
+            else None
         )
 
         # Create a daemonset to skip TLS verification for the harbor registry

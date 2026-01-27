@@ -23,6 +23,13 @@ def patch_namespace(name: str, pss: PodSecurityStandard) -> NamespacePatch:
 config = pulumi.Config()
 tls_environment = TlsEnvironment(config.require("tls_environment"))
 stack_name = pulumi.get_stack()
+organization = config.require("organization_name")
+project_name = config.require("project_name")
+access_stack_name = config.require("access_cluster_stack")
+
+access_stack = pulumi.StackReference(
+    f"{organization}/{project_name}/{access_stack_name}"
+)
 
 try:
     k8s_environment = K8sEnvironment(config.get("k8s_env"))
@@ -198,6 +205,25 @@ network_policies = components.NetworkPolicies(
         depends_on=resources,
     ),
 )
+
+# Container runtime configuration (containerd)
+if k8s_environment == K8sEnvironment.AKS:
+    container_runtime_config = components.ContainerRuntimeConfig(
+        "container-runtime-config",
+        args=components.ContainerRuntimeConfigArgs(
+            config=config,
+            harbor_fqdn=access_stack.get_output("harbor_fqdn"),
+        ),
+        opts=ResourceOptions(
+            depends_on=resources,
+        ),
+    )
+else:
+    pulumi.log.warn(
+        "Container runtime configuration is only applied on AKS. "
+        "For Dawn AI and local K3s deployments, please ensure containerd is configured manually. "
+        "If you deployed K3s using the scripts in infra/k3s, containerd should already be configured correctly."
+    )
 
 # Pulumi stack outputs
 pulumi.export("fridge_api_ip", config.require("fridge_api_ip"))
