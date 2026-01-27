@@ -99,7 +99,12 @@ metadata:
   name: harbor-allow-egress-to-registries
   namespace: harbor
 spec:
-  # Allow the core component of Harbor to reach the Docker and GCHR registries
+  # Allow the core component of Harbor to reach the Docker, GCHR and Quay registries
+  # See:
+  #   - https://docs.docker.com/desktop/setup/allow-list/
+  #   - https://access.redhat.com/articles/7084334 (regarding Quay)
+  #   - https://docs.github.com/en/packages/working-with-a-github-packages
+  #   - https://github.com/orgs/community/discussions/118629
   endpointSelector:
     matchLabels:
       app.kubernetes.io/name: harbor
@@ -115,16 +120,20 @@ spec:
               protocol: ANY
           rules:
             dns:
+              - matchName: "docker-images-prod.6aa30f8b08e16409b46e0173d6de2f56.r2.cloudflarestorage.com"
               - matchName: "ghcr.io"
               - matchName: "hub.docker.com"
               - matchName: "registry-1.docker.io"
+              - matchName: "pkg-containers.githubusercontent.com"
               - matchName: "production.cloudflare.docker.com"
               - matchName: "quay.io"
               - matchPattern: "cdn*.quay.io"
     - toFQDNs:
+      - matchName: "docker-images-prod.6aa30f8b08e16409b46e0173d6de2f56.r2.cloudflarestorage.com"
       - matchName: "ghcr.io"
       - matchName: "hub.docker.com"
       - matchName: "registry-1.docker.io"
+      - matchName: "pkg-containers.githubusercontent.com"
       - matchName: "production.cloudflare.docker.com"
       - matchPattern: "cdn*.quay.io"
       - matchName: "quay.io"
