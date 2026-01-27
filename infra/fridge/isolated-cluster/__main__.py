@@ -222,7 +222,7 @@ else:
     pulumi.log.warn(
         "Container runtime configuration is only applied on AKS. "
         "For Dawn AI and local K3s deployments, please ensure containerd is configured manually. "
-        "A script to configure containerd when using K3s is available in the `scripts` folder."
+        "If you deployed K3s using the scripts in infra/k3s, containerd should already be configured correctly."
     )
 
 # Pulumi stack outputs
