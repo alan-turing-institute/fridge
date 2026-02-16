@@ -1,0 +1,2 @@
+config:
+  openstack:cloud: ai-fridge-dev
