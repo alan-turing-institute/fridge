@@ -170,6 +170,5 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
-lb.ts
 jump-host
 test-deployment
