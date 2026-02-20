@@ -17,14 +17,22 @@ from pulumi_kubernetes.core.v1 import (
     Secret,
     SecurityContextArgs,
     Service,
-    ServicePortArgs,
-    ServiceSpecArgs,
     VolumeArgs,
     VolumeMountArgs,
 )
 from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
-from pulumi_kubernetes.networking.v1 import Ingress
+from pulumi_kubernetes.networking.v1 import (
+    HTTPIngressPathArgs,
+    HTTPIngressRuleValueArgs,
+    Ingress,
+    IngressBackendArgs,
+    IngressRuleArgs,
+    IngressServiceBackendArgs,
+    IngressSpecArgs,
+    IngressTLSArgs,
+    ServiceBackendPortArgs,
+)
 from pulumi_kubernetes.yaml import ConfigGroup
 
 from .storage_classes import StorageClasses
@@ -138,38 +146,36 @@ class ContainerRegistry(ComponentResource):
                     ],
                 },
             ),
-            spec={
-                "ingress_class_name": "nginx",
-                "tls": [
-                    {
-                        "hosts": [
-                            self.harbor_fqdn,
-                        ],
-                        "secret_name": "harbor-ingress-tls",
-                    }
+            spec=IngressSpecArgs(
+                ingress_class_name="nginx",
+                tls=[
+                    IngressTLSArgs(
+                        hosts=[self.harbor_fqdn],
+                        secret_name="harbor-ingress-tls",
+                    )
                 ],
-                "rules": [
-                    {
-                        "host": self.harbor_fqdn,
-                        "http": {
-                            "paths": [
-                                {
-                                    "path": "/",
-                                    "path_type": "Prefix",
-                                    "backend": {
-                                        "service": {
-                                            "name": "harbor",
-                                            "port": {
-                                                "number": 80,
-                                            },
-                                        }
-                                    },
-                                }
+                rules=[
+                    IngressRuleArgs(
+                        host=self.harbor_fqdn,
+                        http=HTTPIngressRuleValueArgs(
+                            paths=[
+                                HTTPIngressPathArgs(
+                                    path="/",
+                                    path_type="Prefix",
+                                    backend=IngressBackendArgs(
+                                        service=IngressServiceBackendArgs(
+                                            name="harbor",
+                                            port=ServiceBackendPortArgs(
+                                                number=80,
+                                            ),
+                                        )
+                                    ),
+                                )
                             ]
-                        },
-                    }
+                        ),
+                    )
                 ],
-            },
+            ),
             opts=ResourceOptions.merge(
                 child_opts,
                 ResourceOptions(
