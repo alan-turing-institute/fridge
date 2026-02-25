@@ -45,8 +45,8 @@ server:
       type: RuntimeDefault
 artifactRepository:
   s3:
-    bucket: argo-artifacts
-    endpoint: minio.argo-artifacts.svc.cluster.local:80
+    bucket: ingress
+    endpoint: minio.argo-artifacts.svc.cluster.local:443
     region: eu-west-2 # note this is not a real region! this is just a placeholder necessary for s3 compatibility
     accessKeySecret:
       name: argo-artifacts-minio
@@ -54,4 +54,4 @@ artifactRepository:
     secretKeySecret:
       name: argo-artifacts-minio
       key: secretkey
-    insecure: true
+    #insecure: true
