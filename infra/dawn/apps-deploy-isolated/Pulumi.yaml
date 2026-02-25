@@ -1,0 +1,10 @@
+name: apps-deploy-isolated
+description: for appl deploy on fridge-isolated cluster
+runtime:
+  name: nodejs
+  options:
+    packagemanager: npm
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: kubernetes-typescript
