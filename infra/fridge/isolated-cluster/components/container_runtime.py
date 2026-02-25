@@ -1,7 +1,7 @@
 import pulumi
 from pulumi import ComponentResource, Output, ResourceOptions
 from string import Template
-from enums import PodSecurityStandard
+from enums import K8sEnvironment, PodSecurityStandard
 from pulumi_kubernetes.core.v1 import Namespace
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.yaml import ConfigGroup
@@ -12,9 +12,11 @@ class ContainerRuntimeConfigArgs:
         self,
         config: pulumi.config.Config,
         harbor_fqdn: Output[str],
+        k8s_environment: K8sEnvironment,
     ) -> None:
         self.config = config
         self.harbor_fqdn = harbor_fqdn
+        self.k8s_environment = k8s_environment
 
 
 class ContainerRuntimeConfig(ComponentResource):
@@ -36,7 +38,11 @@ class ContainerRuntimeConfig(ComponentResource):
             opts=child_opts,
         )
 
-        yaml_template = open("k8s/containerd/registry_mirrors.yaml", "r").read()
+        match args.k8s_environment:
+            case K8sEnvironment.AKS:
+                yaml_template = open("k8s/containerd/registry_mirrors.yaml", "r").read()
+            case K8sEnvironment.DAWN:
+                yaml_template = open("k8s/containerd/dawn_registries.yaml", "r").read()
 
         registry_mirror_config = Output.all(
             namespace=self.config_ns.metadata.name,

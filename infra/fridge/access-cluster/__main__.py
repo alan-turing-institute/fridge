@@ -128,7 +128,7 @@ network_policies = components.NetworkPolicies(
 # Pulumi exports
 pulumi.export("fridge_api_ip_address", config.require("fridge_api_ip_address"))
 pulumi.export("harbor_fqdn", harbor.harbor_fqdn)
-pulumi.export("harbor_ip_address", harbor.harbor_ip)
 if k8s_environment == K8sEnvironment.AKS:
+    pulumi.export("harbor_ip_address", harbor.harbor_ip)
     pulumi.export("ingress_ip", ingress_nginx.ingress_ip)
     pulumi.export("ingress_ports", ingress_nginx.ingress_ports)
