@@ -17,6 +17,8 @@ from pulumi_kubernetes.core.v1 import (
     Secret,
     SecurityContextArgs,
     Service,
+    ServicePortArgs,
+    ServiceSpecArgs,
     VolumeArgs,
     VolumeMountArgs,
 )
@@ -106,12 +108,12 @@ class ContainerRegistry(ComponentResource):
                 ),
                 values={
                     "expose": {
-                        "type": "loadBalancer",
-                        "loadBalancer": {"annotations": api_service_annotations},
+                        "type": "clusterIP",
                         "tls": {
                             "enabled": False,
                             "certSource": "none",
                         },
+                        "labels": "fridge=harbor",
                     },
                     "externalURL": self.harbor_external_url,
                     "harborAdminPassword": args.config.require_secret(
@@ -186,9 +188,18 @@ class ContainerRegistry(ComponentResource):
             ),
         )
 
-        self.harbor_internal_loadbalancer = Service.get(
+        self.harbor_internal_loadbalancer = Service(
             "harbor-internal-lb",
-            id=pulumi.Output.concat(self.harbor_ns.metadata.name, "/harbor"),
+            metadata=ObjectMetaArgs(
+                name="harbor-lb",
+                namespace=self.harbor_ns.metadata.name,
+                annotations=api_service_annotations,
+            ),
+            spec=ServiceSpecArgs(
+                type="LoadBalancer",
+                selector={"app": "harbor", "component": "nginx"},
+                ports=[ServicePortArgs(port=80, target_port=8080)],
+            ),
             opts=ResourceOptions.merge(
                 child_opts,
                 ResourceOptions(
