@@ -323,6 +323,61 @@ class CertManager(ComponentResource):
                 "cert_manager_issuers": cert_manager_issuers,
             }
 
+        # Add trust-manager
+        self.trust_manager = Release(
+            "trust-manager",
+            namespace=cert_manager_ns.metadata.name,
+            chart="trust-manager",
+            version="0.21.1",
+            repository_opts=RepositoryOptsArgs(
+                repo="https://charts.jetstack.io",
+            ),
+            values={
+                "secretTargets": {
+                    "enabled": True,
+                    "authorizedSecrets": ["trusted-certificates"],
+                },
+                "resources": {
+                    "requests": {
+                        "cpu": "100m",
+                        "memory": "128Mi",
+                    },
+                },
+            },
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(depends_on=[cert_manager]),
+            ),
+        )
+
+        self.trust_bundle = CustomResource(
+            "trust-bundle",
+            api_version="trust.cert-manager.io/v1alpha1",
+            kind="Bundle",
+            metadata=ObjectMetaArgs(
+                name="trusted-certificates",
+            ),
+            spec={
+                "sources": [
+                    {"useDefaultCAs": True},
+                ],
+                "target": {
+                    "secret": {
+                        "key": "trusted-certificates",
+                    },
+                    "namespaceSelector": {
+                        "matchLabels": {
+                            "tls-trust-bundle": "enabled",
+                        }
+                    },
+                },
+            },
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(depends_on=[self.trust_manager]),
+            ),
+        )
+
         self.register_outputs(
             {
                 "cert-manager": cert_manager,
