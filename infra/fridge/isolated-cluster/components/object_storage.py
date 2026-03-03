@@ -32,7 +32,8 @@ class ObjectStorage(ComponentResource):
             "minio-operator-ns",
             metadata=ObjectMetaArgs(
                 name="minio-operator",
-                labels={} | PodSecurityStandard.RESTRICTED.value,
+                labels={"tls-trust-bundle": "enabled"}
+                | PodSecurityStandard.RESTRICTED.value,
             ),
             opts=child_opts,
         )
