@@ -76,7 +76,7 @@ class WorkflowServer(ComponentResource):
             "argo-workflows",
             namespace=argo_server_ns.metadata.name,
             chart="argo-workflows",
-            version="0.45.12",
+            version="0.45.20",
             repository_opts=RepositoryOptsArgs(
                 repo="https://argoproj.github.io/argo-helm",
             ),
