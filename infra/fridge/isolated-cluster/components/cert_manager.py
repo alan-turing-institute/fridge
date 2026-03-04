@@ -231,67 +231,68 @@ class CertManager(ComponentResource):
 
         # Create ClusterIssuers
         issuer_outputs = {}
-        # if we're using TLS development use a self-signed issuer for the certificate
-        if args.tls_environment == TlsEnvironment.DEVELOPMENT:
-            cert_manager_secretName = "dev-certificate"
-            cert_manager_dev_issuer_self_signed = CustomResource(
-                resource_name="cert-manager-dev-self-signed-issuer",
-                api_version="cert-manager.io/v1",
-                kind="ClusterIssuer",
-                metadata=ObjectMetaArgs(
-                    name="self-signed",
-                ),
-                spec={"selfSigned": {}},
-                opts=ResourceOptions(depends_on=[cert_manager]),
-            )
-            cert_manager_dev_certificate = CustomResource(
-                resource_name="cert-manager-dev-certificate",
-                api_version="cert-manager.io/v1",
-                kind="Certificate",
-                metadata=ObjectMetaArgs(
-                    name="dev-certificate",
-                    namespace="cert-manager",
-                ),
-                spec={
-                    "isCA": True,
-                    "secretName": cert_manager_secretName,
-                    "privateKey": {"algorithm": "ECDSA", "size": 256},
-                    "issuerRef": {
-                        "name": "self-signed",
-                        "kind": "ClusterIssuer",
-                        "group": "cert-manager.io",
-                    },
-                    "commonName": args.config.require("base_fqdn"),
-                    "dnsNames": [
-                        args.config.require("base_fqdn"),
-                        f"*.{args.config.require('base_fqdn')}",
-                    ],
+        # Always create a self-signed issuer and cert for use in development and for internal services
+        cert_manager_secretName = "dev-certificate"
+        cert_manager_dev_issuer_self_signed = CustomResource(
+            resource_name="cert-manager-dev-self-signed-issuer",
+            api_version="cert-manager.io/v1",
+            kind="ClusterIssuer",
+            metadata=ObjectMetaArgs(
+                name="self-signed",
+            ),
+            spec={"selfSigned": {}},
+            opts=ResourceOptions(depends_on=[cert_manager]),
+        )
+        cert_manager_dev_certificate = CustomResource(
+            resource_name="cert-manager-dev-certificate",
+            api_version="cert-manager.io/v1",
+            kind="Certificate",
+            metadata=ObjectMetaArgs(
+                name="dev-certificate",
+                namespace="cert-manager",
+            ),
+            spec={
+                "isCA": True,
+                "secretName": cert_manager_secretName,
+                "privateKey": {"algorithm": "ECDSA", "size": 256},
+                "issuerRef": {
+                    "name": "self-signed",
+                    "kind": "ClusterIssuer",
+                    "group": "cert-manager.io",
                 },
-                opts=ResourceOptions.merge(
-                    child_opts,
-                    ResourceOptions(depends_on=[cert_manager_dev_issuer_self_signed]),
-                ),
-            )
-            cert_manager_dev_issuer = CustomResource(
-                resource_name="cert-manager-dev-issuer",
-                api_version="cert-manager.io/v1",
-                kind="ClusterIssuer",
-                metadata=ObjectMetaArgs(
-                    name="dev-issuer",
-                    namespace="cert-manager",
-                ),
-                spec={"ca": {"secretName": cert_manager_secretName}},
-                opts=ResourceOptions.merge(
-                    child_opts,
-                    ResourceOptions(depends_on=[cert_manager_dev_certificate]),
-                ),
-            )
-            issuer_outputs = {
-                "cert_manager_dev_issuer_self_signed": cert_manager_dev_issuer_self_signed,
-                "cert_manager_dev_certificate": cert_manager_dev_certificate,
-                "cert_manager_dev_issuer": cert_manager_dev_issuer,
-            }
-        else:
+                "commonName": args.config.require("base_fqdn"),
+                "dnsNames": [
+                    args.config.require("base_fqdn"),
+                    f"*.{args.config.require('base_fqdn')}",
+                ],
+            },
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(depends_on=[cert_manager_dev_issuer_self_signed]),
+            ),
+        )
+        cert_manager_dev_issuer = CustomResource(
+            resource_name="cert-manager-dev-issuer",
+            api_version="cert-manager.io/v1",
+            kind="ClusterIssuer",
+            metadata=ObjectMetaArgs(
+                name="dev-issuer",
+                namespace="cert-manager",
+            ),
+            spec={"ca": {"secretName": cert_manager_secretName}},
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(depends_on=[cert_manager_dev_certificate]),
+            ),
+        )
+        issuer_outputs = {
+            "cert_manager_dev_issuer_self_signed": cert_manager_dev_issuer_self_signed,
+            "cert_manager_dev_certificate": cert_manager_dev_certificate,
+            "cert_manager_dev_issuer": cert_manager_dev_issuer,
+        }
+        # If not in development, create issuers for Let's Encrypt - these will be used for production services and for staging services in the staging environment
+        # Currently not used anywhere in the isolated cluster, but created here for completeness and future use
+        if args.tls_environment != TlsEnvironment.DEVELOPMENT:
             cert_manager_issuers = CustomResource(
                 "cert-manager-issuer",
                 api_version="cert-manager.io/v1",
@@ -319,7 +320,7 @@ class CertManager(ComponentResource):
                     child_opts, ResourceOptions(depends_on=[cert_manager])
                 ),
             )
-            issuer_outputs = {
+            issuer_outputs = issuer_outputs | {
                 "cert_manager_issuers": cert_manager_issuers,
             }
 
@@ -350,6 +351,8 @@ class CertManager(ComponentResource):
             ),
         )
 
+        # Create a trust bundle with the dev certificate as a source
+        # Allows mirroring of the cert into tagged namespaces to be used by internal services
         self.trust_bundle = CustomResource(
             "trust-bundle",
             api_version="trust.cert-manager.io/v1alpha1",
