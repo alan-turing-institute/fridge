@@ -6,6 +6,7 @@ metadata:
   namespace: argo-workflows
 spec:
   entrypoint: pull-data-from-minio
+  serviceAccountName: argo-workflow
   templates:
     - name: pull-data-from-minio
       inputs:
