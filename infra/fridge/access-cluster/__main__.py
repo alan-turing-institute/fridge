@@ -110,6 +110,7 @@ harbor = components.ContainerRegistry(
 monitoring = components.Monitoring(
     "monitoring",
     components.MonitoringArgs(
+        config=config,
         k8s_environment=k8s_environment,
     ),
     opts=ResourceOptions(
