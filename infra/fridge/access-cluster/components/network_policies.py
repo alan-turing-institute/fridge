@@ -170,3 +170,11 @@ class NetworkPolicies(ComponentResource):
             file="./k8s/cilium/kube-system.yaml",
             opts=child_opts,
         )
+
+        # Add network policy to allow Prometheus monitoring for resources already deployed on Dawn
+        # On Dawn, Prometheus is also already deployed
+        ConfigFile(
+            "network_policy_prometheus",
+            file="./k8s/cilium/prometheus.yaml",
+            opts=child_opts,
+        )
