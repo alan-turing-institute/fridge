@@ -1,11 +1,12 @@
 import pulumi
 from pulumi import ComponentResource, Output, ResourceOptions
+from pulumi_kubernetes.apiextensions import CustomResource
 from pulumi_kubernetes.core.v1 import Namespace, Secret
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from .storage_classes import StorageClasses
 
-from enums import PodSecurityStandard, TlsEnvironment
+from enums import PodSecurityStandard, TlsEnvironment, tls_issuer_names
 
 
 class ObjectStorageArgs:
@@ -31,7 +32,8 @@ class ObjectStorage(ComponentResource):
             "minio-operator-ns",
             metadata=ObjectMetaArgs(
                 name="minio-operator",
-                labels={} | PodSecurityStandard.RESTRICTED.value,
+                labels={"tls-trust-bundle": "enabled"}
+                | PodSecurityStandard.RESTRICTED.value,
             ),
             opts=child_opts,
         )
@@ -85,6 +87,56 @@ class ObjectStorage(ComponentResource):
             ),
         )
 
+        self.minio_tenant_certificate = CustomResource(
+            "minio-tenant-certificate",
+            api_version="cert-manager.io/v1",
+            kind="Certificate",
+            metadata=ObjectMetaArgs(
+                name="argo-artifacts-tls",
+                namespace=self.minio_tenant_ns.metadata.name,
+            ),
+            spec={
+                "secretName": "argo-artifacts-tls",
+                "issuerRef": {
+                    "name": tls_issuer_names[args.tls_environment],
+                    "kind": "ClusterIssuer",
+                },
+                "dnsNames": [
+                    self.minio_cluster_url,
+                ],
+            },
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(depends_on=[self.minio_tenant_ns]),
+            ),
+        )
+
+        # Add a second certificate for the Minio Operator with the same CA issuer
+        # so that it trusts the certificate used by the tenant
+        self.minio_operator_tenant_certificate = CustomResource(
+            "minio-operator-tenant-certificate",
+            api_version="cert-manager.io/v1",
+            kind="Certificate",
+            metadata=ObjectMetaArgs(
+                name="operator-ca-tls-argo-artifacts-tls",
+                namespace=self.minio_operator_ns.metadata.name,
+            ),
+            spec={
+                "secretName": "operator-ca-tls-argo-artifacts-tls",
+                "issuerRef": {
+                    "name": tls_issuer_names[args.tls_environment],
+                    "kind": "ClusterIssuer",
+                },
+                "dnsNames": [
+                    self.minio_cluster_url,
+                ],
+            },
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(depends_on=[self.minio_operator_ns]),
+            ),
+        )
+
         self.minio_tenant = Chart(
             "minio-tenant",
             namespace=self.minio_tenant_ns.metadata.name,
@@ -102,7 +154,9 @@ class ObjectStorage(ComponentResource):
                         {"name": "egress"},
                     ],
                     "certificate": {
-                        "requestAutoCert": "true",
+                        "externalCertSecret": [
+                            {"name": "argo-artifacts-tls", "type": "cert-manager.io/v1"}
+                        ],
                     },
                     "configuration": {
                         "name": "argo-artifacts-env-configuration",

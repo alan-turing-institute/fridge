@@ -35,7 +35,8 @@ class WorkflowServer(ComponentResource):
             "argo-server-ns",
             metadata=ObjectMetaArgs(
                 name="argo-server",
-                labels={} | PodSecurityStandard.RESTRICTED.value,
+                labels={"tls-trust-bundle": "enabled"}
+                | PodSecurityStandard.RESTRICTED.value,
             ),
             opts=child_opts,
         )
@@ -44,7 +45,8 @@ class WorkflowServer(ComponentResource):
             "argo-workflows-ns",
             metadata=ObjectMetaArgs(
                 name="argo-workflows",
-                labels={} | PodSecurityStandard.RESTRICTED.value,
+                labels={"tls-trust-bundle": "enabled"}
+                | PodSecurityStandard.RESTRICTED.value,
             ),
             opts=child_opts,
         )
