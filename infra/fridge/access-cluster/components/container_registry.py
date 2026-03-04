@@ -17,6 +17,8 @@ from pulumi_kubernetes.core.v1 import (
     Secret,
     SecurityContextArgs,
     Service,
+    ServicePortArgs,
+    ServiceSpecArgs,
     VolumeArgs,
     VolumeMountArgs,
 )
@@ -125,7 +127,14 @@ class ContainerRegistry(ComponentResource):
                     repo="https://helm.goharbor.io",
                 ),
                 values={
-                    "expose": harbor_expose_values,
+                    "expose": {
+                        "type": "clusterIP",
+                        "tls": {
+                            "enabled": False,
+                            "certSource": "none",
+                        },
+                        "labels": "fridge=harbor",
+                    },
                     "externalURL": self.harbor_external_url,
                     "harborAdminPassword": args.config.require_secret(
                         "harbor_admin_password"
@@ -199,10 +208,18 @@ class ContainerRegistry(ComponentResource):
             ),
         )
 
-        # Get the Harbor service for both AKS and DAWN environments
-        self.harbor_service = Service.get(
-            "harbor-service",
-            id=pulumi.Output.concat(self.harbor_ns.metadata.name, "/harbor"),
+        self.harbor_internal_loadbalancer = Service(
+            "harbor-internal-lb",
+            metadata=ObjectMetaArgs(
+                name="harbor-lb",
+                namespace=self.harbor_ns.metadata.name,
+                annotations=api_service_annotations,
+            ),
+            spec=ServiceSpecArgs(
+                type="LoadBalancer",
+                selector={"app": "harbor", "component": "nginx"},
+                ports=[ServicePortArgs(port=80, target_port=8080)],
+            ),
             opts=ResourceOptions.merge(
                 child_opts,
                 ResourceOptions(
