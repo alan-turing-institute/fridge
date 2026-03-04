@@ -17,8 +17,8 @@ from pulumi_kubernetes.core.v1 import (
     Secret,
     SecurityContextArgs,
     Service,
-    ServiceSpecArgs,
     ServicePortArgs,
+    ServiceSpecArgs,
     VolumeArgs,
     VolumeMountArgs,
 )
