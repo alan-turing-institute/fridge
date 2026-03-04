@@ -44,11 +44,11 @@ class CertManager(ComponentResource):
                     opts=child_opts,
                 )
 
-                cert_manager = Chart(
+                cert_manager = Release(
                     "cert-manager",
                     namespace=cert_manager_ns.metadata.name,
                     chart="cert-manager",
-                    version="1.17.1",
+                    version="1.19.4",
                     repository_opts=RepositoryOptsArgs(
                         repo="https://charts.jetstack.io",
                     ),
