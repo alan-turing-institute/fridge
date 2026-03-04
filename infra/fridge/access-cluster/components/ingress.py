@@ -23,7 +23,7 @@ class Ingress(ComponentResource):
         k8s_environment = args.k8s_environment
 
         match k8s_environment:
-            case K8sEnvironment.AKS | K8sEnvironment.K3S | K8sEnvironment.DAWN:
+            case K8sEnvironment.AKS | K8sEnvironment.K3S:
                 ingress_nginx_ns = Namespace(
                     "ingress-nginx-ns",
                     metadata=ObjectMetaArgs(
@@ -51,12 +51,12 @@ class Ingress(ComponentResource):
                                 },
                             },
                             "tcp": {
-                                "2500": Output.concat(
+                                "2222": Output.concat(
                                     args.api_jumpbox.api_jumpbox_ns.metadata.name,
                                     "/",
                                     args.api_jumpbox.api_jumpbox_service.metadata.name,
                                     ":",
-                                    "2500",
+                                    "2222",
                                 ),
                             },
                         },
@@ -65,27 +65,37 @@ class Ingress(ComponentResource):
                         child_opts, ResourceOptions(depends_on=ingress_nginx_ns)
                     ),
                 )
+
+                controller_name = Output.concat(
+                    ingress_nginx_ns.metadata.name,
+                    "/",
+                    ingress_nginx.status.name,
+                    "-controller",
+                )
+                ingress_service = Service.get(
+                    "ingress-nginx-controller-service",
+                    controller_name,
+                )
+
+                self.ingress_ip = ingress_service.status.load_balancer.ingress[0].ip
+                self.ingress_ports = ingress_service.spec.ports.apply(
+                    lambda ports: [item.port for item in ports]
+                )
+
             case K8sEnvironment.DAWN:
                 # Dawn specific configuration
                 ingress_nginx_ns = Namespace.get("ingress-nginx-ns", "ingress-nginx")
-                ingress_nginx = Release.get("ingress-nginx", "ingress-nginx")
-
-        controller_name = Output.concat(
-            ingress_nginx_ns.metadata.name,
-            "/",
-            ingress_nginx.status.name,
-            "-controller",
-        )
-
-        ingress_service = Service.get(
-            "ingress-nginx-controller-service",
-            controller_name,
-        )
-
-        self.ingress_ip = ingress_service.status.load_balancer.ingress[0].ip
-        self.ingress_ports = ingress_service.spec.ports.apply(
-            lambda ports: [item.port for item in ports]
-        )
+                ingress_nginx = Service.get(
+                    "ingress-nginx",
+                    Output.concat(
+                        ingress_nginx_ns.metadata.name,
+                        "/ingress-nginx-controller",
+                    ),
+                    opts=ResourceOptions.merge(
+                        child_opts,
+                        ResourceOptions(depends_on=ingress_nginx_ns),
+                    ),
+                )
 
         self.register_outputs(
             {"ingress_nginx_ns": ingress_nginx_ns, "ingress_nginx": ingress_nginx}

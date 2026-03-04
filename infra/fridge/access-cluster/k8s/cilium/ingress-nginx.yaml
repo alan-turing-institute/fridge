@@ -112,7 +112,7 @@ spec:
         - world
       toPorts:
         - ports:
-            - port: "2500"
+            - port: "2222"
               protocol: TCP
   egress:
     - toServices:

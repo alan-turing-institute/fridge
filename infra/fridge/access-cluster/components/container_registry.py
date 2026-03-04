@@ -64,6 +64,8 @@ class ContainerRegistry(ComponentResource):
         super().__init__("fridge:ContainerRegistry", name, {}, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
+        k8s_environment = K8sEnvironment(args.config.get("k8s_env"))
+
         self.harbor_ns = Namespace(
             "harbor-ns",
             metadata=ObjectMetaArgs(
@@ -87,15 +89,6 @@ class ContainerRegistry(ComponentResource):
             if args.storage_classes.standard_supports_rwm
             else "ReadWriteOnce",
         }
-
-        api_service_annotations = (
-            {
-                "service.beta.kubernetes.io/azure-load-balancer-internal": "true",
-                "service.beta.kubernetes.io/azure-load-balancer-internal-subnet": "networking-access-nodes",
-            }
-            if K8sEnvironment(args.config.get("k8s_env")) == K8sEnvironment.AKS
-            else {}
-        )
 
         self.harbor = Release(
             "harbor",
@@ -188,34 +181,42 @@ class ContainerRegistry(ComponentResource):
             ),
         )
 
-        self.harbor_internal_loadbalancer = Service(
-            "harbor-internal-lb",
-            metadata=ObjectMetaArgs(
-                name="harbor-lb",
-                namespace=self.harbor_ns.metadata.name,
-                annotations=api_service_annotations,
-            ),
-            spec=ServiceSpecArgs(
-                type="LoadBalancer",
-                selector={"app": "harbor", "component": "nginx"},
-                ports=[ServicePortArgs(port=80, target_port=8080)],
-            ),
-            opts=ResourceOptions.merge(
-                child_opts,
-                ResourceOptions(
-                    depends_on=[
-                        self.harbor,
-                    ]
+        if k8s_environment == K8sEnvironment.AKS:
+            self.harbor_internal_loadbalancer = Service(
+                "harbor-internal-lb",
+                metadata=ObjectMetaArgs(
+                    name="harbor-lb",
+                    namespace=self.harbor_ns.metadata.name,
+                    annotations={
+                        "service.beta.kubernetes.io/azure-load-balancer-internal": "true",
+                        "service.beta.kubernetes.io/azure-load-balancer-internal-subnet": "networking-access-nodes",
+                    },
                 ),
-            ),
-        )
-
-        # Extract the dynamically assigned IP address
-        self.harbor_lb_ip = self.harbor_internal_loadbalancer.status.apply(
-            lambda status: status.load_balancer.ingress[0].ip
-            if status and status.load_balancer and status.load_balancer.ingress
-            else None
-        )
+                spec=ServiceSpecArgs(
+                    type="LoadBalancer",
+                    selector={"app": "harbor", "component": "nginx"},
+                    ports=[ServicePortArgs(port=80, target_port=8080)],
+                ),
+                opts=ResourceOptions.merge(
+                    child_opts,
+                    ResourceOptions(
+                        depends_on=[
+                            self.harbor,
+                        ]
+                    ),
+                ),
+            )
+            # Extract the dynamically assigned LoadBalancer IP address
+            self.harbor_ip = self.harbor_service.status.apply(
+                lambda status: status.load_balancer.ingress[0].ip
+                if status and status.load_balancer and status.load_balancer.ingress
+                else None
+            )
+        elif k8s_environment == K8sEnvironment.DAWN:
+            # Extract the ClusterIP for DAWN environment
+            self.harbor_ip = self.harbor_service.spec.apply(
+                lambda spec: spec.cluster_ip if spec else None
+            )
 
         # Create a daemonset to skip TLS verification for the harbor registry
         # This is needed while using staging/self-signed certificates for Harbor

@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: configure-node-hosts
+  namespace: ${namespace}
+spec:
+  selector:
+    matchLabels:
+      app: configure-node-hosts
+  template:
+    metadata:
+      labels:
+        app: configure-node-hosts
+    spec:
+      initContainers:
+        - name: configure-hosts
+          image: busybox
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "Configuring /etc/hosts for Harbor FQDN..."
+
+              # Remove any existing Harbor entry (idempotent)
+              sed -i "/${harbor_fqdn}/d" /host/etc/hosts
+
+              # Append the Harbor entry
+              echo "${harbor_ip} ${harbor_fqdn}" >> /host/etc/hosts
+
+              echo "Done. Current Harbor entries:"
+              grep "${harbor_fqdn}" /host/etc/hosts
+          securityContext:
+            runAsUser: 0
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - DAC_OVERRIDE
+          volumeMounts:
+            - name: host-etc
+              mountPath: /host/etc
+      containers:
+        - name: wait
+          image: registry.k8s.io/pause:3.8
+          resources:
+            requests:
+              cpu: 10m
+              memory: 10Mi
+            limits:
+              cpu: 50m
+              memory: 50Mi
+          securityContext:
+            privileged: false
+            runAsNonRoot: true
+            runAsUser: 65532
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+      volumes:
+        - name: host-etc
+          hostPath:
+            path: /etc
+            type: Directory
+      tolerations:
+        - operator: Exists
