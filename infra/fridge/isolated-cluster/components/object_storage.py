@@ -137,30 +137,6 @@ class ObjectStorage(ComponentResource):
             ),
         )
 
-        self.argo_workflows_minio_tenant_certificate = CustomResource(
-            "argo-workflows-minio-tenant-certificate",
-            api_version="cert-manager.io/v1",
-            kind="Certificate",
-            metadata=ObjectMetaArgs(
-                name="argo-artifacts-tls-workflow-ca",
-                namespace="argo-workflows",
-            ),
-            spec={
-                "secretName": "argo-artifacts-tls-workflow-ca",
-                "issuerRef": {
-                    "name": tls_issuer_names[args.tls_environment],
-                    "kind": "ClusterIssuer",
-                },
-                "dnsNames": [
-                    self.minio_cluster_url,
-                ],
-            },
-            opts=ResourceOptions.merge(
-                child_opts,
-                ResourceOptions(depends_on=[self.minio_operator_ns]),
-            ),
-        )
-
         self.minio_tenant = Chart(
             "minio-tenant",
             namespace=self.minio_tenant_ns.metadata.name,
