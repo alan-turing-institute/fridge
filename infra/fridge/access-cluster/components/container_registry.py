@@ -90,33 +90,6 @@ class ContainerRegistry(ComponentResource):
             else "ReadWriteOnce",
         }
 
-        match k8s_environment:
-            case K8sEnvironment.AKS:
-                harbor_expose_values = (
-                    {
-                        "type": "loadBalancer",
-                        "loadBalancer": {
-                            "annotations": {
-                                "service.beta.kubernetes.io/azure-load-balancer-internal": "true",
-                                "service.beta.kubernetes.io/azure-load-balancer-internal-subnet": "networking-access-nodes",
-                            }
-                        },
-                        "tls": {
-                            "enabled": False,
-                            "certSource": "none",
-                        },
-                    },
-                )
-
-            case K8sEnvironment.DAWN:
-                harbor_expose_values = {
-                    "type": "clusterIP",
-                    "tls": {
-                        "enabled": False,
-                        "certSource": "none",
-                    },
-                }
-
         self.harbor = Release(
             "harbor",
             ReleaseArgs(
@@ -208,29 +181,31 @@ class ContainerRegistry(ComponentResource):
             ),
         )
 
-        self.harbor_internal_loadbalancer = Service(
-            "harbor-internal-lb",
-            metadata=ObjectMetaArgs(
-                name="harbor-lb",
-                namespace=self.harbor_ns.metadata.name,
-                annotations=api_service_annotations,
-            ),
-            spec=ServiceSpecArgs(
-                type="LoadBalancer",
-                selector={"app": "harbor", "component": "nginx"},
-                ports=[ServicePortArgs(port=80, target_port=8080)],
-            ),
-            opts=ResourceOptions.merge(
-                child_opts,
-                ResourceOptions(
-                    depends_on=[
-                        self.harbor,
-                    ]
-                ),
-            ),
-        )
-
         if k8s_environment == K8sEnvironment.AKS:
+            self.harbor_internal_loadbalancer = Service(
+                "harbor-internal-lb",
+                metadata=ObjectMetaArgs(
+                    name="harbor-lb",
+                    namespace=self.harbor_ns.metadata.name,
+                    annotations={
+                        "service.beta.kubernetes.io/azure-load-balancer-internal": "true",
+                        "service.beta.kubernetes.io/azure-load-balancer-internal-subnet": "networking-access-nodes",
+                    },
+                ),
+                spec=ServiceSpecArgs(
+                    type="LoadBalancer",
+                    selector={"app": "harbor", "component": "nginx"},
+                    ports=[ServicePortArgs(port=80, target_port=8080)],
+                ),
+                opts=ResourceOptions.merge(
+                    child_opts,
+                    ResourceOptions(
+                        depends_on=[
+                            self.harbor,
+                        ]
+                    ),
+                ),
+            )
             # Extract the dynamically assigned LoadBalancer IP address
             self.harbor_ip = self.harbor_service.status.apply(
                 lambda status: status.load_balancer.ingress[0].ip
