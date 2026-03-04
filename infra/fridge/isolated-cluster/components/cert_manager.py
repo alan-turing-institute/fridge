@@ -360,10 +360,11 @@ class CertManager(ComponentResource):
             spec={
                 "sources": [
                     {"useDefaultCAs": True},
+                    {"secret": {"name": "dev-certificate", "key": "ca.crt"}},
                 ],
                 "target": {
                     "secret": {
-                        "key": "trusted-certificates",
+                        "key": "ca-certificates.crt",
                     },
                     "namespaceSelector": {
                         "matchLabels": {
