@@ -1,5 +1,7 @@
 # See docs at: https://mystmd.org/guide/frontmatter
 version: 1
+extends:
+  - abbreviations.yml
 project:
   id: 08336bb4-97b3-4c13-ba10-6c95a7680b41
   title: FRIDGE
