@@ -1,6 +1,10 @@
+(arch-roles)=
 # Roles
 
 :::{glossary}
+Data Owner
+: …
+
 TRE Operator Organisation
 : …
 
