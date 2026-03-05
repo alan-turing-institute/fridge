@@ -1,0 +1,15 @@
+# See docs at: https://mystmd.org/guide/frontmatter
+version: 1
+project:
+  id: 08336bb4-97b3-4c13-ba10-6c95a7680b41
+  title: FRIDGE
+  # description:
+  # keywords: []
+  # authors: []
+  github: https://github.com/alan-turing-institute/fridge
+  # To autogenerate a Table of Contents, run "myst init --write-toc"
+site:
+  template: book-theme
+  # options:
+  #   favicon: favicon.ico
+  #   logo: site_logo.png
