@@ -26,14 +26,16 @@ There are a number of concepts central to FRIDGE that are important to understan
 Trusted Research Environment
 : …
 
-Governance Extension
+Governance Boundary Extension
 : …
 
 Shared Responsibility
 : …
 
 Defence in Depth
-: …
+: The use of multiple layers of security control so that if one control is broken or circumvented, the overall system remains secure.
+  The worst-case scenario is the unauthorised egress of data from a FRIDGE instance.
+  In FRIDGE we aim for no single point of failure and have ensured that no single failure would, on its own, lead to that outcome.
 
 Roles
 : …
