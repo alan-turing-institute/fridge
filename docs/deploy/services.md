@@ -4,11 +4,13 @@ This page explains how to deploy the FRIDGE services to a FRIDGE tenancy.
 This process includes configuration for various components such as Argo Workflows, MinIO, network policies, and other infrastructure settings.
 It does not deploy the Kubernetes clusters within the FRIDGE tenancy; instead, it assumes that Kubernetes clusters have already been deployed.
 
-!!! note
-    To read about deploying the required Kubernetes clusters see [Deploy Infrastructure](./infrastructure.md).
+:::{seealso}
+To read about deploying the required Kubernetes clusters see [Deploy Infrastructure](./infrastructure.md).
+:::
 
-!!! warning
-    Container-based Kubernetes environments such as K3d or Kind are not supported, as Longhorn is not compatible with those environments.
+:::{warning}
+Container-based Kubernetes environments such as K3d or Kind are not supported, as Longhorn is not compatible with those environments.
+:::
 
 ## Deployment
 
@@ -18,9 +20,10 @@ The isolated cluster hosts the FRIDGE services.
 The deployment process uses Pulumi to manage the infrastructure as code.
 You will require appropriate Kubernetes contexts set up for both clusters.
 
-!!! note
-    The following instructions assume you have already deployed the Kubernetes clusters using the instructions in [Deploy Infrastructure](./infrastructure.md).
-    They are based on the AKS deployment example, and will be updated when the instructions for deploying to DAWN AI are available.
+:::{note}
+The following instructions assume you have already deployed the Kubernetes clusters using the instructions in [Deploy Infrastructure](./infrastructure.md).
+They are based on the AKS deployment example, and will be updated when the instructions for deploying to DAWN AI are available.
+:::
 
 ### Pulumi Backend
 
@@ -59,8 +62,9 @@ To create a new stack, you can use the following command:
 pulumi stack init <stack-name>
 ```
 
-!!! note
-    You will be asked to provide a passphrase for the stack, which is used to encrypt secrets within the stack's configuration settings.
+:::{note}
+You will be asked to provide a passphrase for the stack, which is used to encrypt secrets within the stack's configuration settings.
+:::
 
 ### Configuring your stack
 
