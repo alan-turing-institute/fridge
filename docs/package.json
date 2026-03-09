@@ -1,0 +1,9 @@
+{
+  "scripts": {
+    "build": "myst build --html",
+    "start": "myst start"
+  },
+  "dependencies": {
+    "mystmd": "^1.8.2"
+  }
+}
