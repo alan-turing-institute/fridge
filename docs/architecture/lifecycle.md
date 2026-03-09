@@ -51,6 +51,7 @@ sequenceDiagram
   HA ->> IC: apply lockdown
   HA ->> TA: lockdown complete
   deactivate HA
+  TA ->> TA: Connect TRE to FRIDGE
   TA ->> TO: TRE deployment complete
   TO ->> PI: TRE details
 :::
@@ -85,4 +86,26 @@ sequenceDiagram
         AC->>JS: results
         JS->>SR: share results
     end
+:::
+
+## FRIDGE teardown
+
+:::{mermaid}
+sequenceDiagram
+  actor PI as Principal Investigator
+  actor TO as TRE Operator Organisation
+  actor TA as TRE Administrators
+  actor HA as Hosting Administrators
+  participant AC as Access Cluster
+  participant IC as Isolated Cluster
+
+PI ->> TO: report finished with FRIDGE
+TO ->> TA: request FRIDGE release
+TA ->> TA: disconnect TRE from FRIDGE
+TA ->> HA: request FRIDGE teardown
+activate HA
+HA ->> AC: teardown
+HA ->> IC: teardown
+deactivate HA
+HA ->> TO: teardown complete
 :::
