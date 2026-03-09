@@ -16,6 +16,7 @@ function main() {
     make_remote_registry "DockerHub" "docker-hub" "https://hub.docker.com"
     make_remote_registry "QuayIO" "quay" "https://quay.io"
     make_remote_registry "GitHubCR" "github-ghcr" "https://ghcr.io"
+    make_remote_registry "RegistryK8sCR" "docker-registry" "https://registry.k8s.io"
 
     # Retrieve internal IDs of above remote registries
     registries=$( \
@@ -27,11 +28,13 @@ function main() {
     dockerhub_id=$(get_registry_id $registries "DockerHub")
     quayio_id=$(get_registry_id $registries "QuayIO")
     githubcr_id=$(get_registry_id $registries "GitHubCR")
+    registryk8scr_id=$(get_registry_id $registries "RegistryK8sCR")
 
     # Create proxy projects for remote registries
     make_proxy_project "proxy-docker.io" $dockerhub_id
     make_proxy_project "proxy-quay.io" $quayio_id
     make_proxy_project "proxy-ghcr.io" $githubcr_id
+    make_proxy_project "proxy-k8s.io" $registryk8scr_id
 
     # Create robot account for pulling images
     make_robot_account $FRIDGE_ROBOT_ACCOUNT

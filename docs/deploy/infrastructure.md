@@ -1,7 +1,8 @@
 # Deploy Infrastructure
 
-!!! note
-    To read about deploying the services on top of the Kubernetes cluster see [Deploy Services](./services.md).
+:::{seealso}
+To read about deploying the services on top of the Kubernetes cluster see [Deploy Services](./services.md).
+:::
 
 This page explains how to deploy the Kubernetes cluster for FRIDGE using Pulumi, and how to lock it down after deployment of the FRIDGE services.
 

@@ -33,6 +33,15 @@ data:
     # Fall back to Quay if Harbor fails
     [host."https://quay.io"]
       capabilities = ["pull", "resolve"]
+  k8s-io-hosts.toml: |
+    [host."http://${harbor_fqdn}/v2/proxy-k8s.io"]
+      capabilities = ["pull", "resolve"]
+      skip_verify = true
+      override_path = true
+
+    # Fall back to registry.k8s.io if Harbor fails
+    [host."https://registry.k8s.io"]
+      capabilities = ["pull", "resolve"]
 ---
 apiVersion: apps/v1
 kind: DaemonSet
@@ -60,11 +69,13 @@ spec:
           mkdir -p /host/etc/containerd/certs.d/docker.io
           mkdir -p /host/etc/containerd/certs.d/ghcr.io
           mkdir -p /host/etc/containerd/certs.d/quay.io
+          mkdir -p /host/etc/containerd/certs.d/registry.k8s.io
 
-          echo "Copying Docker, GHCR, and Quay registry mirror configurations..."
+          echo "Copying Docker, GHCR, Quay, and k8s.io registry mirror configurations..."
           cp /config/docker-io-hosts.toml /host/etc/containerd/certs.d/docker.io/hosts.toml
           cp /config/ghcr-io-hosts.toml /host/etc/containerd/certs.d/ghcr.io/hosts.toml
           cp /config/quay-io-hosts.toml /host/etc/containerd/certs.d/quay.io/hosts.toml
+          cp /config/k8s-io-hosts.toml /host/etc/containerd/certs.d/registry.k8s.io/hosts.toml
           echo "Containerd registry mirrors configured."
         securityContext:
           runAsUser: 0
