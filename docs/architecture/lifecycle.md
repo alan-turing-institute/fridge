@@ -5,6 +5,7 @@ short_title: Lifecycle
 
 The series of sequence diagrams presented here outline the lifecycle of a FRIDGE instance and project.
 
+(arch-lifecycle-init)=
 ## Project Initialisation
 
 Before deploying and using a FRIDGE instance, the project must get approval for the use of sensitive data from the {term}`Data Owner` and receive an allocation of resources to use from the {term}`FRIDGE Hosting Organisation`.
@@ -25,6 +26,10 @@ sequenceDiagram
 :::
 
 ## FRIDGE provisioning
+
+After the [](#arch-lifecycle-init) a FRIDGE instance may be deployed.
+The {term}`TRE Operator Organisation` triggers the {term}`TRE Administrators` and {term}`Hosting Provider Administrators` to deploy the TRE (if it isn't already), FRIDGE instance, and connect them.
+Once this is complete, the {term}`Principal Investigators` will be informed the FRIDGE instance is ready to be used.
 
 :::{mermaid}
 sequenceDiagram
@@ -58,15 +63,26 @@ sequenceDiagram
 
 ## FRIDGE research loop
 
+With the TRE connected, the research team can now dispatch jobs to the FRIDGE instance.
+
+The {term}`Principal Investigators` are able to upload the sensitive input data to immutable storage.
+
+The {term}`Safe Researchers` can now work using FRIDGE in the loop,
+
+1. Identify question
+2. Design and submit job specification
+3. Check job progress
+4. Retrieve outputs
+
 :::{mermaid}
 sequenceDiagram
-    actor PI as Principle Investigator
+    actor PI as Principal Investigator
     actor SR as Safe Researcher
     actor JS as Job Submitter
     participant AC as FRIDGE API
     participant IC as FRIDGE
 
-    PI->>AC: upload sensitive data
+    PI->>AC: upload input data
     AC->>IC: provision immutable data
 
     JS->>AC: push custom container images
@@ -90,6 +106,9 @@ sequenceDiagram
 
 ## FRIDGE teardown
 
+When there is no longer the need for a FRIDGE, the {term}`Principal Investigators` request the instance teardown.
+The {term}`TRE Operator Organisation` instructs the  {term}`TRE Administrators` and {term}`Hosting Provider Administrators` to conduct the teardown.
+
 :::{mermaid}
 sequenceDiagram
   actor PI as Principal Investigator
@@ -111,6 +130,9 @@ HA ->> TO: teardown complete
 :::
 
 ## Project termination
+
+Finally, with the teardown complete the {term}`TRE Operator Organisation` and {term}`FRIDGE Hosting Organisation` must finalise the FRIDGE allocation.
+Guarantees that and sensitive data has been deleted (or is otherwise unrecoverable) must be passed back to the {term}`TRE Operator Organisation` and {term}`Data Owner` to meet their data protection and data sharing agreement obligations.
 
 :::{mermaid}
 sequenceDiagram
