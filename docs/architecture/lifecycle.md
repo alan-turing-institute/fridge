@@ -54,3 +54,35 @@ sequenceDiagram
   TA ->> TO: TRE deployment complete
   TO ->> PI: TRE details
 :::
+
+## FRIDGE research loop
+
+:::{mermaid}
+sequenceDiagram
+    actor PI as Principle Investigator
+    actor SR as Safe Researcher
+    actor JS as Job Submitter
+    participant AC as FRIDGE API
+    participant IC as FRIDGE
+
+    PI->>AC: upload sensitive data
+    AC->>IC: provision immutable data
+
+    JS->>AC: push custom container images
+
+    loop Researcher loop
+        SR->>SR: research in TRE
+        SR->>JS: research question for FRIDGE
+        JS->>AC: submit job specification
+        AC->>IC: launch job
+        IC->>IC: run job
+        IC->>IC: store results
+        JS->>AC: check job status
+        AC->>IC: get job status
+        AC->>JS: job status
+        JS->>AC: download results
+        AC->>IC: get results
+        AC->>JS: results
+        JS->>SR: share results
+    end
+:::
