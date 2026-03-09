@@ -1,0 +1,4 @@
+version: 1
+project:
+  abbreviations:
+    TRE: Trusted Research Environment
