@@ -109,3 +109,19 @@ HA ->> IC: teardown
 deactivate HA
 HA ->> TO: teardown complete
 :::
+
+## Project termination
+
+:::{mermaid}
+sequenceDiagram
+  actor DO as Data Owner
+  actor PI as Principal Investigator
+  actor TO as TRE Operator Organisation
+  actor FH as FRIDGE Hosting Organisation
+
+FH ->> FH: close FRIDGE allocation
+FH ->> TO: confirm FRIDGE allocation closure
+FH ->> TO: confirm data deletion
+TO ->> PI: share data deletion confirmation
+PI ->> DO: confirm project termination<br /> and data deletion
+:::
