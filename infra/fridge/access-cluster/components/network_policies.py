@@ -6,18 +6,27 @@ from pulumi_kubernetes.yaml import ConfigFile
 from enums import K8sEnvironment
 
 
-class NetworkPolicies(ComponentResource):
+class NetworkPoliciesArgs:
     def __init__(
         self,
         config: pulumi.config.Config,
-        name: str,
         k8s_environment: K8sEnvironment,
+    ):
+        self.config = config
+        self.k8s_environment = k8s_environment
+
+
+class NetworkPolicies(ComponentResource):
+    def __init__(
+        self,
+        args: NetworkPoliciesArgs,
+        name: str,
         opts: ResourceOptions | None = None,
     ) -> None:
         super().__init__("fridge:k8s:NetworkPolicies", name, {}, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
-        match k8s_environment:
+        match args.k8s_environment:
             case K8sEnvironment.AKS:
                 # AKS uses Konnectivity to mediate some API/webhook traffic, and uses a different external DNS server
                 ConfigFile(
@@ -105,13 +114,13 @@ class NetworkPolicies(ComponentResource):
                         "toPorts": [{"ports": [{"port": "2222", "protocol": "TCP"}]}],
                     },
                     {
-                        "toCIDR": [config.require("fridge_api_ip_address")],
+                        "toCIDR": [args.config.require("fridge_api_ip_address")],
                         "toPorts": [{"ports": [{"port": "443", "protocol": "TCP"}]}],
                     },
                     {
                         "toFQDNs": [
                             {
-                                "matchName": config.require(
+                                "matchName": args.config.require(
                                     "isolated_cluster_api_endpoint"
                                 )
                             }
@@ -120,6 +129,89 @@ class NetworkPolicies(ComponentResource):
                     },
                 ],
             },
+            opts=child_opts,
+        )
+
+        self.api_ssh_ingress_cnp = CustomResource(
+            "network_policy_api_ssh_ingress",
+            api_version="cilium.io/v2",
+            kind="CiliumNetworkPolicy",
+            metadata={"name": "enable-ssh-access", "namespace": "ingress-nginx"},
+            spec={
+                "endpointSelector": {
+                    "matchLabels": {
+                        "k8s:app.kubernetes.io/name": "ingress-nginx",
+                        "k8s:app.kubernetes.io/component": "controller",
+                    }
+                },
+                "ingress": [
+                    {
+                        "fromEntities": [args.config.require("admin_ip_allowlist")],
+                        "toPorts": [{"ports": [{"port": "2222", "protocol": "TCP"}]}],
+                    }
+                ],
+                "egress": [
+                    {
+                        "toServices": [
+                            {
+                                "k8sService": {
+                                    "namespace": "api-proxy",
+                                    "serviceName": "api-proxy-service",
+                                }
+                            }
+                        ],
+                        "toPorts": [{"ports": [{"port": "2222", "protocol": "TCP"}]}],
+                    }
+                ],
+            },
+            opts=child_opts,
+        )
+
+        ConfigFile(
+            "network_policy_cert_manager",
+            file="./k8s/cilium/cert_manager.yaml",
+            opts=child_opts,
+        )
+
+        ConfigFile(
+            "network_policy_containerd_config",
+            file="./k8s/cilium/containerd_config.yaml",
+            opts=child_opts,
+        )
+
+        ConfigFile(
+            "network_policy_harbor",
+            file="./k8s/cilium/harbor.yaml",
+            opts=child_opts,
+        )
+
+        ConfigFile(
+            "network_policy_hubble",
+            file="./k8s/cilium/hubble.yaml",
+            opts=child_opts,
+        )
+
+        ConfigFile(
+            "network_policy_ingress_nginx",
+            file="./k8s/cilium/ingress-nginx.yaml",
+            opts=child_opts,
+        )
+
+        ConfigFile(
+            "network_policy_kube_node_lease",
+            file="./k8s/cilium/kube-node-lease.yaml",
+            opts=child_opts,
+        )
+
+        ConfigFile(
+            "network_policy_kube_public",
+            file="./k8s/cilium/kube-public.yaml",
+            opts=child_opts,
+        )
+
+        ConfigFile(
+            "network_policy_kubernetes_system",
+            file="./k8s/cilium/kube-system.yaml",
             opts=child_opts,
         )
 
