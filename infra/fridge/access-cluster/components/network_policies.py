@@ -19,8 +19,8 @@ class NetworkPoliciesArgs:
 class NetworkPolicies(ComponentResource):
     def __init__(
         self,
-        args: NetworkPoliciesArgs,
         name: str,
+        args: NetworkPoliciesArgs,
         opts: ResourceOptions | None = None,
     ) -> None:
         super().__init__("fridge:k8s:NetworkPolicies", name, {}, opts)
@@ -146,8 +146,13 @@ class NetworkPolicies(ComponentResource):
                 },
                 "ingress": [
                     {
-                        "fromEntities": [args.config.require("admin_ip_allowlist")],
-                        "toPorts": [{"ports": [{"port": "2222", "protocol": "TCP"}]}],
+                        "fromCIDR": [
+                            admin_ip
+                            for admin_ip in args.config.require_object(
+                                "admin_ip_allowlist"
+                            )
+                        ],
+                        "toPorts": [{"ports": [{"port": "2500", "protocol": "TCP"}]}],
                     }
                 ],
                 "egress": [
@@ -164,54 +169,6 @@ class NetworkPolicies(ComponentResource):
                     }
                 ],
             },
-            opts=child_opts,
-        )
-
-        ConfigFile(
-            "network_policy_cert_manager",
-            file="./k8s/cilium/cert_manager.yaml",
-            opts=child_opts,
-        )
-
-        ConfigFile(
-            "network_policy_containerd_config",
-            file="./k8s/cilium/containerd_config.yaml",
-            opts=child_opts,
-        )
-
-        ConfigFile(
-            "network_policy_harbor",
-            file="./k8s/cilium/harbor.yaml",
-            opts=child_opts,
-        )
-
-        ConfigFile(
-            "network_policy_hubble",
-            file="./k8s/cilium/hubble.yaml",
-            opts=child_opts,
-        )
-
-        ConfigFile(
-            "network_policy_ingress_nginx",
-            file="./k8s/cilium/ingress-nginx.yaml",
-            opts=child_opts,
-        )
-
-        ConfigFile(
-            "network_policy_kube_node_lease",
-            file="./k8s/cilium/kube-node-lease.yaml",
-            opts=child_opts,
-        )
-
-        ConfigFile(
-            "network_policy_kube_public",
-            file="./k8s/cilium/kube-public.yaml",
-            opts=child_opts,
-        )
-
-        ConfigFile(
-            "network_policy_kubernetes_system",
-            file="./k8s/cilium/kube-system.yaml",
             opts=child_opts,
         )
 
