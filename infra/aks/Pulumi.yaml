@@ -18,6 +18,11 @@ config:
     type: string
     description: The CIDR for the access cluster nodes subnet
     default: "10.10.1.0/24"
+  admin_ip_allowlist:
+    type: array
+    description: List of CIDR blocks to allow access to the API proxy SSH server
+    items:
+      type: string
   cluster_name:
     type: string
     description: The name of the AKS cluster
