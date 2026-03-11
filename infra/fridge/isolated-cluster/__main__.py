@@ -214,7 +214,10 @@ resources = [
 
 network_policies = components.NetworkPolicies(
     name=f"{stack_name}-network-policies",
-    k8s_environment=k8s_environment,
+    args=components.NetworkPoliciesArgs(
+        config=config,
+        k8s_environment=k8s_environment,
+    ),
     opts=ResourceOptions(
         depends_on=resources,
     ),
