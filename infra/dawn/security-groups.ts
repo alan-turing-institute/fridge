@@ -81,15 +81,6 @@ function createSecurityGroups(name: string): openstack.networking.SecGroup {
         remoteIpPrefix: "10.20.0.0/24",
         securityGroupId: isolatedSecurityGroup.id,
       });
-      new openstack.networking.SecGroupRule(`${name}-ssh-from-access-net`, {
-        direction: "ingress",
-        ethertype: "IPv4",
-        protocol: "tcp",
-        portRangeMin: 22,
-        portRangeMax: 22,
-        remoteIpPrefix: "10.10.0.0/24",
-        securityGroupId: isolatedSecurityGroup.id,
-      });
       new openstack.networking.SecGroupRule(`${name}-https`, {
         direction: "ingress",
         ethertype: "IPv4",
@@ -265,16 +256,7 @@ function createSecurityGroups(name: string): openstack.networking.SecGroup {
         remoteIpPrefix: "0.0.0.0/0",
         securityGroupId: proxySecurityGroup.id,
       });
-      //   below was commented out before
-      new openstack.networking.SecGroupRule("jump-host-ssh-access", {
-        direction: "ingress",
-        ethertype: "IPv4",
-        protocol: "tcp",
-        portRangeMin: 2222,
-        portRangeMax: 2222,
-        remoteIpPrefix: "0.0.0.0/0",
-        securityGroupId: proxySecurityGroup.id,
-      });
+
       new openstack.networking.SecGroupRule("allow-node-security-access", {
         direction: "ingress",
         ethertype: "IPv4",
