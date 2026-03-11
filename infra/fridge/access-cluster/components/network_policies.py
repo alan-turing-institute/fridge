@@ -6,18 +6,27 @@ from pulumi_kubernetes.yaml import ConfigFile
 from enums import K8sEnvironment
 
 
-class NetworkPolicies(ComponentResource):
+class NetworkPoliciesArgs:
     def __init__(
         self,
         config: pulumi.config.Config,
-        name: str,
         k8s_environment: K8sEnvironment,
+    ):
+        self.config = config
+        self.k8s_environment = k8s_environment
+
+
+class NetworkPolicies(ComponentResource):
+    def __init__(
+        self,
+        name: str,
+        args: NetworkPoliciesArgs,
         opts: ResourceOptions | None = None,
     ) -> None:
         super().__init__("fridge:k8s:NetworkPolicies", name, {}, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
-        match k8s_environment:
+        match args.k8s_environment:
             case K8sEnvironment.AKS:
                 # AKS uses Konnectivity to mediate some API/webhook traffic, and uses a different external DNS server
                 ConfigFile(
@@ -105,19 +114,59 @@ class NetworkPolicies(ComponentResource):
                         "toPorts": [{"ports": [{"port": "2222", "protocol": "TCP"}]}],
                     },
                     {
-                        "toCIDR": [config.require("fridge_api_ip_address")],
+                        "toCIDR": [args.config.require("fridge_api_ip_address")],
                         "toPorts": [{"ports": [{"port": "443", "protocol": "TCP"}]}],
                     },
                     {
                         "toFQDNs": [
                             {
-                                "matchName": config.require(
+                                "matchName": args.config.require(
                                     "isolated_cluster_api_endpoint"
                                 )
                             }
                         ],
                         "toPorts": [{"ports": [{"port": "443", "protocol": "ANY"}]}],
                     },
+                ],
+            },
+            opts=child_opts,
+        )
+
+        self.api_ssh_ingress_cnp = CustomResource(
+            "network_policy_api_ssh_ingress",
+            api_version="cilium.io/v2",
+            kind="CiliumNetworkPolicy",
+            metadata={"name": "enable-ssh-access", "namespace": "ingress-nginx"},
+            spec={
+                "endpointSelector": {
+                    "matchLabels": {
+                        "k8s:app.kubernetes.io/name": "ingress-nginx",
+                        "k8s:app.kubernetes.io/component": "controller",
+                    }
+                },
+                "ingress": [
+                    {
+                        "fromCIDR": [
+                            admin_ip
+                            for admin_ip in args.config.require_object(
+                                "admin_ip_allowlist"
+                            )
+                        ],
+                        "toPorts": [{"ports": [{"port": "2500", "protocol": "TCP"}]}],
+                    }
+                ],
+                "egress": [
+                    {
+                        "toServices": [
+                            {
+                                "k8sService": {
+                                    "namespace": "api-jumpbox",
+                                    "serviceName": "api-jumpbox-service",
+                                }
+                            }
+                        ],
+                        "toPorts": [{"ports": [{"port": "2222", "protocol": "TCP"}]}],
+                    }
                 ],
             },
             opts=child_opts,
