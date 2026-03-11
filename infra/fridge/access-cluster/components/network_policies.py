@@ -45,6 +45,10 @@ class NetworkPolicies(ComponentResource):
                     "toCIDR": [args.config.require("fridge_api_ip_address")],
                     "toPorts": [{"ports": [{"port": "443", "protocol": "TCP"}]}],
                 }
+                ssh_ip_allowlist = [
+                    admin_ip
+                    for admin_ip in args.config.require_object("admin_ip_allowlist")
+                ]
             case K8sEnvironment.DAWN:
                 # Dawn uses a different external DNS server to AKS, and also runs regular jobs that do not run on AKS
                 ConfigFile(
@@ -71,9 +75,12 @@ class NetworkPolicies(ComponentResource):
                     "toPorts": [{"ports": [{"port": k8s_api_port, "protocol": "TCP"}]}],
                 }
                 fridge_api_ip_rule = {
-                    "toCIDR": "10.20.0.0/16",  # [args.config.require("fridge_api_ip_address")],
+                    "toCIDR": [
+                        "10.20.0.0/16"
+                    ],  # [args.config.require("fridge_api_ip_address")],
                     "toPorts": [{"ports": [{"port": "30180", "protocol": "TCP"}]}],
                 }
+                ssh_ip_allowlist = ["10.10.0.0/16"]
             case K8sEnvironment.K3S:
                 # K3S policies applicable for a local dev environment
                 # These could be used in any vanilla k8s + Cilium local cluster
@@ -190,13 +197,8 @@ class NetworkPolicies(ComponentResource):
                 },
                 "ingress": [
                     {
-                        "fromCIDR": [
-                            admin_ip
-                            for admin_ip in args.config.require_object(
-                                "admin_ip_allowlist"
-                            )
-                        ],
-                        "toPorts": [{"ports": [{"port": "2500", "protocol": "TCP"}]}],
+                        "fromCIDR": ssh_ip_allowlist,
+                        "toPorts": [{"ports": [{"port": "2222", "protocol": "TCP"}]}],
                     }
                 ],
                 "egress": [
@@ -204,12 +206,11 @@ class NetworkPolicies(ComponentResource):
                         "toServices": [
                             {
                                 "k8sService": {
-                                    "namespace": "api-proxy",
-                                    "serviceName": "api-proxy-service",
+                                    "serviceName": "api-jumpbox-service",
+                                    "namespace": "api-jumpbox",
                                 }
                             }
-                        ],
-                        "toPorts": [{"ports": [{"port": "2222", "protocol": "TCP"}]}],
+                        ]
                     }
                 ],
             },
