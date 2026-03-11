@@ -160,8 +160,8 @@ class NetworkPolicies(ComponentResource):
                         "toServices": [
                             {
                                 "k8sService": {
-                                    "namespace": "api-proxy",
-                                    "serviceName": "api-proxy-service",
+                                    "namespace": "api-jumpbox",
+                                    "serviceName": "api-jumpbox-service",
                                 }
                             }
                         ],
