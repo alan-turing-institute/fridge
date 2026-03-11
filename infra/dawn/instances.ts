@@ -102,7 +102,7 @@ function createServers() {
         dependsOn: [
           routersObj.accessRouter,
           routersObj.isolatedRouter,
-          routersObj.isolatedRouterInternet,
+          // routersObj.isolatedRouterInternet,
         ],
       },
     );

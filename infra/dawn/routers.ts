@@ -54,23 +54,23 @@ function createConnectedRouters() {
   });
 
   //TEMPORARY INTERNET ROUTER
-  const isolatedRouterInternet = new openstack.networking.Router(
-    "iso-router-internet",
-    {
-      name: "isolated-router-internet",
-      externalNetworkId: publicNetworkId,
-    },
-  );
+  // const isolatedRouterInternet = new openstack.networking.Router(
+  //   "iso-router-internet",
+  //   {
+  //     name: "isolated-router-internet",
+  //     externalNetworkId: publicNetworkId,
+  //   },
+  // );
 
-  new openstack.networking.RouterInterface("iso-router-internet-iface", {
-    routerId: isolatedRouterInternet.id,
-    subnetId: isolatedSubnetId,
-  });
+  // new openstack.networking.RouterInterface("iso-router-internet-iface", {
+  //   routerId: isolatedRouterInternet.id,
+  //   subnetId: isolatedSubnetId,
+  // });
 
   return {
     accessRouter,
     isolatedRouter,
-    isolatedRouterInternet,
+    // isolatedRouterInternet,
   };
 }
 
@@ -79,9 +79,9 @@ const routers = createConnectedRouters();
 export const routersObj = {
   accessRouter: routers.accessRouter,
   isolatedRouter: routers.isolatedRouter,
-  isolatedRouterInternet: routers.isolatedRouterInternet,
+  // isolatedRouterInternet: routers.isolatedRouterInternet,
 };
 
 export const accessRouterID = routers.accessRouter.id;
 export const isolatedRouterID = routers.isolatedRouter.id;
-export const isolatedRouterInternetID = routers.isolatedRouterInternet.id;
+// export const isolatedRouterInternetID = routers.isolatedRouterInternet.id;

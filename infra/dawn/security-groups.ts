@@ -136,15 +136,14 @@ function createSecurityGroups(name: string): openstack.networking.SecGroup {
         remoteIpPrefix: "10.10.0.0/24",
         securityGroupId: isolatedSecurityGroup.id,
       });
-      //   below was commented out before
-      new openstack.networking.SecGroupRule("jump-host-ssh-isolated", {
-        direction: "ingress",
-        ethertype: "IPv4",
-        protocol: "tcp",
-        portRangeMin: 2222,
-        portRangeMax: 2222,
-        securityGroupId: isolatedSecurityGroup.id,
-      });
+      // new openstack.networking.SecGroupRule("jump-host-ssh-isolated", {
+      //   direction: "ingress",
+      //   ethertype: "IPv4",
+      //   protocol: "tcp",
+      //   portRangeMin: 2222,
+      //   portRangeMax: 2222,
+      //   securityGroupId: isolatedSecurityGroup.id,
+      // });
       new openstack.networking.SecGroupRule("pod-cidr-isolated1", {
         direction: "ingress",
         ethertype: "IPv4",
@@ -285,6 +284,24 @@ function createSecurityGroups(name: string): openstack.networking.SecGroup {
         remoteIpPrefix: "0.0.0.0/0",
         securityGroupId: proxySecurityGroup.id,
       });
+      // new openstack.networking.SecGroupRule("allow-cilium-agents-access", {
+      //   direction: "ingress",
+      //   ethertype: "IPv4",
+      //   protocol: "tcp",
+      //   portRangeMin: 4240,
+      //   portRangeMax: 4240,
+      //   remoteIpPrefix: "10.10.0.0/24",
+      //   securityGroupId: proxySecurityGroup.id,
+      // });
+      // new openstack.networking.SecGroupRule("allow-hubble-relay-access", {
+      //   direction: "ingress",
+      //   ethertype: "IPv4",
+      //   protocol: "tcp",
+      //   portRangeMin: 4244,
+      //   portRangeMax: 4244,
+      //   remoteIpPrefix: "10.10.0.0/24",
+      //   securityGroupId: proxySecurityGroup.id,
+      // });
       return proxySecurityGroup;
     }
   }

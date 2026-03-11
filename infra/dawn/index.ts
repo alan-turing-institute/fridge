@@ -4,7 +4,7 @@ import * as openstack from "@pulumi/openstack";
 import {
   accessRouterID,
   isolatedRouterID,
-  isolatedRouterInternetID,
+  // isolatedRouterInternetID,
 } from "./routers";
 
 import {
@@ -26,7 +26,7 @@ export const outputs = {
   network: accessNetworkId,
   accessRouter: accessRouterID,
   isolatedRouter: isolatedRouterID,
-  isolatedRouterInternet: isolatedRouterInternetID,
+  // isolatedRouterInternet: isolatedRouterInternetID,
   accessSubnet: accessSubnetId,
   isolatedNetwork: isolatedNetworkId,
   isolatedSubnet: isolatedSubnetId,
