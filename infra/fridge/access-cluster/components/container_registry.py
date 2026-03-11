@@ -207,16 +207,14 @@ class ContainerRegistry(ComponentResource):
                 ),
             )
             # Extract the dynamically assigned LoadBalancer IP address
-            self.harbor_ip = self.harbor_service.status.apply(
+            self.harbor_ip = self.harbor_internal_loadbalancer.status.apply(
                 lambda status: status.load_balancer.ingress[0].ip
                 if status and status.load_balancer and status.load_balancer.ingress
                 else None
             )
         elif k8s_environment == K8sEnvironment.DAWN:
             # Extract the ClusterIP for DAWN environment
-            self.harbor_ip = self.harbor_service.spec.apply(
-                lambda spec: spec.cluster_ip if spec else None
-            )
+            self.harbor_ip = args.config.require("dawn_load_balancer_ip")
 
         # Create a daemonset to skip TLS verification for the harbor registry
         # This is needed while using staging/self-signed certificates for Harbor
