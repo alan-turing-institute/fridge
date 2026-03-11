@@ -187,6 +187,20 @@ api_server = components.ApiServer(
     ),
 )
 
+# DNS configuration: writes harbor FQDN -> internal IP into /etc/hosts on each node
+# so that containerd can resolve harbor for image pulls.
+if k8s_environment == K8sEnvironment.DAWN:
+    dns_config = components.DNSConfig(
+        "dns-config",
+        args=components.DNSConfigArgs(
+            harbor_fqdn=access_stack.get_output("harbor_fqdn"),
+            harbor_ip=config.require("access_cluster_load_balancer_ip"),
+        ),
+        opts=ResourceOptions(
+            depends_on=[api_server],
+        ),
+    )
+
 # Network policy (through Cilium)
 # Network policies should be deployed last to ensure that none of them interfere with the deployment process
 resources = [
@@ -200,30 +214,33 @@ resources = [
 
 network_policies = components.NetworkPolicies(
     name=f"{stack_name}-network-policies",
-    k8s_environment=k8s_environment,
+    args=components.NetworkPoliciesArgs(
+        config=config,
+        k8s_environment=k8s_environment,
+    ),
     opts=ResourceOptions(
         depends_on=resources,
     ),
 )
 
 # Container runtime configuration (containerd)
-if k8s_environment == K8sEnvironment.AKS:
-    container_runtime_config = components.ContainerRuntimeConfig(
-        "container-runtime-config",
-        args=components.ContainerRuntimeConfigArgs(
-            config=config,
-            harbor_fqdn=access_stack.get_output("harbor_fqdn"),
-        ),
-        opts=ResourceOptions(
-            depends_on=resources,
-        ),
-    )
-else:
-    pulumi.log.warn(
-        "Container runtime configuration is only applied on AKS. "
-        "For Dawn AI and local K3s deployments, please ensure containerd is configured manually. "
-        "If you deployed K3s using the scripts in infra/k3s, containerd should already be configured correctly."
-    )
+container_runtime_config = components.ContainerRuntimeConfig(
+    "container-runtime-config",
+    args=components.ContainerRuntimeConfigArgs(
+        config=config,
+        harbor_fqdn=access_stack.get_output("harbor_fqdn"),
+        k8s_environment=k8s_environment,
+    ),
+    opts=ResourceOptions(
+        depends_on=resources,
+    ),
+)
+# else:
+#     pulumi.log.warn(
+#         "Container runtime configuration is only applied on AKS. "
+#         "For Dawn AI and local K3s deployments, please ensure containerd is configured manually. "
+#         "If you deployed K3s using the scripts in infra/k3s, containerd should already be configured correctly."
+#     )
 
 # Pulumi stack outputs
 pulumi.export("fridge_api_ip", config.require("fridge_api_ip"))

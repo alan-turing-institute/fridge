@@ -166,7 +166,7 @@ class FridgeAPIJumpbox(ComponentResource):
             ),
             spec=ServiceSpecArgs(
                 selector=self.api_jumpbox.spec.template.metadata.labels,
-                ports=[{"protocol": "TCP", "port": 2500, "targetPort": 2222}],
+                ports=[{"protocol": "TCP", "port": 2222, "targetPort": 2222}],
                 type="ClusterIP",
             ),
             opts=ResourceOptions.merge(
