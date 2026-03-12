@@ -25,9 +25,7 @@ const httpPool = new openstack.loadbalancer.Pool("ingress-pool", {
 });
 
 const k3AccesNodeIps = ["10.10.0.252", "10.10.0.92", "10.10.0.240"];
-// const nginxNodePorthttp = 32080;
 const nginxNodePorthttp = 30180;
-// const nginxNodePorthttps = 32443;
 const nginxNodePorthttps = 30443;
 
 k3AccesNodeIps.map((ip, index) => {
@@ -38,17 +36,6 @@ k3AccesNodeIps.map((ip, index) => {
     subnetId: accessSubnetId,
   });
 });
-
-// const k3IsolatedNodeIps = ["10.20.0.228", "10.20.0.244", "10.20.0.164"];
-
-// k3IsolatedNodeIps.map((ip, index) => {
-//   new openstack.loadbalancer.Member(`isolated-member-${index}`, {
-//     address: ip,
-//     protocolPort: nginxNodePorthttp,
-//     poolId: httpPool.id,
-//     subnetId: isolatedSubnetId,
-//   });
-// });
 
 // add htpps listener
 const httpsListner = new openstack.loadbalancer.Listener("https-listner", {
@@ -72,14 +59,6 @@ k3AccesNodeIps.map((ip, index) => {
   });
 });
 
-// k3IsolatedNodeIps.map((ip, index) => {
-//   new openstack.loadbalancer.Member(`isolated-member-https-${index}`, {
-//     address: ip,
-//     protocolPort: nginxNodePorthttps,
-//     poolId: httpsPool.id,
-//     subnetId: isolatedSubnetId,
-//   });
-// });
 /////////////////////////
 //  Create TCP Listener for SSH
 const sshListener = new openstack.loadbalancer.Listener("ssh-listener", {
