@@ -2,12 +2,10 @@ import pulumi
 from pulumi import ComponentResource, ResourceOptions
 from pulumi_kubernetes.core.v1 import (
     Namespace,
-    Service,
-    ServicePortArgs,
-    ServiceSpecArgs,
 )
 from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
+from pulumi_kubernetes.yaml import ConfigFile
 
 
 from enums import K8sEnvironment
@@ -38,11 +36,13 @@ class Monitoring(ComponentResource):
                     opts=child_opts,
                 )
                 # Start by deploying the monitoring stack for AKS
-                # 1. Prometheus Operator
-                # 2. Grafana
+                # 1. Prometheus Operator (scrapes metrics and serves them to Grafana)
+                # 2. Grafana Loki (stores logs)
+                # 3. Grafana Alloy (collects data/logs to feed to Loki)
                 prometheus_operator = Release(
                     "monitoring-operator",
                     ReleaseArgs(
+                        name="kube-prometheus-stack",
                         chart="kube-prometheus-stack",
                         version="82.0.0",
                         repository_opts={
@@ -50,6 +50,49 @@ class Monitoring(ComponentResource):
                         },
                         namespace=monitoring_ns.metadata.name,
                         create_namespace=False,
+                        values={
+                            "alertmanager": {
+                                "alertmanagerSpec": {
+                                    "retention": "168h",
+                                    "storage": {
+                                        "volumeClaimTemplate": {
+                                            "spec": {
+                                                "accessMode": ["ReadWriteOnce"],
+                                                "resources": {
+                                                    "requests": {"storage": "3Gi"}
+                                                },
+                                            }
+                                        }
+                                    },
+                                }
+                            },
+                            "grafana": {
+                                "additionalDataSources": [
+                                    {
+                                        "name": "Loki",
+                                        "type": "loki",
+                                        "url": "http://grafana-loki:3100",
+                                        "access": "proxy",
+                                    }
+                                ]
+                            },
+                            "prometheus": {
+                                "prometheusSpec": {
+                                    "retention": "4d",
+                                    "retentionSize": "2GiB",
+                                    "storageSpec": {
+                                        "volumeClaimTemplate": {
+                                            "spec": {
+                                                "accessModes": ["ReadWriteOnce"],
+                                                "resources": {
+                                                    "requests": {"storage": "3Gi"}
+                                                },
+                                            }
+                                        }
+                                    },
+                                }
+                            },
+                        },
                     ),
                     opts=child_opts,
                 )
@@ -57,6 +100,7 @@ class Monitoring(ComponentResource):
                 grafana_loki = Release(
                     "grafana-loki",
                     ReleaseArgs(
+                        name="grafana-loki",
                         chart="loki",
                         version="6.53.0",
                         repository_opts={
@@ -109,6 +153,43 @@ class Monitoring(ComponentResource):
                         ResourceOptions(depends_on=[prometheus_operator]),
                     ),
                 )
+
+                alloy_configmap = ConfigFile(
+                    "alloy-config",
+                    file="k8s/monitoring/alloy_configmap.yaml",
+                    opts=ResourceOptions.merge(
+                        child_opts,
+                        ResourceOptions(depends_on=[prometheus_operator, grafana_loki]),
+                    ),
+                )
+
+                grafana_alloy = Release(
+                    "grafana-alloy",
+                    ReleaseArgs(
+                        name="grafana-alloy",
+                        chart="alloy",
+                        version="1.6.2",
+                        repository_opts={
+                            "repo": "https://grafana.github.io/helm-charts"
+                        },
+                        namespace=monitoring_ns.metadata.name,
+                        create_namespace=False,
+                        values={
+                            "alloy": {
+                                "configMap": {
+                                    "create": False,
+                                    "name": "alloy-config",
+                                    "key": "config",
+                                }
+                            }
+                        },
+                    ),
+                    opts=ResourceOptions.merge(
+                        ResourceOptions(depends_on=[alloy_configmap, grafana_loki]),
+                        child_opts,
+                    ),
+                )
+
             case K8sEnvironment.DAWN:
                 # The namespace is already created on Dawn
                 monitoring_ns = Namespace.get("monitoring-ns", "monitoring-system")
