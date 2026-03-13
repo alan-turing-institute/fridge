@@ -1,7 +1,6 @@
 import pulumi
 
 from pulumi import ResourceOptions
-from pulumi_kubernetes.batch.v1 import CronJobPatch, CronJobSpecPatchArgs
 from pulumi_kubernetes.core.v1 import NamespacePatch
 from pulumi_kubernetes.meta.v1 import ObjectMetaPatchArgs
 from pulumi_kubernetes.yaml import ConfigFile

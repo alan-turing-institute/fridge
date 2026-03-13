@@ -124,3 +124,18 @@ spec:
             - port: "80"
   egress:
     - {}
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: "trust-manager"
+  namespace: "cert-manager"
+spec:
+  # Apply to trust manager pods
+  endpointSelector:
+    matchLabels:
+      app: trust-manager
+  egress:
+    # Allow outbound to kube API to get and update CA certs
+    - toEntities:
+        - kube-apiserver
