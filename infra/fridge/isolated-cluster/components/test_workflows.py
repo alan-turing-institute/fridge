@@ -2,13 +2,17 @@ import pulumi
 from pulumi import ComponentResource, ResourceOptions
 from pulumi_kubernetes.yaml import ConfigFile
 
+from enums import K8sEnvironment
+
 
 class TestWorkflowsArgs:
     def __init__(
         self,
+        k8s_environment: K8sEnvironment,
         run_tests: bool,
     ) -> None:
         self.run_tests = run_tests
+        self.k8s_environment = k8s_environment
 
 
 class TestWorkflows(ComponentResource):
@@ -19,8 +23,9 @@ class TestWorkflows(ComponentResource):
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
         if args.run_tests:
-            intel_pvc_check = ConfigFile(
-                "intel-pvc-check",
-                file="./k8s/argo_workflows/examples/intel_pvc_check.yaml",
-                opts=child_opts,
-            )
+            if args.k8s_environment == K8sEnvironment.DAWN:
+                intel_pvc_check = ConfigFile(
+                    "intel-pvc-check",
+                    file="./k8s/argo_workflows/examples/intel_pvc_check.yaml",
+                    opts=child_opts,
+                )
