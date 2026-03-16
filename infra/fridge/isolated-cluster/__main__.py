@@ -259,4 +259,5 @@ test_workflows = components.TestWorkflows(
 )
 
 # Pulumi stack outputs
-pulumi.export("fridge_api_ip", config.require("fridge_api_ip"))
+if k8s_environment != K8sEnvironment.DAWN:
+    pulumi.export("fridge_api_ip", config.require("fridge_api_ip"))
