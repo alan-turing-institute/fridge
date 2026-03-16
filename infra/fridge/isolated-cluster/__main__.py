@@ -207,7 +207,7 @@ gpu_operator = components.GPUOperator(
         k8s_environment=k8s_environment,
     ),
     opts=ResourceOptions(
-        depends_on=[dns_config],
+        depends_on=[cert_manager],
     ),
 )
 
@@ -254,7 +254,7 @@ test_workflows = components.TestWorkflows(
         run_tests=config.get_bool("run_tests") or False,
     ),
     opts=ResourceOptions(
-        depends_on=[argo_workflows],
+        depends_on=[gpu_operator, argo_workflows],
     ),
 )
 
