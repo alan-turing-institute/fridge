@@ -1,7 +1,6 @@
 import pulumi
 
 from pulumi import ResourceOptions
-from pulumi_kubernetes.batch.v1 import CronJobPatch, CronJobSpecPatchArgs
 from pulumi_kubernetes.core.v1 import NamespacePatch
 from pulumi_kubernetes.meta.v1 import ObjectMetaPatchArgs
 from pulumi_kubernetes.yaml import ConfigFile
@@ -200,6 +199,17 @@ if k8s_environment == K8sEnvironment.DAWN:
             depends_on=[api_server],
         ),
     )
+
+gpu_operator = components.GPUOperator(
+    "gpu-operator",
+    args=components.GPUOperatorArgs(
+        config=config,
+        k8s_environment=k8s_environment,
+    ),
+    opts=ResourceOptions(
+        depends_on=[dns_config],
+    ),
+)
 
 # Network policy (through Cilium)
 # Network policies should be deployed last to ensure that none of them interfere with the deployment process
