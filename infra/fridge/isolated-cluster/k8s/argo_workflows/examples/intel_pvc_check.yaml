@@ -1,0 +1,51 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  name: intel-gpu-example
+  generateName: intel-gpu-example-
+  namespace: argo-workflows
+spec:
+  entrypoint: intel-gpu-task
+  securityContext:
+    supplementalGroups:
+      - 110
+  templates:
+    - name: intel-gpu-task
+      container:
+        resources:
+          limits:
+            gpu.intel.com/i915: 1
+        image: intel/intel-extension-for-pytorch:2.8.10-xpu
+        command: ["bash", "-c"]
+        args:
+          - |
+            echo "Checking GPU devices"
+            ls -l /dev/dri || true
+
+            echo "Running PyTorch GPU test"
+            python3 -c "
+            import time
+            import torch
+            print('XPU available:', torch.xpu.is_available())
+            print('XPU count:', torch.xpu.device_count())
+            if not hasattr(torch, 'xpu') or not torch.xpu.is_available():
+              print('XPU not available')
+              exit(0)
+
+            device = torch.device('xpu')
+            print('Using device:', device)
+
+            # Warmup
+            a = torch.randn((4096, 4096), device=device)
+            b = torch.randn((4096, 4096), device=device)
+            torch.xpu.synchronize()
+            # Benchmark
+            start = time.time()
+            for _ in range(10):
+              c = a @ b
+              torch.xpu.synchronize()
+            end = time.time()
+
+            print('10 matmul ops took:', end - start, 'seconds')
+            print('Average per matmul:', (end - start) / 10, 'seconds')"
+  serviceAccountName: argo-workflow
