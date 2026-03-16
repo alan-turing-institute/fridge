@@ -1,8 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
-kind: Workflow
+kind: WorkflowTemplate
 metadata:
   name: intel-gpu-example
-  generateName: intel-gpu-example-
   namespace: argo-workflows
 spec:
   entrypoint: intel-gpu-task

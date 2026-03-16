@@ -1,4 +1,3 @@
-import pulumi
 from pulumi import ComponentResource, ResourceOptions
 from pulumi_kubernetes.yaml import ConfigFile
 
