@@ -115,16 +115,19 @@ class Monitoring(ComponentResource):
                                 "commonConfig": {
                                     "replication_factor": 1,
                                 },
-                                "singleBinary": {
-                                    "replicas": 1,
-                                    "resources": {
-                                        "requests": {"cpu": "500m", "memory": "512Mi"}
-                                    },
-                                    "persistence": {
-                                        "enabled": True,
-                                        "size": "10Gi",
-                                        "storageClassName": "default",
-                                    },
+                                "schemaConfig": {
+                                    "configs": [
+                                        {
+                                            "from": "2025-10-24",
+                                            "store": "tsdb",
+                                            "object_store": "azure",
+                                            "schema": "v13",
+                                            "index": {
+                                                "prefix": "index_",
+                                                "period": "24h",
+                                            },
+                                        }
+                                    ]
                                 },
                                 "storage": {
                                     "type": "azure",
@@ -136,9 +139,20 @@ class Monitoring(ComponentResource):
                                     "bucketNames": {
                                         "chunks": "loki-chunks",
                                         "ruler": "loki-ruler",
+                                        "admin": "loki-admin",
                                     },
                                 },
-                                "useTestSchema": True,
+                            },
+                            "singleBinary": {
+                                "replicas": 1,
+                                "resources": {
+                                    "requests": {"cpu": "500m", "memory": "512Mi"}
+                                },
+                                "persistence": {
+                                    "enabled": True,
+                                    "size": "10Gi",
+                                    "storageClassName": "default",
+                                },
                             },
                             "chunksCache": {
                                 "enabled": False,
@@ -146,6 +160,9 @@ class Monitoring(ComponentResource):
                             "resultsCache": {
                                 "enabled": False,
                             },
+                            "read": {"replicas": 0},
+                            "write": {"replicas": 0},
+                            "backend": {"replicas": 0},
                         },
                     ),
                     opts=ResourceOptions.merge(
