@@ -235,12 +235,18 @@ container_runtime_config = components.ContainerRuntimeConfig(
         depends_on=resources,
     ),
 )
-# else:
-#     pulumi.log.warn(
-#         "Container runtime configuration is only applied on AKS. "
-#         "For Dawn AI and local K3s deployments, please ensure containerd is configured manually. "
-#         "If you deployed K3s using the scripts in infra/k3s, containerd should already be configured correctly."
-#     )
+
+# Run argo workflow to check Intel GPU availability on nodes (if enabled)
+test_workflows = components.TestWorkflows(
+    "test-workflows",
+    args=components.TestWorkflowsArgs(
+        k8s_environment=k8s_environment,
+        run_tests=config.get_bool("run_tests") or False,
+    ),
+    opts=ResourceOptions(
+        depends_on=[argo_workflows],
+    ),
+)
 
 # Pulumi stack outputs
 pulumi.export("fridge_api_ip", config.require("fridge_api_ip"))
