@@ -110,6 +110,7 @@ spec:
   ingress:
     - fromEntities:
         - remote-node
+        - world
       toPorts:
         - ports:
             - port: "10250"
