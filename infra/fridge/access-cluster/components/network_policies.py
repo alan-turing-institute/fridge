@@ -10,10 +10,12 @@ class NetworkPoliciesArgs:
     def __init__(
         self,
         config: pulumi.config.Config,
+        harbor_fqdn: str,
         k8s_environment: K8sEnvironment,
     ):
         self.config = config
         self.k8s_environment = k8s_environment
+        self.harbor_fqdn = harbor_fqdn
 
 
 class NetworkPolicies(ComponentResource):
@@ -34,6 +36,19 @@ class NetworkPolicies(ComponentResource):
                     file="./k8s/cilium/aks.yaml",
                     opts=child_opts,
                 )
+                k8s_api_port = "443"
+                k8s_api_endpoint_rule = {
+                    "toFQDNs": [args.config.require("isolated_cluster_api_endpoint")],
+                    "toPorts": [{"ports": [{"port": k8s_api_port, "protocol": "TCP"}]}],
+                }
+                fridge_api_ip_rule = {
+                    "toCIDR": [args.config.require("fridge_api_ip_address")],
+                    "toPorts": [{"ports": [{"port": "443", "protocol": "TCP"}]}],
+                }
+                ssh_ip_allowlist = [
+                    admin_ip
+                    for admin_ip in args.config.require_object("admin_ip_allowlist")
+                ]
             case K8sEnvironment.DAWN:
                 # Dawn uses a different external DNS server to AKS, and also runs regular jobs that do not run on AKS
                 ConfigFile(
@@ -54,6 +69,18 @@ class NetworkPolicies(ComponentResource):
                     file="./k8s/cilium/longhorn.yaml",
                     opts=child_opts,
                 )
+                k8s_api_port = "6443"
+                k8s_api_endpoint_rule = {
+                    "toCIDR": [args.config.require("isolated_cluster_api_endpoint")],
+                    "toPorts": [{"ports": [{"port": k8s_api_port, "protocol": "TCP"}]}],
+                }
+                fridge_api_ip_rule = {
+                    "toCIDR": [
+                        "10.20.0.0/16"
+                    ],  # [args.config.require("fridge_api_ip_address")],
+                    "toPorts": [{"ports": [{"port": "30180", "protocol": "TCP"}]}],
+                }
+                ssh_ip_allowlist = ["10.10.0.0/16"]
             case K8sEnvironment.K3S:
                 # K3S policies applicable for a local dev environment
                 # These could be used in any vanilla k8s + Cilium local cluster
@@ -113,19 +140,43 @@ class NetworkPolicies(ComponentResource):
                         ],
                         "toPorts": [{"ports": [{"port": "2222", "protocol": "TCP"}]}],
                     },
+                    fridge_api_ip_rule,
+                    k8s_api_endpoint_rule,
+                ],
+            },
+            opts=child_opts,
+        )
+
+        self.cert_manager_to_harbor = CustomResource(
+            "network_policy_cert_manager_to_harbor",
+            api_version="cilium.io/v2",
+            kind="CiliumNetworkPolicy",
+            metadata={"name": "cert-manager-to-harbor", "namespace": "cert-manager"},
+            spec={
+                "endpointSelector": {"matchLabels": {"app": "cert-manager"}},
+                "egress": [
                     {
-                        "toCIDR": [args.config.require("fridge_api_ip_address")],
-                        "toPorts": [{"ports": [{"port": "443", "protocol": "TCP"}]}],
+                        "toEndpoints": [
+                            {
+                                "matchLabels": {
+                                    "k8s-app": "k8s-dns",
+                                    "k8s:io.kubernetes.pod.namespace": "kube-system",
+                                }
+                            },
+                        ],
+                        "toPorts": [
+                            {
+                                "ports": [{"port": "53", "protocol": "ANY"}],
+                                "rules": {"dns": [{"matchName": args.harbor_fqdn}]},
+                            }
+                        ],
                     },
                     {
                         "toFQDNs": [
                             {
-                                "matchName": args.config.require(
-                                    "isolated_cluster_api_endpoint"
-                                )
+                                "matchName": args.harbor_fqdn,
                             }
-                        ],
-                        "toPorts": [{"ports": [{"port": "443", "protocol": "ANY"}]}],
+                        ]
                     },
                 ],
             },
@@ -146,13 +197,8 @@ class NetworkPolicies(ComponentResource):
                 },
                 "ingress": [
                     {
-                        "fromCIDR": [
-                            admin_ip
-                            for admin_ip in args.config.require_object(
-                                "admin_ip_allowlist"
-                            )
-                        ],
-                        "toPorts": [{"ports": [{"port": "2500", "protocol": "TCP"}]}],
+                        "fromCIDR": ssh_ip_allowlist,
+                        "toPorts": [{"ports": [{"port": "2222", "protocol": "TCP"}]}],
                     }
                 ],
                 "egress": [
@@ -160,12 +206,11 @@ class NetworkPolicies(ComponentResource):
                         "toServices": [
                             {
                                 "k8sService": {
-                                    "namespace": "api-jumpbox",
                                     "serviceName": "api-jumpbox-service",
+                                    "namespace": "api-jumpbox",
                                 }
                             }
-                        ],
-                        "toPorts": [{"ports": [{"port": "2222", "protocol": "TCP"}]}],
+                        ]
                     }
                 ],
             },
