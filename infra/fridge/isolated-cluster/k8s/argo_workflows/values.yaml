@@ -54,7 +54,3 @@ artifactRepository:
     secretKeySecret:
       name: argo-artifacts-minio
       key: secretkey
-    insecure: false
-    caSecret:
-      name: argo-artifacts-tls-workflow-ca
-      key: ca.crt

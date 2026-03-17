@@ -29,13 +29,6 @@ spec:
         - ports:
             - port: "4245"
               protocol: TCP
-    - toEndpoints:
-        - matchLabels:
-            k8s-app: kube-dns
-      toPorts:
-        - ports:
-            - port: "53"
-              protocol: ANY
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy

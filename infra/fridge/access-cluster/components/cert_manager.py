@@ -1,10 +1,10 @@
 import pulumi
 
-from pulumi import ComponentResource, ResourceOptions
+from pulumi import ComponentResource, Output, ResourceOptions
 from pulumi_kubernetes.apiextensions import CustomResource
-from pulumi_kubernetes.core.v1 import Namespace
+from pulumi_kubernetes.core.v1 import Namespace, Service
 from pulumi_kubernetes.helm.v3 import Release
-from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
+from pulumi_kubernetes.helm.v4 import RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 
 from enums import K8sEnvironment, PodSecurityStandard, TlsEnvironment, tls_issuer_names
@@ -32,7 +32,7 @@ class CertManager(ComponentResource):
         k8s_environment = args.k8s_environment
 
         match k8s_environment:
-            case K8sEnvironment.AKS | K8sEnvironment.K3S | K8sEnvironment.DAWN:
+            case K8sEnvironment.AKS | K8sEnvironment.K3S:
                 # AKS specific configuration
                 # CertManager (TLS automation)
                 cert_manager_ns = Namespace(
@@ -223,6 +223,23 @@ class CertManager(ComponentResource):
                         ResourceOptions(
                             depends_on=[cert_manager_ns],
                         ),
+                    ),
+                )
+            case K8sEnvironment.DAWN:
+                cert_manager_ns = Namespace.get(
+                    "cert-manager-ns",
+                    "cert-manager",
+                    opts=child_opts,
+                )
+                cert_manager = Service.get(
+                    "cert-manager",
+                    Output.concat(
+                        cert_manager_ns.metadata.name,
+                        "/",
+                        "cert-manager",
+                    ),
+                    opts=ResourceOptions.merge(
+                        child_opts, ResourceOptions(depends_on=[cert_manager_ns])
                     ),
                 )
 
