@@ -27,7 +27,20 @@ spec:
             copy_jobs=""
             for file in $(echo "{{inputs.parameters.files}}" | tr ";" " "); do
               echo "Copying $file"
-              curl -s --cacert $cert_file https://minio.argo-artifacts.svc.cluster.local/{{inputs.parameters.bucket}}/$file > /data/$file &
+              (
+                tmp_out=$(mktemp)
+                http_code=$(curl -s --cacert $cert_file \
+                  https://minio.argo-artifacts.svc.cluster.local/{{inputs.parameters.bucket}}/$file \
+                  -o $tmp_out \
+                  -w "%{http_code}")
+                if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
+                  echo "Failed to copy $file (HTTP $http_code)"
+                  echo "Response: $(cat $tmp_out)"
+                  rm -f $tmp_out
+                  exit 1
+                fi
+                mv $tmp_out /data/$file
+              ) &
               copy_jobs="$copy_jobs $!"
             done
 
@@ -38,7 +51,7 @@ spec:
 
                 if [ "$code" -ne 0 ]; then
                     echo "Copy failed (PID $pid, exit code $code)"
-                    kill $pids 2>/dev/null   # Stop all remaining downloads
+                    kill $copy_jobs 2>/dev/null   # Stop all remaining downloads
                     exit "$code"
                 fi
             done
