@@ -6,7 +6,6 @@ metadata:
 spec:
   # Apply to all pods in this namespace
   endpointSelector: {}
-  # Deny all ingress by default
   ingress:
     - {}
   egress:
@@ -92,6 +91,13 @@ spec:
         - ports:
           - port: "8080"
             protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            job-name: harbor-config-job
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
@@ -129,6 +135,7 @@ spec:
               - matchName: "pkg-containers.githubusercontent.com"
               - matchName: "quay.io"
               - matchPattern: "cdn*.quay.io"
+              - matchPattern: "**.cluster.local"
               - matchName: "registry.k8s.io"
               - matchPattern: "*.pkg.dev"
               - matchName: "prod-registry-k8s-io-eu-west-1.s3.dualstack.eu-west-1.amazonaws.com"
@@ -142,6 +149,7 @@ spec:
       - matchName: "pkg-containers.githubusercontent.com"
       - matchPattern: "cdn*.quay.io"
       - matchName: "quay.io"
+      - matchPattern: "**.cluster.local"
       # registry.k8s.io forwards to many different potential endpoints, depending on factors such as region and load
       # We need to allow those endpoints too. However, there is no list of known registry.k8s.io endpoints,
       # and they can change over time. Points below are some known endpoints observered in our environment
@@ -187,3 +195,23 @@ spec:
         - ports:
           - port: "443"
             protocol: TCP
+---
+# Always allow config job to contact core
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: harbor-config-job-egress
+  namespace: harbor
+spec:
+  endpointSelector:
+    matchLabels:
+      job-name: harbor-config-job
+  egress:
+    - toEndpoints:
+      - matchLabels:
+          k8s:app.kubernetes.io/name: harbor
+          component: nginx
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
