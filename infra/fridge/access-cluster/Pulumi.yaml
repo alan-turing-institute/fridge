@@ -24,6 +24,14 @@ config:
   base_fqdn:
     type: string
     description: Base FQDN for the access cluster
+  admin_ip_allowlist:
+    type: array
+    description: List of CIDR blocks to allow access to the API proxy SSH server
+    items:
+      type: string
+  dawn_load_balancer_ip:
+    type: string
+    description: Load balancer IP for Dawn access cluster - use a dummy value when not deploying to Dawn
   harbor_fqdn_prefix:
     type: string
     description: FQDN prefix for Harbor
