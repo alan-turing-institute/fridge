@@ -6,7 +6,7 @@ from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from .storage_classes import StorageClasses
 
-from enums import PodSecurityStandard, TlsEnvironment, tls_issuer_names
+from enums import PodSecurityStandard
 
 
 class ObjectStorageArgs:
@@ -14,10 +14,10 @@ class ObjectStorageArgs:
         self,
         config: pulumi.config.Config,
         storage_classes: StorageClasses,
-        tls_environment: TlsEnvironment,
+        cluster_issuer: CustomResource,
     ) -> None:
         self.config = config
-        self.tls_environment = tls_environment
+        self.cluster_issuer = cluster_issuer
         self.storage_classes = storage_classes
 
 
@@ -99,7 +99,7 @@ class ObjectStorage(ComponentResource):
             spec={
                 "secretName": "argo-artifacts-tls",
                 "issuerRef": {
-                    "name": tls_issuer_names[args.tls_environment],
+                    "name": args.cluster_issuer.metadata["name"],
                     "kind": "ClusterIssuer",
                 },
                 "dnsNames": [
