@@ -358,7 +358,7 @@ async def submit_workflow_from_template(
     }
 
 
-@app.get("/workflows/log/{namespace}/{workflow_name}", tags=["Argo Workflows"])
+@app.get("/workflows/{namespace}/{workflow_name}/log", tags=["Argo Workflows"])
 async def get_workflow_log(
     namespace: str,
     workflow_name: str,
@@ -375,7 +375,10 @@ async def get_workflow_log(
         raise HTTPException(
             status_code=r.status_code, detail=parse_argo_error(r.json())
         )
-    return r.json()
+
+    # Argo log endpoint returns newline-delimited JSON (NDJSON)
+    lines = [json.loads(line) for line in r.text.splitlines() if line.strip()]
+    return lines
 
 
 @app.post("/object/{bucket}/upload", tags=["s3"])
