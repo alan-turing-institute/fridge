@@ -224,10 +224,6 @@ class CertManager(ComponentResource):
                         ),
                     ),
                 )
-            # case K8sEnvironment.DAWN:
-            #     # Dawn specific configuration
-            #     cert_manager_ns = Namespace.get("cert-manager-ns", "cert-manager")
-            #     cert_manager = Release.get("cert-manager", "cert-manager")
 
         # Create ClusterIssuers
         issuer_outputs = {}
@@ -290,39 +286,6 @@ class CertManager(ComponentResource):
             "cert_manager_dev_certificate": cert_manager_dev_certificate,
             "cert_manager_dev_issuer": cert_manager_dev_issuer,
         }
-        # If not in development, create issuers for Let's Encrypt - these will be used for production services and for staging services in the staging environment
-        # Currently not used anywhere in the isolated cluster, but created here for completeness and future use
-        if args.tls_environment != TlsEnvironment.DEVELOPMENT:
-            cert_manager_issuers = CustomResource(
-                "cert-manager-issuer",
-                api_version="cert-manager.io/v1",
-                kind="ClusterIssuer",
-                metadata=ObjectMetaArgs(
-                    name=tls_issuer_names[args.tls_environment],
-                ),
-                spec={
-                    "acme": {
-                        "email": args.config.require("lets_encrypt_email"),
-                        "server": "https://acme-v02.api.letsencrypt.org/directory"
-                        if args.tls_environment == TlsEnvironment.PRODUCTION
-                        else "https://acme-staging-v02.api.letsencrypt.org/directory",
-                        "privateKeySecretRef": {"name": "letsencrypt-private-key"},
-                        "solvers": [
-                            {
-                                "http01": {
-                                    "ingress": {"class": "nginx"},
-                                }
-                            }
-                        ],
-                    }
-                },
-                opts=ResourceOptions.merge(
-                    child_opts, ResourceOptions(depends_on=[cert_manager])
-                ),
-            )
-            issuer_outputs = issuer_outputs | {
-                "cert_manager_issuers": cert_manager_issuers,
-            }
 
         # Add trust-manager
         self.trust_manager = Release(
