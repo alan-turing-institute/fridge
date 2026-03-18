@@ -12,6 +12,9 @@ The FRIDGE infrastructure can be deployed to Azure using the Azure Kubernetes Se
 
 An example Pulumi project for deploying FRIDGE to AKS is available in the `fridge/infra/aks/` folder.
 
+To succesfully deploy the project, you will require an Azure account that has, at minimum, `Contributor` rights over the subscription you will deploy the FRIDGE into.
+In addition, this account will need permission to delegate the role `Network Contributor` to the managed identity that will manage the FRIDGE clusters, and to delegate
+
 This project deploys two AKS clusters: an "access" cluster and an "isolated" cluster.
 
 The "access" cluster will host the Harbor container registry and an SSH server for accessing the isolated cluster.and an isolated cluster, which will host the FRIDGE services.
