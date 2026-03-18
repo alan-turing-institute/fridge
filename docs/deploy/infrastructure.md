@@ -13,19 +13,18 @@ The FRIDGE infrastructure can be deployed to Azure using the Azure Kubernetes Se
 An example Pulumi project for deploying FRIDGE to AKS is available in the `fridge/infra/aks/` folder.
 
 To succesfully deploy the project, you will require an Azure account that has, at minimum, `Contributor` rights over the subscription you will deploy the FRIDGE into.
-In addition, this account will need permission to delegate the role `Network Contributor` to the managed identity that will manage the FRIDGE clusters, and to delegate
+In addition, this account will need permission to delegate roles to the managed identity that will manage the FRIDGE clusters.
+The deployment process will delegate the role `Network Contributor` scoped to the VNets that the clusters will be hosted on, and `Contributor` scoped to the disk encryption set used to encrypt the disks within the clusters.
 
-This project deploys two AKS clusters: an "access" cluster and an "isolated" cluster.
+This project deploys two AKS clusters: an `access` cluster and an `isolated` cluster.
 
-The "access" cluster will host the Harbor container registry and an SSH server for accessing the isolated cluster.and an isolated cluster, which will host the FRIDGE services.
+The `access` cluster will host the Harbor container registry and an SSH server for accessing the `isolated` cluster.and an `isolated` cluster, which will host the main FRIDGE services.
 
-For development and testing, the access cluster has a public API server endpoint. In production, it would be private and access via a bastion.
+The example project also deploys the necessary networking components.
 
-The isolated cluster has a private API server endpoint, accessible only from within the access cluster.
+Each cluster is deployed to its own VNet.
 
-The example project also deploys the necessary networking components, such as virtual networks, subnets, and network security groups, to ensure secure communication between the clusters.
-
-You will need to supply a public SSH key for accessing the SSH server in the access cluster.
+The VNets are peered. You will need to supply
 
 To deploy the infrastructure, follow these steps:
 
@@ -56,3 +55,15 @@ pulumi config set ssh_public_key "<your-ssh-public-key>"
 ```console
 pulumi up
 ```
+
+For development and testing, the `access` cluster has a public API server endpoint. In production, it would be private and accessed via a bastion.
+
+The `isolated` cluster has a private API server endpoint, which will be made accessible only from within the access cluster.
+
+## Dawn AI
+
+Once setup is complete, you should provide the TRE Administrators with the following:
+
+- public IP address of bastion host for accessing the access cluster
+- Kubernetes credentials for the access and isolated clusters
+- internal and external IP addresses of the load balancer on the access cluster
