@@ -266,7 +266,11 @@ async def get_workflow_log(
 
     print(f"Argo log raw response: '{r.text}'")
     # Argo log endpoint returns newline-delimited JSON (NDJSON)
-    lines = [json.loads(line) for line in r.text.splitlines() if line.strip()]
+    lines = []
+    for line in r.iter_lines():
+        if line:
+            print(f"Log line: {line}")
+            lines.append(json.loads(line))
     return lines
 
 
