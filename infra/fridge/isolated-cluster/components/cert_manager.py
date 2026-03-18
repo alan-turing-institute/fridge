@@ -7,7 +7,7 @@ from pulumi_kubernetes.helm.v3 import Release
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 
-from enums import K8sEnvironment, PodSecurityStandard, TlsEnvironment, tls_issuer_names
+from enums import K8sEnvironment, PodSecurityStandard
 
 
 class CertManagerArgs:
@@ -15,11 +15,9 @@ class CertManagerArgs:
         self,
         config: pulumi.config.Config,
         k8s_environment: K8sEnvironment,
-        tls_environment: TlsEnvironment,
     ):
         self.config = config
         self.k8s_environment = k8s_environment
-        self.tls_environment = tls_environment
 
 
 class CertManager(ComponentResource):
@@ -229,6 +227,7 @@ class CertManager(ComponentResource):
         issuer_outputs = {}
         # Always create a self-signed issuer and cert for use in development and for internal services
         cert_manager_secretName = "dev-certificate"
+
         cert_manager_dev_issuer_self_signed = CustomResource(
             resource_name="cert-manager-dev-self-signed-issuer",
             api_version="cert-manager.io/v1",
@@ -239,6 +238,7 @@ class CertManager(ComponentResource):
             spec={"selfSigned": {}},
             opts=ResourceOptions(depends_on=[cert_manager]),
         )
+
         cert_manager_dev_certificate = CustomResource(
             resource_name="cert-manager-dev-certificate",
             api_version="cert-manager.io/v1",
@@ -267,6 +267,7 @@ class CertManager(ComponentResource):
                 ResourceOptions(depends_on=[cert_manager_dev_issuer_self_signed]),
             ),
         )
+
         cert_manager_dev_issuer = CustomResource(
             resource_name="cert-manager-dev-issuer",
             api_version="cert-manager.io/v1",
@@ -281,6 +282,7 @@ class CertManager(ComponentResource):
                 ResourceOptions(depends_on=[cert_manager_dev_certificate]),
             ),
         )
+
         issuer_outputs = {
             "cert_manager_dev_issuer_self_signed": cert_manager_dev_issuer_self_signed,
             "cert_manager_dev_certificate": cert_manager_dev_certificate,
@@ -299,7 +301,10 @@ class CertManager(ComponentResource):
             values={
                 "secretTargets": {
                     "enabled": True,
-                    "authorizedSecrets": ["trusted-certificates"],
+                    "authorizedSecrets": [
+                        "trusted-certificates",
+                        "operator-ca-tls-argo-artifacts",
+                    ],
                 },
                 "resources": {
                     "requests": {
