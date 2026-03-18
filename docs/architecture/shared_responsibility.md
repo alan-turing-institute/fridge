@@ -1,7 +1,7 @@
 (arch-shared-responsibility)=
 # FRIDGE Shared Responsibility Model
 
-```{figure} /docs/static/Fridge_Shared_Responsibility_Model.drawio.svg
+```{figure} ../static/Fridge_Shared_Responsibility_Model.drawio.svg
 ---
 name: fridge-shared-responsibility-diagram
 alt: FRIDGE Shared Responsibility Model diagram
@@ -19,8 +19,7 @@ Organisations should carefully consider their role within this model, as respons
 
 ## Shared Responsibility Scope
 
-```{figure} /docs/static/Fridge_Shared_Responsibility_Model.drawio.svg
----/docs/static/FRIDGE_SRM_Scope.svg
+```{figure} ../static/FRIDGE_SRM_Scope.drawio.svg
 ---
 name: fridge-shared-responsibility-scope
 alt: FRIDGE Shared Responsibility Model scope diagram
