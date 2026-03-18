@@ -17,7 +17,9 @@ Container-based Kubernetes environments such as K3d or Kind are not supported, a
 A FRIDGE consists of two Kubernetes clusters: an access cluster and an isolated cluster.
 The access cluster hosts the Harbor container registry and an SSH server for accessing the isolated cluster.
 The isolated cluster hosts the FRIDGE services.
+
 The deployment process uses Pulumi to manage the infrastructure as code.
+
 You will require appropriate Kubernetes contexts set up for both clusters.
 
 :::{note}
@@ -39,17 +41,6 @@ pulumi login --local
 
 First, navigate to the `infra/fridge/access-cluster/` folder.
 You will deploy the access cluster first, as it hosts the Harbor container registry and SSH server required to access the isolated cluster.
-
-### Virtual Environment
-
-Set up a virtual environment for this project.
-You can use the following commands:
-
-```console
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
 
 ### Creating a stack
 
@@ -136,7 +127,7 @@ However, two additional steps are required before deploying FRIDGE to the isolat
    pulumi config set kubernetes:context <isolated-cluster-context>
    ```
 
-Once these steps are complete, you can deploy the isolated cluster stack using the same `pulumi up` command as before, after setting up the virtual environment and creating the stack, and setting the required configuration keys.
+Once these steps are complete, you can deploy the isolated cluster stack using the same `pulumi up` command as before, after creating the stack, and setting the required configuration keys.
 
 ## FRIDGE deployment targets
 
@@ -157,4 +148,3 @@ Some components are pre-installed on DAWN.
 | ingress-nginx     | ✅    |       | ✅    |
 | longhorn          |       | ✅    | ✅    |
 | minio             | ✅    | ✅    | ✅    |
-| prometheus        | ✅    |       | ✅    |
