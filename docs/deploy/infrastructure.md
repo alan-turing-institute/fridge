@@ -34,7 +34,7 @@ The `TRE Administrators` must supply a range of IP addresses from which the serv
 The initial Network Security Group setup will restrict incoming traffic on port 2500 to the IP addresses they provide.
 :::
 
-### Deploying the infrastructure with Pulumi
+### Deploying the AKS infrastructure with Pulumi
 
 To deploy the infrastructure, follow these steps:
 
@@ -44,7 +44,7 @@ To deploy the infrastructure, follow these steps:
 pulumi stack init <stack-name>
 ```
 
-2. Configure the stack with the necessary settings, such as the Azure region, resource group name, and SSH public key:
+1. Configure the stack with the necessary settings, such as the Azure region, resource group name, and SSH public key:
 
 ```console
 pulumi config set azure:location <region>
@@ -56,7 +56,7 @@ pulumi config set ssh_public_key "<your-ssh-public-key>"
 The provided `Pulumi.yaml` provides the schema for your Pulumi configuration file
 :::
 
-3. Deploy the infrastructure:
+1. Deploy the infrastructure:
 
 ```console
 pulumi up
@@ -67,6 +67,8 @@ Note that for development and testing, the `access` cluster has a public API ser
 The `isolated` cluster has a private API server endpoint, which will be made accessible only from within the access cluster.
 
 ## Dawn AI
+
+Deployment on Dawn is currently a partly manual, partly Pulumi based process.
 
 Once setup is complete, you should provide the TRE Administrators with the following:
 
