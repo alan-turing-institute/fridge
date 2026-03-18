@@ -51,7 +51,6 @@ cert_manager = components.CertManager(
     args=components.CertManagerArgs(
         config=config,
         k8s_environment=k8s_environment,
-        tls_environment=tls_environment,
     ),
 )
 
