@@ -358,6 +358,26 @@ async def submit_workflow_from_template(
     }
 
 
+@app.get("/workflows/log/{namespace}/{workflow_name}", tags=["Argo Workflows"])
+async def get_workflow_log(
+    namespace: str,
+    workflow_name: str,
+    verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
+        verify_request
+    ),
+):
+    r = requests.get(
+        f"{ARGO_SERVER}/api/v1/workflows/{namespace}/{workflow_name}/log",
+        verify=VERIFY_TLS,
+        headers={"Authorization": f"Bearer {argo_token()}"},
+    )
+    if r.status_code != 200:
+        raise HTTPException(
+            status_code=r.status_code, detail=parse_argo_error(r.json())
+        )
+    return r.json()
+
+
 @app.post("/object/{bucket}/upload", tags=["s3"])
 async def upload_object(
     bucket: str,
