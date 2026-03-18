@@ -22,27 +22,29 @@ The `access` cluster will host the Harbor container registry and an SSH server f
 
 The example project also deploys the necessary networking components.
 
-Each cluster is deployed to its own VNet.
+Each cluster is deployed to its own VNet. You will need to supply the desired CIDR for each VNet in the Pulumi configuration, and desired subnet within those VNets for the AKS nodes to be deployed to.
 
-The VNets are peered. You will need to supply
+Basic Network Security Groups (NSGs) will also be set up for the VNets.
+
+:::{important}
+Note that when the `TRE Administrators` deploy FRIDGE services to the access cluster, they will include an SSH server listening on port 2500.
+
+The `TRE Administrators` must supply a range of IP addresses from which the server should accept connections.
+
+The initial Network Security Group setup will restrict incoming traffic on port 2500 to the IP addresses they provide.
+:::
+
+### Deploying the infrastructure with Pulumi
 
 To deploy the infrastructure, follow these steps:
 
-1. Set up a virtual environment for the project:
-
-```console
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-2. Create a new Pulumi stack:
+1. Create a new Pulumi stack:
 
 ```console
 pulumi stack init <stack-name>
 ```
 
-3. Configure the stack with the necessary settings, such as the Azure region, resource group name, and SSH public key:
+2. Configure the stack with the necessary settings, such as the Azure region, resource group name, and SSH public key:
 
 ```console
 pulumi config set azure:location <region>
@@ -50,13 +52,17 @@ pulumi config set resource_group_name <resource-group-name>
 pulumi config set ssh_public_key "<your-ssh-public-key>"
 ```
 
-4. Deploy the infrastructure:
+:::{important}
+The provided `Pulumi.yaml` provides the schema for your Pulumi configuration file
+:::
+
+3. Deploy the infrastructure:
 
 ```console
 pulumi up
 ```
 
-For development and testing, the `access` cluster has a public API server endpoint. In production, it would be private and accessed via a bastion.
+Note that for development and testing, the `access` cluster has a public API server endpoint. In production, it would be private and accessed via a bastion.
 
 The `isolated` cluster has a private API server endpoint, which will be made accessible only from within the access cluster.
 
