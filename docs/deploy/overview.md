@@ -15,7 +15,7 @@ For Hosting Provider Administrators, follow the guide in [Deploy Infrastructure]
 
 For TRE Administrators, follow the guide in [Deploy Services](./services.md)
 
-# Prerequisites
+## Prerequisites
 
 You will need the following tools installed to deploy FRIDGE:
 
