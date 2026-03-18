@@ -37,7 +37,7 @@ pulumi login --local
 
 ### Access cluster
 
-First, navigate to the `infra/fridge-dual-cluster/access-cluster/` folder.
+First, navigate to the `infra/fridge/access-cluster/` folder.
 You will deploy the access cluster first, as it hosts the Harbor container registry and SSH server required to access the isolated cluster.
 
 ### Virtual Environment
@@ -53,7 +53,7 @@ pip install -r requirements.txt
 
 ### Creating a stack
 
-The `infra/fridge-dual-cluster/access-cluster/` folder already contains a Pulumi project configuration file (`Pulumi.yaml`), so you do not need to run `pulumi new` to create a new project.
+The `infra/fridge/access-cluster/` folder already contains a Pulumi project configuration file (`Pulumi.yaml`), so you do not need to run `pulumi new` to create a new project.
 The `Pulumi.yaml` file defines the project name and a schema for the configurations for individual stacks.
 
 To create a new stack, you can use the following command:
@@ -115,7 +115,7 @@ pulumi up
 ### Isolated cluster
 
 You will deploy the isolated cluster next, as it hosts the FRIDGE services.
-Navigate to the `infra/fridge-dual-cluster/isolated-cluster/` folder.
+Navigate to the `infra/fridge/isolated-cluster/` folder.
 
 However, two additional steps are required before deploying FRIDGE to the isolated cluster.
 
