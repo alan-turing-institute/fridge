@@ -371,6 +371,8 @@ async def get_workflow_log(
     params = {
         "podName": pod_name or workflow_name,
     }
+    if container_name:
+        params["logOptions.container"] = container_name
     r = requests.get(
         f"{ARGO_SERVER}/api/v1/workflows/{namespace}/{workflow_name}/log",
         verify=VERIFY_TLS,
