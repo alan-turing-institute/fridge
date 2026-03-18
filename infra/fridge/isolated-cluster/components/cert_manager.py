@@ -224,8 +224,7 @@ class CertManager(ComponentResource):
                 )
 
         # Create ClusterIssuers
-        issuer_outputs = {}
-        # Always create a self-signed issuer and cert for use in development and for internal services
+        # Create a self-signed issuer and cert for use in internal services
         cert_manager_secretName = "dev-certificate"
 
         cert_manager_dev_issuer_self_signed = CustomResource(
@@ -239,7 +238,7 @@ class CertManager(ComponentResource):
             opts=ResourceOptions(depends_on=[cert_manager]),
         )
 
-        cert_manager_dev_certificate = CustomResource(
+        self.cert_manager_dev_certificate = CustomResource(
             resource_name="cert-manager-dev-certificate",
             api_version="cert-manager.io/v1",
             kind="Certificate",
@@ -268,7 +267,7 @@ class CertManager(ComponentResource):
             ),
         )
 
-        cert_manager_dev_issuer = CustomResource(
+        self.cert_manager_dev_issuer = CustomResource(
             resource_name="cert-manager-dev-issuer",
             api_version="cert-manager.io/v1",
             kind="ClusterIssuer",
@@ -279,15 +278,9 @@ class CertManager(ComponentResource):
             spec={"ca": {"secretName": cert_manager_secretName}},
             opts=ResourceOptions.merge(
                 child_opts,
-                ResourceOptions(depends_on=[cert_manager_dev_certificate]),
+                ResourceOptions(depends_on=[self.cert_manager_dev_certificate]),
             ),
         )
-
-        issuer_outputs = {
-            "cert_manager_dev_issuer_self_signed": cert_manager_dev_issuer_self_signed,
-            "cert_manager_dev_certificate": cert_manager_dev_certificate,
-            "cert_manager_dev_issuer": cert_manager_dev_issuer,
-        }
 
         # Add trust-manager
         self.trust_manager = Release(
@@ -354,6 +347,9 @@ class CertManager(ComponentResource):
             {
                 "cert-manager": cert_manager,
                 "cert-manager-ns": cert_manager_ns,
-                **issuer_outputs,
+                "cert_manager_dev_issuer_self_signed": cert_manager_dev_issuer_self_signed,
+                "cert_manager_dev_certificate": self.cert_manager_dev_certificate,
+                "cert_manager_dev_issuer": self.cert_manager_dev_issuer,
+                "trust_manager": self.trust_manager,
             }
         )
