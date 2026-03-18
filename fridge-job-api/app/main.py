@@ -362,14 +362,20 @@ async def submit_workflow_from_template(
 async def get_workflow_log(
     namespace: str,
     workflow_name: str,
+    pod_name: str | None = None,
+    container_name: str | None = None,
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
     ),
 ):
+    params = {
+        "podName": pod_name or workflow_name,
+    }
     r = requests.get(
         f"{ARGO_SERVER}/api/v1/workflows/{namespace}/{workflow_name}/log",
         verify=VERIFY_TLS,
         headers={"Authorization": f"Bearer {argo_token()}"},
+        params=params,
     )
     if r.status_code != 200:
         raise HTTPException(
