@@ -242,16 +242,16 @@ async def get_workflow_log(
     namespace: str,
     workflow_name: str,
     pod_name: str | None = None,
-    container_name: str | None = None,
+    container_name: str = "main",
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
     ),
 ):
     params = {
         "podName": pod_name or workflow_name,
+        "logOptions.container": container_name,
     }
-    if container_name:
-        params["logOptions.container"] = container_name
+
     r = requests.get(
         f"{ARGO_SERVER}/api/v1/workflows/{namespace}/{workflow_name}/log",
         verify=VERIFY_TLS,
@@ -264,8 +264,6 @@ async def get_workflow_log(
             status_code=r.status_code, detail=parse_argo_error(r.json())
         )
 
-    print(f"Argo log raw response: '{r.text}'")
-    # Argo log endpoint returns newline-delimited JSON (NDJSON)
     lines = []
     for line in r.iter_lines():
         if line:
