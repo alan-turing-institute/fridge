@@ -32,7 +32,7 @@ class ObjectStorage(ComponentResource):
             "minio-operator-ns",
             metadata=ObjectMetaArgs(
                 name="minio-operator",
-                labels={"tls-trust-bundle": "enabled"}
+                labels={"minio-trust-bundle": "enabled"}
                 | PodSecurityStandard.RESTRICTED.value,
             ),
             opts=child_opts,
@@ -42,7 +42,8 @@ class ObjectStorage(ComponentResource):
             "minio-tenant-ns",
             metadata=ObjectMetaArgs(
                 name="argo-artifacts",
-                labels={} | PodSecurityStandard.RESTRICTED.value,
+                labels={"minio-trust-bundle": "enabled"}
+                | PodSecurityStandard.RESTRICTED.value,
             ),
             opts=child_opts,
         )
@@ -111,30 +112,30 @@ class ObjectStorage(ComponentResource):
             ),
         )
 
-        # Add a second certificate for the Minio Operator with the same CA issuer
-        # so that it trusts the certificate used by the tenant
-        self.minio_operator_tenant_certificate = CustomResource(
-            "minio-operator-tenant-certificate",
-            api_version="cert-manager.io/v1",
-            kind="Certificate",
+        self.minio_trust_bundle = CustomResource(
+            "minio-trust-bundle",
+            api_version="trust.cert-manager.io/v1alpha1",
+            kind="Bundle",
             metadata=ObjectMetaArgs(
-                name="operator-ca-tls-argo-artifacts-tls",
-                namespace=self.minio_operator_ns.metadata.name,
+                name="operator-ca-tls-argo-artifacts",
             ),
             spec={
-                "secretName": "operator-ca-tls-argo-artifacts-tls",
-                "issuerRef": {
-                    "name": tls_issuer_names[args.tls_environment],
-                    "kind": "ClusterIssuer",
-                },
-                "dnsNames": [
-                    self.minio_cluster_url,
+                "sources": [
+                    {"useDefaultCAs": True},
+                    {"secret": {"name": "dev-certificate", "key": "ca.crt"}},
                 ],
+                "target": {
+                    "secret": {
+                        "key": "ca-certificates.crt",
+                    },
+                    "namespaceSelector": {
+                        "matchLabels": {
+                            "minio-trust-bundle": "enabled",
+                        }
+                    },
+                },
             },
-            opts=ResourceOptions.merge(
-                child_opts,
-                ResourceOptions(depends_on=[self.minio_operator_ns]),
-            ),
+            opts=child_opts,
         )
 
         self.minio_tenant = Chart(
