@@ -267,9 +267,10 @@ async def get_workflow_log(
     lines = []
     for line in r.iter_lines():
         if line:
-            print(f"Log line: {line}")
-            lines.append(json.loads(line))
-    return lines
+            parsed = json.loads(line)
+            if "result" in parsed:
+                lines.append(parsed["result"].get("content", ""))
+    return {"podName": workflow_name, "log": "\n".join(lines)}
 
 
 @app.get("/workflows/{namespace}/{workflow_name}", tags=["Argo Workflows"])
