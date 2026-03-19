@@ -1,3 +1,13 @@
+h1, h2, h3, h4, h5, h6{
+  text-transform: capitalize;
+}
+.primary-scrollbar {
+  text-transform: capitalize;
+}
+
+.CollapsibleContent {
+  text-transform: capitalize;
+}
 .role {}
 .job-submitter {
   color: #fc8d62;
