@@ -1,4 +1,6 @@
-(arch-shared-responsibility)=
+---
+short_title: Shared Responsibility Model
+---
 # FRIDGE Shared Responsibility Model
 
 ```{figure} ../static/Fridge_Shared_Responsibility_Model.drawio.svg
@@ -28,4 +30,16 @@ Shows 2 shared responsibility models within the scope of the single TRE
 ```
 In the example above the scope of a single TRE is extended from a cloud provider (covered by the cloud provider shared responsibility model) onto a FRIDGE super computing platform (covered byt the FRIDGE shared responsibility model)
 
+## Shared Processes and Infrastructure
 
+While the shared responsibility model clearly delineates ownership, operating safely in practice requires a set of agreed cross-boundary processes. Responsibility for a control does not eliminate the need for coordination with other parties in exercising it.
+
+A key example is infrastructure configuration: {term}`TRE Administrator`s define and approve the technical configurations required to maintain a secure environment, but the implementation of those configurations on the underlying infrastructure is carried out by the {term}`Infrastructure Provider Administrator`. Neither party can fulfil their responsibilities in isolation.
+
+These shared processes should be:
+
+- Defined and agreed between relevant parties before the platform goes into operation, with clear handoff points, acceptance criteria, and escalation paths documented.
+- Monitored through the {term}`Operational Management Group`, with evidence of process execution reported as part of regular risk and performance monitoring to Federation Governance.
+- Automated wherever possible — manual handoffs introduce delay and risk of error; automation reduces both, and provides an auditable record of configuration changes.
+
+Other shared processes requiring similar treatment include instance deployment, decommissioning, and incident response.

@@ -1,51 +1,42 @@
-(arch-roles)=
-# Roles
+---
+short_title: Role Catalogue
+---
+# Role Catalogue
 
 :::{glossary}
 TRE Operator Organisation
-: Operates Front Door TRE and FRIDGE TRE, manages technical security controls, and may receive delegated approval authority from Data Provider.
-  See Safe Setting Process, Safe Project Process, and Safe Researcher Process.
+: Operates the full stack TRE (sometimes called the front door TRE) and FRIDGE TRE, manages technical security controls, and may receive delegated approval authority from Data Provider.
 
 FRIDGE Hosting Organisation
-: Provisions and secures resources on FRIDGE hosting facility (AIRR infrastructure).
-  Specialisations include:
+: Provisions and secures resources on FRIDGE hosting facility to host the {term}`Satellite TRE`.
+  Specialisations might include:
   - Public Cloud hosting organisation (e.g. AWS, GCP, Azure)
-  - Private Cloud provided by the TRE Operator Organisation
-  - National Facility (e.g. AIRR)
+  - A Private Cloud hosted by another organisation
+  - National Facility (e.g. [AIRR](https://www.ukri.org/news/300-million-to-launch-first-phase-of-new-ai-research-resource/))
   
-  See Safe Setting Process and Safe Project Process.
-
 Resource Allocator
-: Approves compute resource requests, ensures projects align with AIRR objectives, and monitors resource utilisation.
-  Responsible for capacity and demand management.
-  See Safe Setting Process and Safe Project Process.
+: Approves compute resource requests, and monitors resource utilisation of the supercomputing platform hosting the FRIDGE.
 
-Top Management
-: Within the scope of FRIDGE, this role represents the "Organisation" covered by top management, which includes the extended governance boundary.
-  See Governing FRIDGE.
-  Source: SATRE.
+FRIDGE Federation Governance 
+: Equivalent to ISO 27001 top management accountable for risk, determining requirements and monitoring performance. See [FRIDGE Governance](shared_gov_model.md).
 
 Operational Management Group
-: Representatives from all four key organisations (Resource Allocator, FRIDGE Hosting Organisation, TRE Operator Organisation, Data Provider).
-  Coordinates day-to-day operations, addresses cross-organisational issues, and escalates strategic issues to Top Management.
+: Representatives from the technical groups running FRIDGE, information governance and researchers as appropriate to manage risk in day-to-day operations. See [FRIDGE Governance](shared_gov_model.md).
 
 Principal Investigator
 : Leads research projects, submits Safe Project applications, and nominates researchers.
 
 Safe Researcher
-: Researcher who has completed training, signed attestation, and been approved for data access.
-  This person is authorised to use the TRE.
-  Source: Safe Researcher Process.
+: Researcher who has completed training, signed attestation, and been approved for data access. This person is authorised to use the TRE.
 
 Job Submitter
 : A subset of {term}`Safe Researcher` who can submit FRIDGE jobs (i.e. dispatch jobs to a remote resource).
-  Within the scope of the FRIDGE architecture, this role requires the data consumer role.
-  See Safe Project Process.
 
 TRE Administrator
 : Deploys FRIDGE components under responsibility of {term}`TRE Operator Organisation` (blue in the diagrams).
+  A subset of {term}`FRIDGE Hosting Organisation`.
 
 Infrastructure Provider Administrator
 : Deploys FRIDGE components under responsibility of {term}`FRIDGE Hosting Organisation` (green in the diagrams).
-  A subset of {term}`FRIDGE Hosting Organisation`.
+  A subset of {term}`TRE Operator Organisation`.
 :::
