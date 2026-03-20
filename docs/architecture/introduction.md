@@ -40,7 +40,7 @@ Satellite TRE
 Roles
 : The operation of a FRIDGE instance depends on people, most likely, split between multiple organisations.
   Their responsibilities and access form a key part of FRIDGE's security and governance.
-  As such, we have defined [roles](#arch-roles) for FRIDGE and outlined their scope and purpose.
+  As such, we have defined [roles](Roles_Detailed.md) for FRIDGE and outlined their scope and purpose.
   This scheme helps clarify who is responsible for infrastructure or processes irrespective of which organisation they belong to or what their job title is.
 
 Governance Boundary Extension
