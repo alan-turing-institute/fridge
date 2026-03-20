@@ -1,0 +1,88 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: intel-resnet50
+  namespace: argo-workflows
+spec:
+  entrypoint: intel-resnet50
+  securityContext:
+    supplementalGroups:
+      - 110
+  templates:
+    - name: intel-resnet50
+      container:
+        resources:
+          limits:
+            gpu.intel.com/i915: 1
+        image: intel/intel-extension-for-pytorch:2.8.10-xpu
+        command: ["bash", "-c"]
+        args:
+          - |
+            echo "Checking GPU devices"
+            ls -l /dev/dri || true
+
+            cat << 'EOF' > /tmp/resnet50_bench.py
+            import time
+            import torch
+            import torch.nn as nn
+            import torch.optim as optim
+            import torchvision.models as models
+
+            print('XPU available:', torch.xpu.is_available())
+            print('XPU count:', torch.xpu.device_count())
+            if not torch.xpu.is_available():
+                print('XPU not available, exiting')
+                exit(1)
+
+            device = torch.device('xpu:0')
+            torch.xpu.set_device(device)
+
+            # Synthetic ImageNet-style data
+            batch_size = 128
+            num_batches = 200
+            x = torch.randn(batch_size, 3, 224, 224, device=device)
+            y = torch.randint(0, 1000, (batch_size,), device=device)
+
+            model = models.resnet50().to(device)
+            criterion = nn.CrossEntropyLoss()
+            optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
+
+            print('Warming up JIT...')
+            model.train()
+            for _ in range(3):
+                optimizer.zero_grad()
+                with torch.amp.autocast('xpu', dtype=torch.bfloat16):
+                    outputs = model(x)
+                    loss = criterion(outputs, y)
+                loss.backward()
+                optimizer.step()
+            torch.xpu.synchronize()
+
+            print(f'Beginning benchmark: {num_batches} batches of {batch_size} images (224x224, synthetic ImageNet)')
+            start = time.time()
+
+            for i in range(num_batches):
+                optimizer.zero_grad()
+                with torch.amp.autocast('xpu', dtype=torch.bfloat16):
+                    outputs = model(x)
+                    loss = criterion(outputs, y)
+                loss.backward()
+                optimizer.step()
+
+                if i % 10 == 0:
+                    print(f'Batch {i}/{num_batches}, Loss {loss.item():.4f}')
+
+            torch.xpu.synchronize()
+            end = time.time()
+
+            elapsed = end - start
+            total_images = batch_size * num_batches
+            print(f'Benchmark complete')
+            print(f'Total time: {elapsed:.3f} seconds')
+            print(f'Images/sec: {total_images / elapsed:.1f}')
+            print(f'Avg batch time: {elapsed / num_batches * 1000:.2f} ms')
+            EOF
+
+            echo "Running ResNet-50 benchmark on single XPU tile"
+            python3 /tmp/resnet50_bench.py
+  serviceAccountName: argo-workflow
