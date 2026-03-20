@@ -286,15 +286,8 @@ class ApiServer(ComponentResource):
             else {}
         )
 
-        self.api_service = Service(
-            "fridge-api-service",
-            metadata=ObjectMetaArgs(
-                name="fridge-api",
-                namespace=api_server_ns.metadata.name,
-                labels={"app": "fridge-api-server"},
-                annotations=api_service_annotations,
-            ),
-            spec=ServiceSpecArgs(
+        if K8sEnvironment(args.config.get("k8s_env")) == K8sEnvironment.AKS:
+            api_svc_specs = ServiceSpecArgs(
                 type="LoadBalancer",
                 selector=fridge_api_server.spec.template.metadata.labels,
                 ports=[
@@ -304,7 +297,30 @@ class ApiServer(ComponentResource):
                         target_port=8000,
                     )
                 ],
+            )
+        elif K8sEnvironment(args.config.get("k8s_env")) == K8sEnvironment.DAWN:
+            api_svc_specs = ServiceSpecArgs(
+                type="NodePort",
+                selector=fridge_api_server.spec.template.metadata.labels,
+                ports=[
+                    ServicePortArgs(
+                        protocol="TCP",
+                        node_port=30180,
+                        port=80,
+                        target_port=8000,
+                    )
+                ],
+            )
+
+        self.api_service = Service(
+            "fridge-api-service",
+            metadata=ObjectMetaArgs(
+                name="fridge-api",
+                namespace=api_server_ns.metadata.name,
+                labels={"app": "fridge-api-server"},
+                annotations=api_service_annotations,
             ),
+            spec=api_svc_specs,
             opts=child_opts,
         )
 
