@@ -19,7 +19,7 @@ At the upper tier, FRIDGE Federation Governance provides strategic oversight. Da
 
 - The {term}`Resource Allocator`, determining project suitability and approving workspace resource allocation.
 - A [PPI (Public and Patient Involvement)](https://glossary.uktre.org/en/stable/#term-patient-and-public-involvement--ppi-) function ensures research activities reflect public interests.
-- {term}`Operational Management Group` representation provides the formal link between strategic governance and operational delivery, receiving risk and performance reporting from below and issuing requirements downward. 
+- {term}`Operational Management Group` representation provides the formal link between strategic governance and operational delivery, receiving risk and performance reporting from below and issuing requirements downward.
 
 ## Operational Management Group
 

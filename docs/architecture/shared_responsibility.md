@@ -28,7 +28,7 @@ alt: FRIDGE Shared Responsibility Model scope diagram
 ---
 Shows 2 shared responsibility models within the scope of the single TRE
 ```
-In the example above the scope of a single TRE is extended from a cloud provider onto a supercomputing platform. 
+In the example above the scope of a single TRE is extended from a cloud provider onto a supercomputing platform.
 
 - The public cloud TRE remains covered by the cloud provider responsibility model
 - The FRIDGE satellite TRE is covered by the FRIDGE shared responsibility model
