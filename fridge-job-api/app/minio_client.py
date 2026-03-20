@@ -79,9 +79,6 @@ class MinioClient:
         # Read service account token
         sa_token = Path(self.SA_TOKEN_FILE).read_text().strip()
 
-        # Cache the token used here for change detection
-        self._last_token = sa_token
-
         ssl_context = ssl.create_default_context(cafile=self.KUBE_CA_CRT)
 
         # Create urllib3 client which accepts kube CA cert
@@ -104,6 +101,8 @@ class MinioClient:
             secret_key = credentials.find("sts:SecretAccessKey", ns).text
             session_token = credentials.find("sts:SessionToken", ns).text
 
+            # Cache the token used here for change detection
+            self._last_token = sa_token
             return access_key, secret_key, session_token
 
     def _token_has_changed(self):
@@ -129,6 +128,9 @@ class MinioClient:
                     print("Minio client token refreshed successfully")
                 else:
                     print("Failed to refresh Minio client token")
+                    raise HTTPException(
+                        status_code=500, detail="Failed to refresh Minio token"
+                    )
             except Exception as e:
                 print(f"Failed to refresh Minio client token: {e}")
                 raise HTTPException(

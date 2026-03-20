@@ -1,9 +1,10 @@
 from pulumi import ComponentResource, ResourceOptions
-from pulumi_kubernetes.core.v1 import Namespace
+from pulumi_kubernetes.core.v1 import Namespace, Secret
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.helm.v3 import Release
 from pulumi_kubernetes.helm.v4 import RepositoryOptsArgs
 from pulumi_kubernetes.storage.v1 import StorageClass
+from pulumi_random import RandomPassword
 
 from enums import K8sEnvironment, PodSecurityStandard
 
@@ -62,6 +63,25 @@ class StorageClasses(ComponentResource):
                     opts=child_opts,
                 )
 
+                longhorn_encryption_secret = Secret(
+                    "longhorn-encryption-secret",
+                    metadata=ObjectMetaArgs(
+                        name="longhorn-crypto-secret",
+                        namespace=longhorn_ns.metadata.name,
+                    ),
+                    string_data={
+                        "CRYPTO_KEY_VALUE": RandomPassword(
+                            "longhorn-encryption-key",
+                            length=32,
+                            special=True,
+                        ).result
+                    },
+                    opts=ResourceOptions.merge(
+                        child_opts,
+                        ResourceOptions(depends_on=[longhorn_ns]),
+                    ),
+                )
+
                 longhorn = Release(
                     "longhorn",
                     namespace=longhorn_ns.metadata.name,
@@ -103,6 +123,13 @@ class StorageClasses(ComponentResource):
                         "fsType": "ext4",
                         "numberOfReplicas": "2",
                         "staleReplicaTimeout": "2880",
+                        "encrypted": "true",
+                        "csi.storage.k8s.io/provisioner-secret-name": longhorn_encryption_secret.metadata.name,
+                        "csi.storage.k8s.io/provisioner-secret-namespace": longhorn_ns.metadata.name,
+                        "csi.storage.k8s.io/node-stage-secret-name": longhorn_encryption_secret.metadata.name,
+                        "csi.storage.k8s.io/node-stage-secret-namespace": longhorn_ns.metadata.name,
+                        "csi.storage.k8s.io/node-publish-secret-name": longhorn_encryption_secret.metadata.name,
+                        "csi.storage.k8s.io/node-publish-secret-namespace": longhorn_ns.metadata.name,
                     },
                     provisioner="driver.longhorn.io",
                     opts=ResourceOptions.merge(
