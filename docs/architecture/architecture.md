@@ -17,13 +17,27 @@ Dotted lines indicate pulls, triggered from the end of the arrow.
 
 ## Satellite TRE and TRE Tenancy
 
-### Overview
+[](#fig-satellite) demonstrates the high-level concept of a {term}`satellite TRE`.
+It shows the connection of an existing TRE to a {term}`satellite TRE` instance deployed remote infrastructure.
 
-[](#fig-tenancy) gives a high-level overview of a FRIDGE deployment.
-It demonstrates the {term}`satellite TRE` concept, showing the connection of an existing TRE to a FRIDGE instance deployed onto remote infrastructure.
-
+The secure {term}`TRE tenancy` boundary enables the {term}`extension of existing governance to the satellite TRE <Governance Boundary Extension>`.
 On the remote infrastructure, a dashed line indicate the boundary of the {term}`TRE tenancy`.
 All resources within the tenancy are within the governance domain of the {term}`Home TRE`, through the {term}`governance boundary extension` agreed in the {term}`shared responsibility` model.
+
+:::{figure} ../static/satellite_tre.drawio.svg
+:label: fig-satellite
+:alt: A block diagram depicting a satellite TRE. It shows how the satellite TRE is an adjunct to an existing TRE. The TRE admins configure the satellite TRE on remote infrastructure, while the remote infrastructure admins configure the TRE tenancy. TRE Researchers are able to dispatch jobs and manage data from their home TRE workspace.
+
+A schematic of the {term}`satellite TRE` concept, showing the home TRE and {term}`TRE Tenancy`.
+:::
+
+## FRIDGE
+
+### Overview
+
+[](#fig-tenancy) gives an overview of the design of FRIDGE.
+Compared to [](#fig-satellite), [](#fig-tenancy) reveals detail of the structure of a FRIDGE {term}`satellite TRE`.
+It shows how management traffic is isolated from research traffic and part of how the {term}`TRE Tenancy` is defined through network isolation.
 
 :::{figure} ../static/high_level.drawio.svg
 :label: fig-tenancy
