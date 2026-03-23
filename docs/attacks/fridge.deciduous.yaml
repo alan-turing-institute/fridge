@@ -1,0 +1,182 @@
+title: fridge.deciduous
+
+reality: "#hide"
+risk: value
+
+# Removed "make local copy" - redundant detail, IMO
+# Network policy: kept the K8s policy but no HPC policy (subsumed in HPC godhood)
+
+# TODO
+# - PIM? is it proposed for anything?
+# - East-west traffic encryption?
+
+goals:
+  - exfiltrate_sensitive_data:
+    from:
+      - attacker_has_clear_text:
+        required: true
+      - ext_access_network:
+  - intercept_sensitive_data:
+    from:
+      - internet_mitm
+ 
+facts:
+  - hpc_admins_god: HPC admins can access all storage and compute
+  - post_quantum_decryption:
+    from:
+      - reality: <0>
+  - third_party_containers: Use of third-party containers
+  - user_researchers: Researchers can create containers and commands
+  - tre_operators: TRE operators can administer FRIDGE
+  - ssh_from_internet: Access via SSH over internet
+  - ext_access_network: Attacker has external access
+    from:
+      - rm_k8s_network_policy
+      - attacker_hpc_admin
+      - dns_push
+      - compromise_privileged_services
+  - attacker_hpc_admin: Attacker is HPC admin
+    from:
+      - rogue_hpc_admin
+  - attacker_has_k8s_secrets: Attacker has K8s secrets
+    from:
+      - read_k8s_secrets
+      - use_known_k8s_secrets
+  - attacker_has_clear_text: Attacker has clear text sensitive data
+    from:
+      - attacker_decrypts_data
+      - malicious_user_code
+      - access_any_clear_text_on_disk
+  - attacker_can_decrypt:
+    from:
+      - attacker_has_k8s_secrets
+      - break_encryption
+      - encrypt_all_sensitive_data:
+        backwards: true
+
+attacks:
+  - internet_mitm: MITM in internet/edge
+    from:
+      - ssh_from_internet
+  - rogue_researcher:
+    from:
+      - user_researchers: evil <0.1>
+      - user_researchers: pfishing <0.1>
+  - rogue_fridge_admin:
+    from:
+      - tre_operators: evil <0.1>
+      - tre_operators: pfishing <0.1>
+  - rogue_hpc_admin:
+    from:
+      - hpc_admins_god: evil <0.1>
+      - hpc_admins_god: pfishing <0.1>
+  - access_stored_data: Access project data on disk
+    from:
+      - attacker_hpc_admin
+      - malicious_user_code
+      - supply_chain_attack_in_container: supply chain attacker must be targeting FRIDGE <0.1>
+      - host_access_from_container
+  - access_any_clear_text_on_disk: Access any clear text sensitive data on disk
+    from:
+      - access_stored_data: (if not encrypted)
+  - break_encryption:
+    from:
+      - post_quantum_decryption
+  # Container attacks
+  - host_access_from_container:
+    from:
+      - malicious_user_code: container breakout <0.1>
+  - compromise_privileged_services:
+# Attempting to compromise services which have less resitrictive PSS (e.g. Minio, Longhorn)
+    from:
+      - malicious_user_code: requires engineering <0.1>
+  - read_k8s_secrets: Read K8s secrets from disk storage
+    from:
+      - attacker_hpc_admin: obtuse <0.5>
+      - handover_kubeconfig:
+        backwards: true
+  - use_known_k8s_secrets: Misuse known K8s secrets
+    from:
+      - attacker_hpc_admin
+  - compromise_kubernetes_api:
+# Find a way to change kubernetes state
+# For example, remove network policy
+    from:
+      - rogue_fridge_admin
+      - malicious_user_code: hard <0.1>
+      - attacker_has_k8s_secrets
+  - rm_k8s_network_policy: Remove K8s network policy
+    from:
+      - compromise_kubernetes_api
+      - k8s_network_policy:
+        backwards: true
+  - malicious_user_code: Malicious user code or command
+    more: including launching other containers
+    from:
+      - rogue_researcher: hard <0.5>
+  - supply_chain_attack_in_container: # Someone compromised the developers
+    from:
+      - third_party_containers: <0.1>
+  - dns_push: DNS lookup channel
+    from:
+      - malicious_user_code: easy but slow <0.1>
+  - attacker_decrypts_data: Attacker decrypts sensitive data
+    from:
+      - attacker_can_decrypt:
+        required: true
+      - access_stored_data:
+        required: true
+
+mitigations:
+  - internet_traffic_encrypted: All internet traffic is encrypted (SSH)
+    from:
+      - internet_mitm: <1>
+  - admin_monitoring_and_alerting:
+    from:
+      - ext_access_network: might be too late <0.5>
+  - encrypt_all_sensitive_data:
+    from:
+      - access_any_clear_text_on_disk: <1>
+  - MFA:
+    from:
+      - rogue_hpc_admin: <0.5>
+      - rogue_fridge_admin: <0.5>
+      - rogue_researcher: <0.5>
+  - shared_responsibility_model:
+  - policy_controls:
+    from:
+      - shared_responsibility_model
+      - rogue_researcher: <0.5>
+      - rogue_fridge_admin: <0.5>
+      - rogue_hpc_admin: <0.5>
+  - pod_security_standards_and_admission:
+    more: Enforces container standards, like no user <1000 no host net access
+    from:
+      - host_access_from_container: <0.8>
+  - k8s_network_policy: K8s network policy (inc. outbound)
+    from:
+      - compromise_privileged_services: <0.8>
+      - compromise_kubernetes_api: <0.8>
+  - kubernetes_RBAC:
+    from:
+      - compromise_privileged_services: <0.8>
+      - compromise_kubernetes_api: <0.8>
+  - scan_images:
+    from:
+      - malicious_user_code:
+        implemented: false
+      - supply_chain_attack_in_container:
+        implemented: false
+  - check_image_signatures:
+    from:
+      - malicious_user_code:
+        implemented: false
+      - supply_chain_attack_in_container:
+        implemented: false
+  - handover_kubeconfig: Hand over and destroy kubeconfig on FRIDGE creation
+    from:
+      - policy_controls
+      - use_known_k8s_secrets: <1>
+  - recursive_dns_blocked:
+    from:
+      - dns_push: <1>
