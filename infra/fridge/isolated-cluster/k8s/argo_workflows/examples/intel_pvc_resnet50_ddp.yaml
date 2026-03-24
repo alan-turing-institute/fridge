@@ -46,7 +46,7 @@ spec:
                     print('XPU count:', torch.xpu.device_count())
 
                 # Synthetic ImageNet-style data
-                batch_size = 128
+                batch_size = 256
                 num_batches = 200
                 x = torch.randn(batch_size, 3, 224, 224, device=device)
                 y = torch.randint(0, 1000, (batch_size,), device=device)
