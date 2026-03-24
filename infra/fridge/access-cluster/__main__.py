@@ -1,7 +1,6 @@
 import pulumi
 
 from pulumi import ResourceOptions
-from pulumi_kubernetes.batch.v1 import CronJobPatch, CronJobSpecPatchArgs
 from pulumi_kubernetes.core.v1 import NamespacePatch
 from pulumi_kubernetes.meta.v1 import ObjectMetaPatchArgs
 from pulumi_kubernetes.yaml import ConfigFile
@@ -133,6 +132,7 @@ network_policies = components.NetworkPolicies(
     components.NetworkPoliciesArgs(
         config=config,
         k8s_environment=k8s_environment,
+        harbor_fqdn=harbor.harbor_fqdn,
     ),
     opts=ResourceOptions(
         depends_on=resources,
@@ -142,6 +142,7 @@ network_policies = components.NetworkPolicies(
 # Pulumi exports
 pulumi.export("fridge_api_ip_address", config.require("fridge_api_ip_address"))
 pulumi.export("harbor_fqdn", harbor.harbor_fqdn)
-pulumi.export("harbor_ip_address", harbor.harbor_lb_ip)
-pulumi.export("ingress_ip", ingress_nginx.ingress_ip)
-pulumi.export("ingress_ports", ingress_nginx.ingress_ports)
+if k8s_environment == K8sEnvironment.AKS:
+    pulumi.export("harbor_ip_address", harbor.harbor_ip)
+    pulumi.export("ingress_ip", ingress_nginx.ingress_ip)
+    pulumi.export("ingress_ports", ingress_nginx.ingress_ports)
