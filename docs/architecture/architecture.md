@@ -15,7 +15,7 @@ Arrows indicate the flow of permitted traffic.
 Solid lines indicate pushes, that is, they are triggered from the beginning of the arrow.
 Dotted lines indicate pulls, triggered from the end of the arrow.
 
-## Satellite TRE and TRE Tenancy
+## Satellite TRE
 
 [](#fig-satellite) demonstrates the high-level concept of a {term}`satellite TRE`.
 It shows the connection of an existing TRE to a {term}`satellite TRE` instance deployed remote infrastructure.
@@ -31,7 +31,7 @@ All resources within the tenancy are within the governance domain of the {term}`
 A schematic of the {term}`satellite TRE` concept, showing the home TRE and {term}`TRE Tenancy`.
 :::
 
-## FRIDGE
+## FRIDGE and TRE Tenancy
 
 ### Overview
 
