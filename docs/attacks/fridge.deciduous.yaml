@@ -20,7 +20,7 @@ goals:
   - intercept_sensitive_data:
     from:
       - internet_mitm
- 
+
 facts:
   - hpc_admins_god: HPC admins can access all storage and compute
   - post_quantum_decryption:
