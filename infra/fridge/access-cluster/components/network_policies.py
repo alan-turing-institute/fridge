@@ -90,13 +90,16 @@ class NetworkPolicies(ComponentResource):
                     opts=child_opts,
                 )
 
-        self.api_jumpbox_cnp = CustomResource(
-            "network_policy_api_jumpbox",
+        self.fridge_api_jumpbox_cnp = CustomResource(
+            "network_policy_fridge_api_jumpbox",
             api_version="cilium.io/v2",
             kind="CiliumNetworkPolicy",
-            metadata={"name": "api-jumpbox-access", "namespace": "api-jumpbox"},
+            metadata={
+                "name": "fridge-api-jumpbox-access",
+                "namespace": "fridge-api-jumpbox",
+            },
             spec={
-                "endpointSelector": {"matchLabels": {"app": "api-jumpbox"}},
+                "endpointSelector": {"matchLabels": {"app": "fridge-api-jumpbox"}},
                 "ingress": [
                     {
                         "fromEndpoints": [
@@ -141,6 +144,64 @@ class NetworkPolicies(ComponentResource):
                         "toPorts": [{"ports": [{"port": "2222", "protocol": "TCP"}]}],
                     },
                     fridge_api_ip_rule,
+                ],
+            },
+            opts=child_opts,
+        )
+
+        self.k8s_api_jumpbox_cnp = CustomResource(
+            "network_policy_k8s_api_jumpbox",
+            api_version="cilium.io/v2",
+            kind="CiliumNetworkPolicy",
+            metadata={
+                "name": "k8s-api-jumpbox-access",
+                "namespace": "k8s-api-jumpbox",
+            },
+            spec={
+                "endpointSelector": {"matchLabels": {"app": "k8s-api-jumpbox"}},
+                "ingress": [
+                    {
+                        "fromEndpoints": [
+                            {
+                                "matchLabels": {
+                                    "k8s:app.kubernetes.io/name": "ingress-nginx",
+                                    "k8s:app.kubernetes.io/component": "controller",
+                                    "k8s:io.kubernetes.pod.namespace": "ingress-nginx",
+                                }
+                            }
+                        ],
+                        "toPorts": [{"ports": [{"port": "2222", "protocol": "ANY"}]}],
+                    }
+                ],
+                "egress": [
+                    {
+                        "toEndpoints": [
+                            {
+                                "matchLabels": {
+                                    "k8s:io.kubernetes.pod.namespace": "kube-system",
+                                    "k8s-app": "kube-dns",
+                                }
+                            }
+                        ],
+                        "toPorts": [
+                            {
+                                "ports": [{"port": "53", "protocol": "ANY"}],
+                                "rules": {"dns": [{"matchPattern": "*"}]},
+                            }
+                        ],
+                    },
+                    {
+                        "toEndpoints": [
+                            {
+                                "matchLabels": {
+                                    "k8s:app.kubernetes.io/name": "ingress-nginx",
+                                    "k8s:app.kubernetes.io/component": "controller",
+                                    "k8s:io.kubernetes.pod.namespace": "ingress-nginx",
+                                }
+                            }
+                        ],
+                        "toPorts": [{"ports": [{"port": "2222", "protocol": "TCP"}]}],
+                    },
                     k8s_api_endpoint_rule,
                 ],
             },
