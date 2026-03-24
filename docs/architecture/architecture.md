@@ -5,9 +5,9 @@
 In the following diagrams we use colours to indicate who has access or control over particular resources.
 These are mapped to our [roles](#arch-roles),
 
-- {span .role .job-submitter}``orange: {term}`Job Submitters` ``
-- {span .role .tre-operator}``blue: {term}`TRE Operator Organisation` ``
-- {span .role .hosting-provider}``green: {term}`FRIDGE Hosting Organisation` ``
+- {span .role .tre-operator}``(blue) owned by {term}`TRE Operator Organisation` ``
+- {span .role .hosting-provider}``(green) owned by {term}`FRIDGE Hosting Organisation` ``
+- {span .role .job-submitter}``(orange) used by {term}`Job Submitters`, owned by {term}`TRE Operator Organisation` ``
 
 {span .role .external}`pink` items indicate externally controlled resources, outside of the scope of our [roles](#arch-roles).
 
