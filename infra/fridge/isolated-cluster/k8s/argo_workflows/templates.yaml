@@ -28,18 +28,16 @@ spec:
             for file in $(echo "{{inputs.parameters.files}}" | tr ";" " "); do
               echo "Copying $file"
               (
-                tmp_out=$(mktemp)
                 http_code=$(curl -s --cacert $cert_file \
                   https://minio.argo-artifacts.svc.cluster.local/{{inputs.parameters.bucket}}/$file \
-                  -o $tmp_out \
+                  -o /data/$file \
                   -w "%{http_code}")
                 if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
                   echo "Failed to copy $file (HTTP $http_code)"
-                  echo "Response: $(cat $tmp_out)"
-                  rm -f $tmp_out
+                  echo "Response: $(cat /data/$file)"
+                  rm -f /data/$file
                   exit 1
                 fi
-                mv $tmp_out /data/$file
               ) &
               copy_jobs="$copy_jobs $!"
             done
