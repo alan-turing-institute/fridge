@@ -16,6 +16,7 @@ goals:
       - attacker_has_clear_text:
         required: true
       - ext_access_network:
+        required: true
   - intercept_sensitive_data:
     from:
       - internet_mitm
