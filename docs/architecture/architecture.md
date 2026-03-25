@@ -1,3 +1,4 @@
+(arch-arch)=
 # Architecture
 
 ## Legend
@@ -15,6 +16,7 @@ Arrows indicate the flow of permitted traffic.
 Solid lines indicate pushes, that is, they are triggered from the beginning of the arrow.
 Dotted lines indicate pulls, triggered from the end of the arrow.
 
+(arch-arch-satellite)=
 ## Satellite TRE
 
 [](#fig-satellite) demonstrates the high-level concept of a {term}`satellite TRE`.
@@ -25,12 +27,19 @@ On the remote infrastructure, a dashed line indicate the boundary of the {term}`
 All resources within the tenancy are within the governance domain of the {term}`Home TRE`, through the {term}`governance boundary extension` agreed in the {term}`shared responsibility` model.
 
 :::{figure} ../static/satellite_tre.drawio.svg
-:label: fig-satellite
-:alt: A block diagram depicting a satellite TRE. It shows how the satellite TRE is an adjunct to an existing TRE. The TRE admins configure the satellite TRE on remote infrastructure, while the remote infrastructure admins configure the TRE tenancy. TRE Researchers are able to dispatch jobs and manage data from their home TRE workspace.
+---
+label: fig-satellite
+alt: >
+  A block diagram depicting a satellite TRE.
+  It shows how the satellite TRE is an adjunct to an existing TRE.
+  The TRE admins configure the satellite TRE on remote infrastructure, while the remote infrastructure admins configure the TRE tenancy.
+  TRE Researchers are able to dispatch jobs and manage data from their home TRE workspace.
+---
 
 A schematic of the {term}`satellite TRE` concept, showing the home TRE and {term}`TRE Tenancy`.
 :::
 
+(arch-arch-tenancy)=
 ## FRIDGE and TRE Tenancy
 
 ### Overview
@@ -40,12 +49,18 @@ Compared to [](#fig-satellite), [](#fig-tenancy) reveals detail of the structure
 It shows how management traffic is isolated from research traffic and part of how the {term}`TRE Tenancy` is defined through network isolation.
 
 :::{figure} ../static/high_level.drawio.svg
-:label: fig-tenancy
-:alt: A block diagram depicting a high-level overview of FRIDGE architecture. Shown at the home TRE, FRIDGE instance and the TRE Tenancy boundary. Arrows show the direction of data flow.
+---
+label: fig-tenancy
+alt: >
+  A block diagram depicting a high-level overview of FRIDGE architecture.
+  Shown at the home TRE, FRIDGE instance and the TRE Tenancy boundary.
+  Arrows show the direction of data flow.
+---
 
 A high-level overview of a FRIDGE instance, showing the home TRE and {term}`TRE Tenancy`.
 :::
 
+(arch-arch-tenancy-requirements)=
 ### Requirements
 
 [](#fig-tenancy) represents a generic FRIDGE deployment, and specific details may vary between implementations.
@@ -61,13 +76,14 @@ However, there are some requirements which must be met by all implementations,
 - On a cloud-like system, the {term}`TRE Tenancy` must be isolated from any other tenancies.
   For example, it must not be possible to share resources from the {term}`TRE Tenancy` with other tenants.
 
+(arch-arch-tenancy-network)=
 ### Dual Network
 
 The FRIDGE instance is split into two networks, each of which contains a K8s cluster.
 The {term}`Access Cluster` is responsible for routing traffic from the {term}`Home TRE` to the {term}`Isolated Cluster`.
 The {term}`Isolated Cluster` has access to sensitive data, and runs jobs on that data.
 Traffic between the two clusters is strongly restricted by a firewall, with only the connections shown in [](#fig-tenancy) permitted.
-In addition, the {term}`Isolated Network` has no outbound access, beyond the {term}`Container Runtime` being able to pull container images from the {term}`Container Repository` in the {term}`Access Network`.
+In addition, the {term}`Isolated Network` has no outbound access, beyond the {term}`Container Runtime` being able to pull container images from the [container repository](#arch-arch-internal-harbor) in the {term}`Access Network`.
 
 The dual-network design forms an important part of our approach to [](#sec-arch-defence), in addition to K8s-native network control.
 In the event of container breakout, or otherwise compromising the K8s nodes, there is still no route to exfiltrate sensitive data.
