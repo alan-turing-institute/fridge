@@ -6,9 +6,15 @@ runtime:
     toolchain: pip
     virtualenv: venv
 config:
-  k8s_env:
+  admin_ip_allowlist:
+    type: array
+    description: List of CIDR blocks to allow access to the API proxy SSH server
+    items:
+      type: string
+  admin_ssh_public_key:
     type: string
-    description: The Kubernetes environment type (e.g. AKS, Dawn)
+    description: Public SSH key for the private API proxy
+    secret: true
   azure_subscription_id:
     type: string
     description: Azure Subscription ID for the access cluster - use a dummy value when not deploying to AKS
@@ -18,37 +24,31 @@ config:
   azure_disk_encryption_set:
     type: string
     description: Azure Disk Encryption Set resource name for the access cluster - use a dummy value when not deploying to AKS
-  tls_environment:
-    type: string
-    description: TLS environment for cert-manager (e.g. staging, production)
   base_fqdn:
     type: string
     description: Base FQDN for the access cluster
-  admin_ip_allowlist:
-    type: array
-    description: List of CIDR blocks to allow access to the API proxy SSH server
-    items:
-      type: string
   dawn_load_balancer_ip:
     type: string
     description: Load balancer IP for Dawn access cluster - use a dummy value when not deploying to Dawn
+  harbor_admin_password:
+    type: string
+    description: Harbor admin password
+    secret: true
   harbor_fqdn_prefix:
     type: string
     description: FQDN prefix for Harbor
   harbor_ip:
     type: string
     description: Internal Harbor IP address - should correspond to an address in the cluster's Service CIDR
+  k8s_env:
+    type: string
+    description: The Kubernetes environment type (e.g. AKS, Dawn)
   lets_encrypt_email:
     type: string
     description: Email for Let's Encrypt registration
-  jumpbox_ssh_public_key:
+  tls_environment:
     type: string
-    description: Public SSH key for the private API proxy
-    secret: true
-  harbor_admin_password:
-    type: string
-    description: Harbor admin password
-    secret: true
+    description: TLS environment for cert-manager (e.g. staging, production)
   kubernetes:context:
     value: ""
     description: Kubernetes context for the FRIDGE deployment
