@@ -5,7 +5,7 @@
   - at K8s
     - PSS
     - Network (Cilium)
-    - RBAC
+    - RBAC (and namespaces)
     - Data-at-rest encryption (protects from bad actors, compromise at infrastructure provider)
   - at infrastructure
     - network (vnet) isolation (out of band!)

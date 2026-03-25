@@ -114,25 +114,73 @@ Each API Interface at the {term}`Home TRE` is required to generate an SSH key pa
 Hence by installing the correct public key on each proxy, the {term}`TRE Operator Organisation` can control who has access to the APIs in the {term}`Isolated Cluster`.
 It would also be possible to further restrict traffic through network controls such as IP allowlists or exposing the {term}`Access Cluster` only through a VPN.
 
+(arch-arch-internal)=
 ## FRIDGE internal
 
-- Update figure to cover access/isolated clusters, remove unused components
-- Access cluster
-    - user stuff
-        - kube proxy (sshd)
-        - FRIDGE proxy (sshd)
-        - container repository (harbor)
-    - others
-        - Network policy (cilium)
-- Isolated cluster
-    - user stuff
-        - FRIDGE API (fast api)
-        - workflow manager (argo workloads)
-        - job namespace
-        - object storage (minio)
-        - block storage (longhorn/CSI driver PVCs)
-    - others
-        - Network policy (cilium)
+:::{figure} ../static/internal.drawio.svg
+---
+label: fig-internal
+alt: >
+  A block diagram showing the internal components of FRIDGE K8s clusters.
+---
+
+A diagram showing the key internal components of the FRIDGE Kubernetes clusters.
+Lines indicate access to private volumes.
+:::
+
+### Network Policy
+
+Network traffic within the FRIDGE clusters is restricted.
+This is achieved using [Cilium](https://cilium.io/) [CNI plugin](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/).
+This is in addition to the network isolation enforced by the [networks](#arch-arch-tenancy-network).
+
+### TLS
+
+[cert-manager](https://cert-manager.io/) will automatically provision and renew TLS certificates for services which can be reached over HTTPS.
+For example, the [container repository](#arch-arch-internal-harbor).
+
+### Proxies
+
+(arch-arch-internal-api)=
+### FRIDGE API
+
+- fast API
+
+### Workflow Manager
+
+The workflow manager receives job specifications from the [](#arch-arch-internal-api) and launches [jobs](https://kubernetes.io/docs/concepts/workloads/controllers/job/) in the [](#arch-arch-internal-jobns).
+
+(arch-arch-internal-jobns)=
+#### Job Namespace
+
+To isolate {term}`Job Submitters' <Job Submitters>` processes from the rest of the {term}`Isolated Cluster`, including components which enforce security, jobs may only be run in a dedicated namespace.
+This namespace has no access to external resources, other than research data and container images, and jobs are restricted to run without privileges.
+
+(arch-arch-internal-harbor)=
+### Container Repository
+
+An instance of the [Harbor](https://goharbor.io/) container registry provides access to container images for the isolated cluster.
+It acts both as a read-through cache for allowed public registries (such as Docker Hub, Quay and GitHub Container Registry) and as a repository for {term}`Job Submitters' <Job Submitters>` own container images.
+This allows {term}`Job Submitters` to easily use custom software, by building a container image and pushing to the repository.
+
+### Storage
+
+#### Object storage
+
+- Used for getting data in and results out
+- Buckets for ingress (read only), egress
+- Uses secure PVs as backend
+
+#### Secure block storage
+
+- Higher performance storage
+- Can be accessed directly for jobs
+- If CSI supports encryption with user-provider keys, that can be used
+- Otherwise Longhorn, which supports encryption
+
+#### Insecure block storage
+
+- For harbor
 
 ## Glossary
 
@@ -141,16 +189,19 @@ Access Cluster
 : …
 
 Access Network
-: …
-
-Container Repository
-: …
+: The [FRIDGE network](#arch-arch-tenancy-network) hosting the {term}`Access Cluster`.
+  This network acts as a bridge connecting the {term}`Home TRE` to FRIDGE job execution components.
 
 Container Runtime
-: …
+: The [container runtime](https://kubernetes.io/docs/setup/production-environment/container-runtimes/) is the component of a Kubernetes distribution which is responsible for running containers.
+  Between distributions, the particular container runtime may differ, but all will communicate with Kubernetes through through a standard interface.
+
+  In FRIDGE, it is important that the container runtime of the {term}`Isolated Cluster` is configured to fetch container images from the [container repository](#arch-arch-internal-harbor), as it will not be able to access public container registries.
 
 Home TRE
-: …
+: An existing TRE, complete with infrastructure, data governance and processes.
+  Research questions are established in this TRE, before data and job specifications are dispatched to the {term}`satellite TRE` for execution.
+  The {term}`satellite TRE` formally belongs within the governance boundary of the home TRE.
 
 Isolated Cluster
 : …
