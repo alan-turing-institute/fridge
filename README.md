@@ -11,17 +11,17 @@ The system is built on Kubernetes for portability across cloud providers and on-
 
 At a high level, FRIDGE bridges a TRE and a remote compute cluster:
 
-- A **TRE** submits workflow jobs via the FRIDGE Job API, which translates them into Argo Workflows
+- A **TRE** user submits workflow jobs from the home **TRE** using the FRIDGE API
 - The **FRIDGE cluster** runs those workflows in an isolated environment with access to AIRR compute
-- Data governance controls are applied at every boundary
+- The **FRIDGE cluster** returns the outputs to the **TRE** user in the home **TRE** via the FRIDGE API
 
-See the [architecture documentation](https://alan-turing-institute.github.io/fridge/architecture/introduction/) for a detailed breakdown including the defence-in-depth model, role definitions, and the job lifecycle.
+See the [architecture documentation](https://alan-turing-institute.github.io/fridge/architecture/introduction/) for a detailed breakdown including the defence-in-depth model, role definitions, and the lifecycle of a FRIDGE.
 
 ## Repository Structure
 
 | Directory | Description |
 |---|---|
-| `fridge-job-api/` | FastAPI service for submitting and managing workflows via the Argo Workflows API |
+| `fridge-job-api/` | FastAPI service for submitting and managing workflows, and passing data between the FRIDGE and TRE |
 | `infra/` | Pulumi infrastructure-as-code for supported deployment targets |
 | `docs/` | Source for the [project documentation site](https://alan-turing-institute.github.io/fridge/) |
 
