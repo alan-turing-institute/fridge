@@ -22,7 +22,8 @@ The `access` cluster will host the Harbor container registry and an SSH server f
 
 The example project also deploys the necessary networking components.
 
-Each cluster is deployed to its own VNet. You will need to supply the desired CIDR for each VNet in the Pulumi configuration, and desired subnet within those VNets for the AKS nodes to be deployed to.
+Each cluster is deployed to its own VNet.
+You will need to supply the desired CIDR for each VNet in the Pulumi configuration, and desired subnet within those VNets for the AKS nodes to be deployed to.
 
 Basic Network Security Groups (NSGs) will also be set up for the VNets.
 
@@ -53,7 +54,7 @@ pulumi config set ssh_public_key "<your-ssh-public-key>"
 ```
 
 :::{important}
-The provided `Pulumi.yaml` provides the schema for your Pulumi configuration file
+The provided `Pulumi.yaml` provides the schema to follow for the Pulumi configuration file
 :::
 
 1. Deploy the infrastructure:
@@ -62,7 +63,8 @@ The provided `Pulumi.yaml` provides the schema for your Pulumi configuration fil
 pulumi up
 ```
 
-Note that for development and testing, the `access` cluster has a public API server endpoint. In production, it would be private and accessed via a bastion.
+Note that for development and testing, the `access` cluster has a public API server endpoint.
+In production, it would be private and accessed via a bastion.
 
 The `isolated` cluster has a private API server endpoint, which will be made accessible only from within the access cluster.
 
