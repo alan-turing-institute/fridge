@@ -46,7 +46,6 @@ Data Owner
 : The organisation or individual that owns the sensitive data used in the research project. See [details](#role-data-owner).
 :::
 
----
 
 ## Organisational Roles
 
