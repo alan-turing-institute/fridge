@@ -6,6 +6,8 @@ short_title: Role Catalogue
 
 This document summarises the responsibilities of each role within FRIDGE, covering both the overall governance and shared responsibility architecture and the operational processes across the FRIDGE lifecycle.
 
+## Role Summary
+
 :::{glossary}
 TRE Operator Organisation
 : Operates the full stack TRE (the "front door" TRE) and the FRIDGE {term}`Satellite TRE`, manages technical security controls, and may receive delegated approval authority from the {term}`Data Owner`. See [details](#role-tre-operator-organisation).
