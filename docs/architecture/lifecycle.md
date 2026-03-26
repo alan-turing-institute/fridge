@@ -16,11 +16,13 @@ sequenceDiagram
   actor PI as Principal Investigator
   actor TO as TRE Operator Organisation
   actor FH as FRIDGE Hosting Organisation
+  actor RA as Resource Allocator
 
   PI ->> DO: safe research plan
   DO ->> PI: approval to use data
   PI ->> TO: request TRE workspace with FRIDGE
-  TO ->> FH: request FRIDGE account & allocation
+  TO ->> RA: request FRIDGE allocation
+  RA ->> FH: allocation apporval
   FH ->> TO: account and allocation
   TO ->> PI: allocation details
 :::
