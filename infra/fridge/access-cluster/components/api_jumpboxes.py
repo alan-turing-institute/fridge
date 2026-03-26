@@ -284,7 +284,7 @@ class APIJumpboxes(ComponentResource):
             "fridge-api-jumpbox-service",
             metadata=ObjectMetaArgs(
                 name="fridge-api-jumpbox-service",
-                namespace=self.fridge_api_jumpbox.metadata.name,
+                namespace=self.fridge_api_jumpbox_ns.metadata.name,
             ),
             spec=ServiceSpecArgs(
                 selector=self.fridge_api_jumpbox.spec.template.metadata.labels,
@@ -301,7 +301,7 @@ class APIJumpboxes(ComponentResource):
             "k8s-api-jumpbox-service",
             metadata=ObjectMetaArgs(
                 name="k8s-api-jumpbox-service",
-                namespace=self.k8s_api_jumpbox.metadata.name,
+                namespace=self.k8s_api_jumpbox_ns.metadata.name,
             ),
             spec=ServiceSpecArgs(
                 selector=self.k8s_api_jumpbox.spec.template.metadata.labels,
