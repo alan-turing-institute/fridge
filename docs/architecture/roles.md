@@ -54,7 +54,7 @@ Data Owner
 
 The organisation that runs the {term}`Trusted Research Environment` used by researchers — the "front door" through which researchers access sensitive data. This is typically a university, research institution or data provider that operates a TRE. The {term}`TRE Operator Organisation` is accountable for researcher accreditation, data governance within the TRE, and the security of the research environment built on top of the FRIDGE infrastructure.
 
-**Governance and architecture responsibilities:**
+#### Governance and architecture responsibilities
 - Operates the full stack TRE (the "front door" TRE) and the FRIDGE ({term}`Satellite TRE`).
 - Manages technical security controls within the TRE.
 - Assumes responsibility for the TRE platform and code, identity and access management, encryption, output management, and researcher accreditation.
