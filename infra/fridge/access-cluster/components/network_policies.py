@@ -38,7 +38,13 @@ class NetworkPolicies(ComponentResource):
                 )
                 k8s_api_port = "443"
                 k8s_api_endpoint_rule = {
-                    "toFQDNs": [args.config.require("isolated_cluster_api_endpoint")],
+                    "toFQDNs": [
+                        {
+                            "matchName": args.config.require(
+                                "isolated_cluster_api_endpoint"
+                            )
+                        }
+                    ],
                     "toPorts": [{"ports": [{"port": k8s_api_port, "protocol": "TCP"}]}],
                 }
                 fridge_api_ip_rule = {
@@ -111,7 +117,7 @@ class NetworkPolicies(ComponentResource):
                                 }
                             }
                         ],
-                        "toPorts": [{"ports": [{"port": "2222", "protocol": "ANY"}]}],
+                        "toPorts": [{"ports": [{"port": "2222", "protocol": "TCP"}]}],
                     }
                 ],
                 "egress": [
@@ -259,7 +265,14 @@ class NetworkPolicies(ComponentResource):
                 "ingress": [
                     {
                         "fromCIDR": ssh_ip_allowlist,
-                        "toPorts": [{"ports": [{"port": "2222", "protocol": "TCP"}]}],
+                        "toPorts": [
+                            {
+                                "ports": [
+                                    {"port": "2500", "protocol": "TCP"},
+                                    {"port": "2800", "protocol": "TCP"},
+                                ]
+                            }
+                        ],
                     }
                 ],
                 "egress": [
@@ -267,10 +280,16 @@ class NetworkPolicies(ComponentResource):
                         "toServices": [
                             {
                                 "k8sService": {
-                                    "serviceName": "api-jumpbox-service",
-                                    "namespace": "api-jumpbox",
+                                    "serviceName": "fridge-api-jumpbox-service",
+                                    "namespace": "fridge-api-jumpbox",
                                 }
-                            }
+                            },
+                            {
+                                "k8sService": {
+                                    "serviceName": "k8s-api-jumpbox-service",
+                                    "namespace": "k8s-api-jumpbox",
+                                }
+                            },
                         ]
                     }
                 ],
