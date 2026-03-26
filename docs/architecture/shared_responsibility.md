@@ -1,7 +1,7 @@
 ---
 short_title: Shared Responsibility Model
 ---
-# FRIDGE Shared Responsibility Model
+# Shared Responsibility Model
 
 ```{figure} ../static/Fridge_Shared_Responsibility_Model.drawio.svg
 ---
