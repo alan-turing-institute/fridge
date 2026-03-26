@@ -4,7 +4,7 @@ short_title: Role Catalogue
 (arch-roles)=
 # Role Catalogue
 
-This document summarises the responsibilities of each role within FRIDGE, covering both the overall governance and shared responsibility architecture and the operational processes across the FRIDGE lifecycle.
+This page explains the responsibilities of each role within a FRIDGE deployment, covering both the overall governance and shared responsibility architecture and the operational processes across the FRIDGE lifecycle.
 
 ## Role Summary
 
