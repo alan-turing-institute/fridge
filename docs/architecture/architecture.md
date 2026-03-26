@@ -191,7 +191,7 @@ The object storage is provided by an instance of [Minio](https://www.min.io/) an
 
 #### Secure volumes
 
-For higher performance than object storage, encrypted block devices can be access directly by jobs.
+For higher performance than object storage, encrypted block devices can be accessed directly by jobs.
 
 #### Insecure volumes
 
@@ -210,7 +210,7 @@ Access Network
 
 Container Runtime
 : The [container runtime](https://kubernetes.io/docs/setup/production-environment/container-runtimes/) is the component of a Kubernetes distribution which is responsible for running containers.
-  Between distributions, the particular container runtime may differ, but all will communicate with Kubernetes through through a standard interface.
+  Between distributions, the particular container runtime may differ, but all will communicate with Kubernetes through a standard interface.
 
   In FRIDGE, it is important that the container runtime of the {term}`Isolated Cluster` is configured to fetch container images from the [container repository](#arch-arch-internal-harbor), as it will not be able to access public container registries.
 
