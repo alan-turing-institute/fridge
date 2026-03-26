@@ -19,19 +19,6 @@ Security, governance and compliance in FRIDGE is a shared responsibility between
 
 Organisations should carefully consider their role within this model, as responsibilities vary depending on how FRIDGE services are integrated into existing TRE operations and the applicable legal, regulatory and data governance frameworks in place.
 
-## Shared Responsibility Scope
-
-```{figure} ../static/FRIDGE_SRM_Scope.drawio.svg
----
-name: fridge-shared-responsibility-scope
-alt: FRIDGE Shared Responsibility Model scope diagram
----
-Shows 2 shared responsibility models within the scope of the single TRE
-```
-In the example above the scope of a single TRE is extended from a cloud provider onto a supercomputing platform.
-
-- The public cloud TRE remains covered by the cloud provider responsibility model
-- The FRIDGE satellite TRE is covered by the FRIDGE shared responsibility model
 
 ## Shared Processes and Infrastructure
 
