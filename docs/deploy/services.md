@@ -74,10 +74,17 @@ Those *must* be set using the Pulumi CLI using the `--secret` flag:
 pulumi config set --secret minio_root_password <your-minio-secret-key>
 ```
 
-It is critical that you set all required configuration keys before deploying the stack. In particular, you will need to supply a public SSH key that will be added to the SSH server in the access cluster.
+It is critical that you set all required configuration keys before deploying the stack.
+In particular, you will need to supply public SSH keys that will be added to the SSH servers in the access cluster.
 If you do not do this, you will not be able to access the isolated cluster later.
 
 For a complete list of configuration keys, see the `Pulumi.yaml` file.
+
+:::{important}
+You will need to provide *two* public SSH keys.
+One will be copied to the FRIDGE API proxy, and can be used to set up the SSH tunnel to the FRIDGE API.
+The other will be copied to the K8s API proxy, and can be used to set up the SSH tunnel to the Kubernetes API of the isolated cluster.
+:::
 
 ### Kubernetes context
 
@@ -134,7 +141,7 @@ Once these steps are complete, you can deploy the isolated cluster stack using t
 Currently, FRIDGE is configured to support deployment on Azure Kubernetes Service (AKS) and on DAWN AI.
 FRIDGE uses Cilium for networking, and thus requires a Kubernetes cluster with Cilium installed.
 
-In the table below, you can see the components need to be deployed to each target.
+In the table below, you can see the components that need to be deployed to each target after cluster creation.
 Some components are pre-installed on DAWN.
 
 | Component         | AKS   | DAWN  | Local |
