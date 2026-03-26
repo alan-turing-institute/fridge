@@ -1,3 +1,4 @@
+(arch-shared-responsibility)=
 # Shared Responsibility
 
 - Governance remains with the TRE
