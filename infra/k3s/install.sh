@@ -5,6 +5,28 @@
 # to allow Cilium to handle all these
 echo 'Installing K3s...'
 
+# Configure containerd for private registry before K3s installation
+echo 'Configuring containerd registry settings...'
+HARBOR_HOSTNAME="${1:-harbor.fridge.internal}"  # Use argument or default
+
+sudo mkdir -p /etc/rancher/k3s
+sudo tee /etc/rancher/k3s/registries.yaml > /dev/null <<EOF
+mirrors:
+  docker.io:
+    endpoint:
+      - https://$HARBOR_HOSTNAME/v2/proxy-docker.io
+  quay.io:
+    endpoint:
+      - https://$HARBOR_HOSTNAME/v2/proxy-quay.io
+  ghcr.io:
+    endpoint:
+      - https://$HARBOR_HOSTNAME/v2/proxy-ghcr.io
+configs:
+  $HARBOR_HOSTNAME:
+    tls:
+      insecure_skip_verify: true
+EOF
+
 curl -sfL https://get.k3s.io | sh -s - \
   --flannel-backend none \
   --disable-network-policy \

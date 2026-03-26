@@ -12,6 +12,9 @@ config:
   access_cluster_node_cidr:
     type: string
     description: The node CIDR of the access cluster to allow access from
+  access_cluster_stack:
+    type: string
+    description: The Pulumi stack name of the access cluster deployment
   azure_subscription_id:
     type: string
     description: Azure Subscription ID for the access cluster - use a dummy value when not deploying to AKS
@@ -43,6 +46,9 @@ config:
   minio_pool_size:
     type: string
     description: Size of the MinIO storage pool (e.g., 20Gi)
+  organization_name:
+    type: string
+    description: The Pulumi organization name
   kubernetes:context:
     value: ""
     description: Kubernetes context for the FRIDGE deployment
