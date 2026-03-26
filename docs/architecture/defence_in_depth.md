@@ -1,4 +1,4 @@
-(sec-arch-defence)=
+(arch-defence)=
 # Defence in Depth
 
 - Defence in depth

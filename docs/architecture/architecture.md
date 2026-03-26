@@ -85,7 +85,7 @@ The {term}`Isolated Cluster` has access to sensitive data, and runs jobs on that
 Traffic between the two clusters is strongly restricted by a firewall, with only the connections shown in [](#fig-tenancy) permitted.
 In addition, the {term}`Isolated Network` has no outbound access, beyond the {term}`Container Runtime` being able to pull container images from the [container repository](#arch-arch-internal-harbor) in the {term}`Access Network`.
 
-The dual-network design forms an important part of our approach to [](#sec-arch-defence), in addition to K8s-native network control.
+The dual-network design forms an important part of our approach to [](#arch-defence), in addition to K8s-native network control.
 In the event of container breakout, or otherwise compromising the K8s nodes, there is still no route to exfiltrate sensitive data.
 
 ### Connection from Home TRE
@@ -144,11 +144,16 @@ For example, the [container repository](#arch-arch-internal-harbor).
 (arch-arch-internal-api)=
 ### FRIDGE API
 
-- fast API
+The FRIDGE API provides users with endpoints to manage data, and submit and monitor jobs.
+Writing a custom API separates {term}`Job Submitters` from the underlying implementation, so that they may use a single FRIDGE interface irrespective.
+This API will then be resilient to changes to the FRIDGE [](#arch-arch-internal-workflow) and storage.
+It will also enable the creation of user-focused FRIDGE tools such as CLIs or web interfaces for job submission and management.
 
+(arch-arch-internal-workflow)=
 ### Workflow Manager
 
 The workflow manager receives job specifications from the [](#arch-arch-internal-api) and launches [jobs](https://kubernetes.io/docs/concepts/workloads/controllers/job/) in the [](#arch-arch-internal-jobns).
+The workflow manager is an instance of [Argo Workflows](https://argoproj.github.io/workflows/).
 
 (arch-arch-internal-jobns)=
 #### Job Namespace
@@ -165,28 +170,39 @@ This allows {term}`Job Submitters` to easily use custom software, by building a 
 
 ### Storage
 
+#### Storage classes
+
+FRIDGE defines two storage classes.
+One is for holding sensitive data, and the other for non-sensitive data.
+These storage classes need to be implemented for each target platform, as the appropriate [CSI](https://kubernetes.io/docs/concepts/storage/volumes/#csi) and options will vary.
+
+For secure storage, if an available CSI supports encryption with keys provided by Kubernetes, that can be used.
+Otherwise, FRIDGE can deploy Longhorn which will create Kubernetes volumes, backed by block storage, with data encrypted at rest.
+
 #### Object storage
 
-- Used for getting data in and results out
-- Buckets for ingress (read only), egress
-- Uses secure PVs as backend
+An object storage system is used for managing data assets in the FRIDGE instance.
+This provides a convenient way to handle the ingress of inputs and egress of results.
 
-#### Secure block storage
+Buckets are created for inputs and results.
+The inputs bucket is read-only to jobs, to prevent the corruption of input data.
 
-- Higher performance storage
-- Can be accessed directly for jobs
-- If CSI supports encryption with user-provider keys, that can be used
-- Otherwise Longhorn, which supports encryption
+The object storage is provided by an instance of [Minio](https://www.min.io/) and uses a volume of the secure storage class for its backend.
 
-#### Insecure block storage
+#### Secure volumes
 
-- For harbor
+For higher performance than object storage, encrypted block devices can be access directly by jobs.
+
+#### Insecure volumes
+
+Unencrypted volumes are used by the [](#arch-arch-internal-harbor) for caching container images.
 
 ## Glossary
 
 :::{glossary}
 Access Cluster
-: …
+: A Kubernetes cluster with services to manage the connection of the {term}`Home TRE` to the {term}`Isolated Cluster`, where sensitive-data workloads are run.
+  It also hosts the [](#arch-arch-internal-harbor) which enable the {term}`Isolated Cluster` to pull container images, despite being isolated.
 
 Access Network
 : The [FRIDGE network](#arch-arch-tenancy-network) hosting the {term}`Access Cluster`.
@@ -204,8 +220,10 @@ Home TRE
   The {term}`satellite TRE` formally belongs within the governance boundary of the home TRE.
 
 Isolated Cluster
-: …
+: A Kubernetes cluster with services to run workloads on sensitive data, and manage inputs and results
 
 Isolated Network
-: …
+: The [FRIDGE network](#arch-arch-tenancy-network) hosting the {term}`Isolated Cluster`.
+  This network creates a secure boundary around the FRIDGE components which run sensitive-data workloads.
+  It is a key part of the [security of a FRIDGE instance](#arch-defence).
 :::
