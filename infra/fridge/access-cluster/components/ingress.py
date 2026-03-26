@@ -52,16 +52,16 @@ class Ingress(ComponentResource):
                             },
                             "tcp": {
                                 "2500": Output.concat(
-                                    args.api_jumpboxes.fridge_api_jumpbox.fridge_api_jumpbox_ns.metadata.name,
+                                    args.api_jumpboxes.fridge_api_jumpbox_ns.metadata.name,
                                     "/",
-                                    args.api_jumpboxes.fridge_api_jumpbox.fridge_api_jumpbox_service.metadata.name,
+                                    args.api_jumpboxes.fridge_api_jumpbox_service.metadata.name,
                                     ":",
                                     "2222",
                                 ),
                                 "2800": Output.concat(
-                                    args.api_jumpboxes.k8s_api_jumpbox.k8s_api_jumpbox_ns.metadata.name,
+                                    args.api_jumpboxes.k8s_api_jumpbox_ns.metadata.name,
                                     "/",
-                                    args.api_jumpboxes.k8s_api_jumpbox.k8s_api_jumpbox_service.metadata.name,
+                                    args.api_jumpboxes.k8s_api_jumpbox_service.metadata.name,
                                     ":",
                                     "2222",
                                 ),
