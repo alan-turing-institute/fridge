@@ -28,8 +28,8 @@ sequenceDiagram
 ## FRIDGE provisioning
 
 After the [](#arch-lifecycle-init) a FRIDGE instance may be deployed.
-The {term}`TRE Operator Organisation` triggers the {term}`TRE Administrators` and {term}`Hosting Provider Administrators` to deploy the TRE (if it isn't already), FRIDGE instance, and connect them.
-Once this is complete, the {term}`Principal Investigators` will be informed the FRIDGE instance is ready to be used.
+The {term}`TRE Operator Organisation` triggers the {term}`TRE Administrator`s and {term}`Hosting Administrator`s to deploy the TRE (if it isn't already), FRIDGE instance, and connect them.
+Once this is complete, the {term}`Principal Investigator`s will be informed the FRIDGE instance is ready to be used.
 
 :::{mermaid}
 sequenceDiagram
@@ -65,9 +65,9 @@ sequenceDiagram
 
 With the TRE connected, the research team can now dispatch jobs to the FRIDGE instance.
 
-The {term}`Principal Investigators` are able to upload the sensitive input data to immutable storage.
+The {term}`Principal Investigator`s are able to upload the sensitive input data to immutable storage.
 
-The {term}`Safe Researchers` can now work using FRIDGE in the loop,
+The {term}`Safe Researcher`s can now work using FRIDGE in the loop,
 
 1. Identify question
 2. Design and submit job specification
@@ -106,8 +106,8 @@ sequenceDiagram
 
 ## FRIDGE teardown
 
-When there is no longer the need for a FRIDGE, the {term}`Principal Investigators` request the instance teardown.
-The {term}`TRE Operator Organisation` instructs the  {term}`TRE Administrators` and {term}`Hosting Provider Administrators` to conduct the teardown.
+When there is no longer the need for a FRIDGE, the {term}`Principal Investigator`s request the instance teardown.
+The {term}`TRE Operator Organisation` instructs the  {term}`TRE Administrator`s and {term}`Hosting Administrator`s to conduct the teardown.
 
 :::{mermaid}
 sequenceDiagram
