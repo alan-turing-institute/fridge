@@ -56,8 +56,8 @@ The organisation that runs the {term}`Trusted Research Environment` used by rese
 
 #### Governance and architecture responsibilities
 - Operates the full stack TRE (the "front door" TRE) and the FRIDGE ({term}`Satellite TRE`).
-- Manages technical security controls within the TRE.
-- Assumes responsibility for the TRE platform and code, identity and access management, encryption, output management, and researcher accreditation.
+- Manages technical security controls within the TRE ("front door" and "satellite").
+- Assumes responsibility for the TRE platform and code ("front door" and "satellite"), identity and access management, encryption, output management, and researcher accreditation.
 - May receive delegated approval authority from the {term}`Data Owner`.
 
 **Lifecycle process responsibilities:**

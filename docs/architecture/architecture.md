@@ -8,7 +8,7 @@ These are mapped to our [roles](#arch-roles),
 
 - {span .role .tre-operator}``(blue) owned by {term}`TRE Operator Organisation` ``
 - {span .role .hosting-provider}``(green) owned by {term}`FRIDGE Hosting Organisation` ``
-- {span .role .job-submitter}``(orange) used by {term}`Job Submitters`, owned by {term}`TRE Operator Organisation` ``
+- {span .role .job-submitter}``(orange) used by {term}`Job Submitter`s, owned by {term}`TRE Operator Organisation` ``
 
 {span .role .external}`pink` items indicate externally controlled resources, outside of the scope of our [roles](#arch-roles).
 
@@ -19,12 +19,12 @@ Dotted lines indicate pulls, triggered from the end of the arrow.
 (arch-arch-satellite)=
 ## Satellite TRE
 
-[](#fig-satellite) demonstrates the high-level concept of a {term}`satellite TRE`.
-It shows the connection of an existing TRE to a {term}`satellite TRE` instance deployed remote infrastructure.
+[](#fig-satellite) demonstrates the high-level concept of a {term}`Satellite TRE`.
+It shows the connection of an existing TRE to a {term}`Satellite TRE` instance deployed remote infrastructure.
 
-The secure {term}`TRE tenancy` boundary enables the {term}`extension of existing governance to the satellite TRE <Governance Boundary Extension>`.
-On the remote infrastructure, a dashed line indicate the boundary of the {term}`TRE tenancy`.
-All resources within the tenancy are within the governance domain of the {term}`Home TRE`, through the {term}`governance boundary extension` agreed in the {term}`shared responsibility` model.
+The secure {term}`TRE Tenancy` boundary enables the {term}`extension of existing governance to the satellite TRE <Governance Boundary Extension>`.
+On the remote infrastructure, a dashed line indicate the boundary of the {term}`TRE Tenancy`.
+All resources within the tenancy are within the governance domain of the {term}`Home TRE`, through the {term}`Governance Boundary Extension` agreed in the {term}`Shared Responsibility` model.
 
 :::{figure} ../static/satellite_tre.drawio.svg
 ---
@@ -36,7 +36,7 @@ alt: >
   TRE Researchers are able to dispatch jobs and manage data from their home TRE workspace.
 ---
 
-A schematic of the {term}`satellite TRE` concept, showing the home TRE and {term}`TRE Tenancy`.
+A schematic of the {term}`Satellite TRE` concept, showing the home TRE and {term}`TRE Tenancy`.
 :::
 
 (arch-arch-tenancy)=
@@ -45,7 +45,7 @@ A schematic of the {term}`satellite TRE` concept, showing the home TRE and {term
 ### Overview
 
 [](#fig-tenancy) gives an overview of the design of FRIDGE.
-Compared to [](#fig-satellite), [](#fig-tenancy) reveals detail of the structure of a FRIDGE {term}`satellite TRE`.
+Compared to [](#fig-satellite), [](#fig-tenancy) reveals detail of the structure of a FRIDGE {term}`Satellite TRE`.
 It shows how management traffic is isolated from research traffic and part of how the {term}`TRE Tenancy` is defined through network isolation.
 
 :::{figure} ../static/high_level.drawio.svg
@@ -104,9 +104,9 @@ All must point to the {term}`Access Cluster` where a [K8s Ingress Controller](ht
 
 #### Proxies
 
-For {term}`Job Submitters`, the local API interface and FRIDGE proxy provide transparent access to the FRIDGE API.
+For {term}`Job Submitter`s, the local API interface and FRIDGE proxy provide transparent access to the FRIDGE API.
 It will appear to them as a service in the network of their TRE workspace with endpoints for submitting and managing jobs dispatched to the FRIDGE instance.
-Similarly, {term}`TRE Administrators` are able to manage the K8s components of their FRIDGE instance through their own API interface.
+Similarly, {term}`TRE Administrator`s are able to manage the K8s components of their FRIDGE instance through their own API interface.
 
 The proxies and {term}`Access Cluster's <Access Cluster>` Kube API are distinct pods.
 Proxy pods run an SSH daemon and are used to pass requests through to the {term}`Isolated Cluster's <Isolated Cluster>` Kube API or FRIDGE API via an SSH tunnel.
@@ -145,7 +145,7 @@ For example, the [container repository](#arch-arch-internal-harbor).
 ### FRIDGE API
 
 The FRIDGE API provides users with endpoints to manage data, and submit and monitor jobs.
-Writing a custom API separates {term}`Job Submitters` from the underlying implementation, so that they may use a single FRIDGE interface irrespective.
+Writing a custom API separates {term}`Job Submitter`s from the underlying implementation, so that they may use a single FRIDGE interface irrespective.
 This API will then be resilient to changes to the FRIDGE [](#arch-arch-internal-workflow) and storage.
 It will also enable the creation of user-focused FRIDGE tools such as CLIs or web interfaces for job submission and management.
 
@@ -158,15 +158,15 @@ The workflow manager is an instance of [Argo Workflows](https://argoproj.github.
 (arch-arch-internal-jobns)=
 #### Job Namespace
 
-To isolate {term}`Job Submitters' <Job Submitters>` processes from the rest of the {term}`Isolated Cluster`, including components which enforce security, jobs may only be run in a dedicated namespace.
+To isolate {term}`Job Submitter`s' processes from the rest of the {term}`Isolated Cluster`, including components which enforce security, jobs may only be run in a dedicated namespace.
 This namespace has no access to external resources, other than research data and container images, and jobs are restricted to run without privileges.
 
 (arch-arch-internal-harbor)=
 ### Container Repository
 
 An instance of the [Harbor](https://goharbor.io/) container registry provides access to container images for the isolated cluster.
-It acts both as a read-through cache for allowed public registries (such as Docker Hub, Quay and GitHub Container Registry) and as a repository for {term}`Job Submitters' <Job Submitters>` own container images.
-This allows {term}`Job Submitters` to easily use custom software, by building a container image and pushing to the repository.
+It acts both as a read-through cache for allowed public registries (such as Docker Hub, Quay and GitHub Container Registry) and as a repository for {term}`Job Submitter`s' own container images.
+This allows {term}`Job Submitter`s to easily use custom software, by building a container image and pushing to the repository.
 
 ### Storage
 
@@ -216,8 +216,8 @@ Container Runtime
 
 Home TRE
 : An existing TRE, complete with infrastructure, data governance and processes.
-  Research questions are established in this TRE, before data and job specifications are dispatched to the {term}`satellite TRE` for execution.
-  The {term}`satellite TRE` formally belongs within the governance boundary of the home TRE.
+  Research questions are established in this TRE, before data and job specifications are dispatched to the {term}`Satellite TRE` for execution.
+  The {term}`Satellite TRE` formally belongs within the governance boundary of the home TRE.
 
 Isolated Cluster
 : A Kubernetes cluster with services to run workloads on sensitive data, and manage inputs and results
