@@ -28,7 +28,7 @@ Information Governance Team
 : The team within the {term}`TRE Operator Organisation` responsible for information governance and compliance. See [details](#role-information-governance-team).
 
 TRE Administrator
-: Deploys FRIDGE components under responsibility of {term}`TRE Operator Organisation` (blue in the diagrams). See [details](#role-tre-administrators).
+: Deploys FRIDGE components under responsibility of {term}`TRE Operator Organisation` (blue in the diagrams). See [details](#role-tre-administrator).
 
 Hosting Administrator
 : Deploys FRIDGE components under responsibility of {term}`FRIDGE Hosting Organisation` (green in the diagrams). See [details](#role-hosting-administrator).
