@@ -89,3 +89,15 @@ Once setup is complete, you should provide the TRE Administrators with the follo
 The TRE Adminstrators responsible for deploying the FRIDGE services will require this information.
 
 ## Network lockdown
+
+Once the TRE Administrators have completed deployment of the FRIDGE services to the access and isolated clusters, it is the responsibility of the Hosting Provider Administrators to complete a final network lockdown.
+
+The final lockdown step ensures that:
+1. outbound network traffic from the isolated cluster is only permitted to the container registry hosted in the access cluster
+1. inbound traffic to the isolated cluster is only allowed from the access cluster to the FRIDGE API and private Kubernetes API
+
+The isolated cluster is not isolated from the internet until this is completed.
+
+Example Pulumi code for locking down AKS after FRIDGE deployment can be found at `fridge/infra/aks-post-deployment`.
+
+For AKS, this involves making changes to the network security groups for the VNets on which the two clusters are hosted, and setting up a private DNS zone with a record for Harbor, pointing its FQDN towards its internal IP address.
