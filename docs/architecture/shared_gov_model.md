@@ -15,7 +15,7 @@ FRIDGE operates a two-tier governance structure adapted from the [UCL Research D
 
 ## FRIDGE Federation Governance
 
-At the upper tier, FRIDGE Federation Governance provides strategic oversight. 
+At the upper tier, FRIDGE Federation Governance provides strategic oversight.
 {term}`Data Owners` feed their requirements directly into this tier.
 It includes three groups:
 
