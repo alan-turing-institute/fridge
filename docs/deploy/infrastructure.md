@@ -101,3 +101,5 @@ The isolated cluster is not isolated from the internet until this is completed.
 Example Pulumi code for locking down AKS after FRIDGE deployment can be found at `fridge/infra/aks-post-deployment`.
 
 For AKS, this involves making changes to the network security groups for the VNets on which the two clusters are hosted, and setting up a private DNS zone with a record for Harbor, pointing its FQDN towards its internal IP address.
+
+On Dawn, a similar process involves removal of the network router allowing the isolated cluster's VNet direct access to the internet, and modifying the security group rules governing traffic between the two VNets.
