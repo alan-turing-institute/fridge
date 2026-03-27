@@ -68,12 +68,24 @@ In production, it would be private and accessed via a bastion.
 
 The `isolated` cluster has a private API server endpoint, which will be made accessible only from within the access cluster.
 
+When the infrastructure has finished deploying, you should provide the TRE Administrators reponsible for deploying FRIDGE with the necessary connection details, including the public IP address of the Kubernetes cluster, and credentials for the two clusters.
+
 ## Dawn AI
 
 Deployment on Dawn is currently a partly manual, partly Pulumi based process.
+
+The `fridge/infra/dawn/` directory contains Pulumi code for the deployment of the initial networking setup and nodes for use by Kubernetes.
+
+On Dawn, [K3s](https://k3s.io/) is the Kubernetes distribution of choice.
+
+The deployment of two K3s clusters onto the associated nodes should be completed manually.
 
 Once setup is complete, you should provide the TRE Administrators with the following:
 
 - public IP address of bastion host for accessing the access cluster
 - Kubernetes credentials for the access and isolated clusters
 - internal and external IP addresses of the load balancer on the access cluster
+
+The TRE Adminstrators responsible for deploying the FRIDGE services will require this information.
+
+## Network lockdown
