@@ -11,7 +11,7 @@ Furthermore, the goal should be for security features to be enforced by two inde
 
 ## Networking
 
-Within the [Kubernetes clusters](#arch-arch-tenancy-network) network policy is [enforced by a CNI plugin](#arch-arch-interanl-cni).
+Within the [Kubernetes clusters](#arch-arch-tenancy-network) network policy is [enforced by a CNI plugin](#arch-arch-internal-cni).
 This ensures that only essential and intended traffic is permitted.
 The default policy is to block all traffic, unless explicitly allowed.
 
@@ -20,7 +20,7 @@ In particular, traffic between the {term}`Access Network` and {term}`Isolated Ne
 and the {term}`Isolated Network` can make no outbound connections except for pulling container images from the [](#arch-arch-internal-harbor).
 
 The enforcing of network rules by two independent systems adds robustness.
-If, for example, privilege escalation occurred inside Kubenetes, the network policy could be modified.
+If, for example, privilege escalation occurred inside Kubernetes, the Cilium network policies could be modified or bypassed.
 However, the infrastructure-level networking restrictions would still prevent unauthorised data egress.
 
 ## Privilege Escalation
@@ -36,7 +36,7 @@ This allows it to dispatch job requests from {term}`Job Submitters`, but not cre
 
 ### On Cluster Nodes
 
-The built in Kubernetes [Restricted](https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted) [Pod Security Standard](https://kubernetes.io/docs/concepts/security/pod-security-standards/) are applied to all pods, except those which need additional privileges.
+The built in Kubernetes [Restricted](https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted) [Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/) are applied to all namespaces, except those which need additional privileges.
 Specifically, all pods launched by {term}`Job Submitters` must comply with the Restricted standard.
 This prevents running as root, accessing host storage, and accessing the host network amongst other restrictions.
 
