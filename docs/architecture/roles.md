@@ -66,7 +66,6 @@ The organisation that runs the {term}`Trusted Research Environment` used by rese
 - Acts as the coordination point between governance, technical teams, and researchers throughout the lifecycle.
 - Receives teardown and data deletion confirmation from the {term}`FRIDGE Hosting Organisation` and passes this to the {term}`Principal Investigator`.
 
----
 
 (role-fridge-hosting-organisation)=
 ### FRIDGE Hosting Organisation
