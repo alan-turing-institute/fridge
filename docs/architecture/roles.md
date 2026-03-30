@@ -16,7 +16,7 @@ FRIDGE Hosting Organisation
 : Provisions and secures resources on the FRIDGE hosting facility to host the {term}`Satellite TRE`. See [details](#role-fridge-hosting-organisation).
 
 Resource Allocator
-: Approves compute resource requests and monitors resource utilisation of the supercomputing platform hosting FRIDGE. See [details](#role-resource-allocator).
+: Approves compute resource requests and monitors resource utilisation of the  platform hosting FRIDGE. See [details](#role-resource-allocator).
 
 FRIDGE Federation Governance
 : Accountable for risk, determining requirements, and monitoring performance. See [details](#role-fridge-federation-governance) and [FRIDGE Governance](shared_gov_model.md).
