@@ -5,7 +5,7 @@ short_title: Shared Responsibility Model
 
 ```{figure} ../static/fridge_shared_responsibility_model.svg
 ---
-name: fridge-shared-responsibility-diagram
+name: fig-shared-responsibility-diagram
 alt: FRIDGE Shared Responsibility Model diagram
 ---
 High-level view of the responsibilities shared between the 3 key organisations, mapped to the 5 safes
