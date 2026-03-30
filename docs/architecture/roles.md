@@ -22,7 +22,7 @@ FRIDGE Federation Governance
 : Accountable for risk, determining requirements, and monitoring performance. See [details](#role-fridge-federation-governance) and [FRIDGE Governance](shared_gov_model.md).
 
 Operational Management Group
-: Representatives from the technical groups running FRIDGE, information governance, and researchers as appropriate to manage risk in day-to-day operations. See [details](#role-operational-management-group) and [FRIDGE Governance](shared_gov_model.md).
+: Representatives from the technical groups running FRIDGE, information governance experts, and researchers as appropriate to manage risk in day-to-day operations. See [details](#role-operational-management-group) and [FRIDGE Governance](shared_gov_model.md).
 
 Information Governance Team
 : The team within the {term}`TRE Operator Organisation` responsible for information governance and compliance. See [details](#role-information-governance-team).
