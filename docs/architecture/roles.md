@@ -60,7 +60,7 @@ The organisation that runs the {term}`Trusted Research Environment` used by rese
 - Assumes responsibility for the TRE platform and code ("front door" and "satellite"), identity and access management, encryption, output management, and researcher accreditation.
 - May receive delegated approval authority from the {term}`Data Owner`.
 
-**Lifecycle process responsibilities:**
+#### Lifecycle process responsibilities
 - Receives allocation details from the {term}`FRIDGE Hosting Organisation` and passes them to the {term}`Principal Investigator`.
 - Instructs {term}`TRE Administrator`s to deploy or decommission the TRE and FRIDGE instance.
 - Acts as the coordination point between governance, technical teams, and researchers throughout the lifecycle.
