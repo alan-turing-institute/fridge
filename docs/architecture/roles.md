@@ -10,7 +10,7 @@ This page explains the responsibilities of each role within a FRIDGE deployment,
 
 :::{glossary}
 TRE Operator Organisation
-: Operates the full stack TRE (the "front door" TRE) and the FRIDGE {term}`Satellite TRE`, manages technical security controls, and may receive delegated approval authority from the {term}`Data Owner`. See [details](#role-tre-operator-organisation).
+: Operates the {term}`Home TRE` and the FRIDGE {term}`Satellite TRE`, manages technical security controls, and may receive delegated approval authority from the {term}`Data Owner`. See [details](#role-tre-operator-organisation).
 
 FRIDGE Hosting Organisation
 : Provisions and secures resources on the FRIDGE hosting facility to host the {term}`Satellite TRE`. See [details](#role-fridge-hosting-organisation).
