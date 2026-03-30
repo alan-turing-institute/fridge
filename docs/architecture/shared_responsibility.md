@@ -3,7 +3,7 @@ short_title: Shared Responsibility Model
 ---
 # Shared Responsibility Model
 
-```{figure} ../static/Fridge_Shared_Responsibility_Model.svg
+```{figure} ../static/fridge_shared_responsibility_model.svg
 ---
 name: fridge-shared-responsibility-diagram
 alt: FRIDGE Shared Responsibility Model diagram
