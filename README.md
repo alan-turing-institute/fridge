@@ -42,30 +42,6 @@ FRIDGE can be deployed to:
 
 See the [deployment documentation](https://alan-turing-institute.github.io/fridge/deploy/prerequisites/) for step-by-step instructions for each target.
 
-## Local Development
-
-To run the `fridge-job-api` locally:
-
-```bash
-uv sync
-uv run fastapi dev app/main.py
-```
-
-The API will be available at `http://localhost:8000`, with OpenAPI docs at `http://localhost:8000/docs`.
-
-See [`fridge-job-api/README.md`](fridge-job-api/README.md) for configuration details, and the [developer documentation](https://alan-turing-institute.github.io/fridge/develop/target/) for broader contributor guidance.
-
-## Contributing
-
-Install [pre-commit](https://pre-commit.com/) and set up the hooks before making changes:
-
-```bash
-pip install pre-commit
-pre-commit install
-```
-
-The hooks run `black` for Python formatting and standard file hygiene checks.
-
 ## Documentation
 
 Full documentation is available at **https://alan-turing-institute.github.io/fridge/**
