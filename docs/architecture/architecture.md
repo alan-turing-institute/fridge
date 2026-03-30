@@ -8,7 +8,7 @@ These are mapped to our [roles](#arch-roles),
 
 - {span .role .tre-operator}``(blue) owned by {term}`TRE Operator Organisation` ``
 - {span .role .hosting-provider}``(green) owned by {term}`FRIDGE Hosting Organisation` ``
-- {span .role .job-submitter}``(orange) used by {term}`Job Submitter`s, owned by {term}`TRE Operator Organisation` ``
+- {span .role .job-submitter}``(orange) used by {term}`Job Submitters <Job Submitter>`, owned by {term}`TRE Operator Organisation` ``
 
 {span .role .external}`pink` items indicate externally controlled resources, outside of the scope of our [roles](#arch-roles).
 
