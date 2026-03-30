@@ -25,13 +25,6 @@ See the [architecture documentation](https://alan-turing-institute.github.io/fri
 | `infra/` | Pulumi infrastructure-as-code for supported deployment targets |
 | `docs/` | Source for the [project documentation site](https://alan-turing-institute.github.io/fridge/) |
 
-## Prerequisites
-
-- [Python](https://www.python.org/downloads/) 3.11+
-- [Pulumi](https://www.pulumi.com/docs/get-started/install/)
-- [kubectl](https://kubernetes.io/docs/tasks/tools/)
-- [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli) *(if deploying to AKS)*
-
 ## Deployment
 
 FRIDGE can be deployed to:
