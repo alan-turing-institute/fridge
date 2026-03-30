@@ -8,12 +8,16 @@ short_title: Shared Responsibility Model
 name: fig-shared-responsibility-diagram
 alt: FRIDGE Shared Responsibility Model diagram
 ---
-High-level view of the responsibilities shared between the 3 key organisations, mapped to the 5 safes
+A high-level view of the responsibilities shared between the three key organisations.
+Each responsibility is mapped to one of the [5 Safes](https://ukdataservice.ac.uk/help/secure-lab/what-is-the-five-safes-framework/).
 ```
 
-Security, governance and compliance in FRIDGE is a shared responsibility between the {term}`TRE Operator Organisation`, the{term}`FRIDGE Hosting Organisation` and the {term}`Resource Allocator`. This shared model helps to distribute operational burden appropriately across parties:
+Security, governance and compliance in FRIDGE is a shared responsibility between the {term}`TRE Operator Organisation` and the{term}`FRIDGE Hosting Organisation`.
+The {term}`Resource Allocator` also plays a more minor role in judging the suitability of a project.
+This shared model helps to distribute operational burden appropriately across parties:
 
-- The {term}`TRE Operator Organisation` assumes responsibility for the research environment built upon that foundation — including the TRE platform and code, identity and access management and encryption. Furthermore they retain all responsibility for governance processes such as output management and researcher accreditation.
+- The {term}`TRE Operator Organisation` assumes responsibility for the research environment including the TRE platform and code, identity and access management, and encryption.
+  Furthermore they retain all responsibility for governance processes such as output management and researcher accreditation.
 - The {term}`FRIDGE Hosting Organisation` operates, manages and controls the components from the physical hardware and network infrastructure up to tenancy isolation and Kubernetes cluster management.
 - The {term}`Resource Allocator` retains responsibility for ensuring that computing resources are allocated to the FRIDGE instance or on a per project basis.
 
