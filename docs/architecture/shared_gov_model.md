@@ -5,7 +5,7 @@ short_title: Shared Governance
 
 ```{figure} ../static/fridge_governance.svg
 ---
-name: fridge-governance-diagram
+name: fig-governance-diagram
 alt: FRIDGE Governance Structure diagram
 ---
 A schematic of the two-tier governance structure for FRIDGE.
