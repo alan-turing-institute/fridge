@@ -40,9 +40,9 @@ if k8s_environment == K8sEnvironment.AKS:
     )
 
 # Private API proxy
-api_ssh_jumpbox = components.FridgeAPIJumpbox(
+api_ssh_jumpboxes = components.APIJumpboxes(
     "fridge-api-ssh-jumpbox",
-    components.FridgeAPIJumpboxArgs(
+    components.APIJumpboxesArgs(
         config=config,
         k8s_environment=k8s_environment,
     ),
@@ -51,7 +51,7 @@ api_ssh_jumpbox = components.FridgeAPIJumpbox(
 ingress_nginx = components.Ingress(
     "ingress-nginx",
     args=components.IngressArgs(
-        api_jumpbox=api_ssh_jumpbox, k8s_environment=k8s_environment
+        api_jumpboxes=api_ssh_jumpboxes, k8s_environment=k8s_environment
     ),
 )
 
