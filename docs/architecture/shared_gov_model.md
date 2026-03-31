@@ -8,7 +8,7 @@ short_title: Shared Governance
 name: fridge-governance-diagram
 alt: FRIDGE Governance Structure diagram
 ---
-Two-tier governance structure for FRIDGE
+A schematic of the two-tier governance structure for FRIDGE.
 ```
 
 FRIDGE operates a two-tier governance structure adapted from the [UCL Research Data information governance framework](https://isms.arc.ucl.ac.uk/rism02-roles_and_responsibilities/#3-the-information-governance-framework).
