@@ -17,7 +17,7 @@ FRIDGE Hosting Organisation
 Hosting Provider Administrators
 : Members of {term}`FRIDGE Hosting Organisation`
 
-Resource Allocators
+Resource Allocator
 : …
 
 Principal Investigators
