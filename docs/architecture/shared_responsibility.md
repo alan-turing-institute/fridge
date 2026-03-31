@@ -7,14 +7,14 @@ Security, governance and compliance in FRIDGE is a shared responsibility between
 The {term}`Resource Allocator` also plays a more minor role in judging the suitability of a project.
 A summary of the distribution of responsibilities, and their relation to the [5 Safes](https://ukdataservice.ac.uk/help/secure-lab/what-is-the-five-safes-framework/) is shown in [](#fig-shared-responsibility)
 
-```{figure} ../static/fridge_shared_responsibility_model.svg
+```{figure} ../static/shared_responsibility_model.drawio.svg
 ---
 name: fig-shared-responsibility
-alt: > 
+alt: >
   A diagram showing the FRIDGE Shared Responsibility Model, organised into three horizontal layers mapped against the Five Safes framework.
   The Resource Allocator layer at the top covers Project Suitability and Workspace Resource Allocation, corresponding to Safe Projects.
   The TRE Provider Organisation layer in the middle covers Study Membership (Safe Projects), Safe Researcher Accreditation (Safe People), Data Lifecycle Management (Safe Data), Output Management (Safe Outputs), and a Safe Setting group comprising TRE Platform, TRE Code, Applications, Identity and Access Management, Client Side Encryption, and Network Traffic Protection.
-  The FRIDGE Hosting Organisation layer at the bottom covers Tenancy Isolation, Kubernetes Clusters, Public IP Addressing, and Physical Hardware and Network, also mapped to Safe Setting. 
+  The FRIDGE Hosting Organisation layer at the bottom covers Tenancy Isolation, Kubernetes Clusters, Public IP Addressing, and Physical Hardware and Network, also mapped to Safe Setting.
 ---
 A high-level view of the responsibilities shared between the three key organisations.
 Each responsibility is mapped to one of the [5 Safes](https://ukdataservice.ac.uk/help/secure-lab/what-is-the-five-safes-framework/).
@@ -32,6 +32,6 @@ Organisations should carefully consider their role within this model, as respons
 
 ## Shared Processes
 
-While the shared responsibility model clearly delineates ownership, operating safely in practice requires a set of agreed cross-boundary processes. 
+While the shared responsibility model clearly delineates ownership, operating safely in practice requires a set of agreed cross-boundary processes.
 Responsibility for a control does not eliminate the need for coordination with other parties in exercising it.
 Such shared processes are described in [](#arch-lifecycle).
