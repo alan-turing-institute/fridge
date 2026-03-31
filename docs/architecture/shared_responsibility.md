@@ -18,7 +18,7 @@ This shared model helps to distribute operational burden appropriately across pa
 
 - The {term}`TRE Operator Organisation` assumes responsibility for the research environment including the TRE platform and code, identity and access management, and encryption.
   Furthermore they retain all responsibility for governance processes such as output management and researcher accreditation.
-- The {term}`FRIDGE Hosting Organisation` operates, manages and controls the components from the physical hardware and network infrastructure up to tenancy isolation and Kubernetes cluster management.
+- The {term}`FRIDGE Hosting Organisation` operates the physical and logical hosting environment for the satellite TRE, providing a secure tenancy to the {term}`TRE Operator Organisation`.
 - The {term}`Resource Allocator` retains responsibility for ensuring that computing resources are allocated to the FRIDGE instance or on a per project basis.
 
 Organisations should carefully consider their role within this model, as responsibilities vary depending on how FRIDGE services are integrated into existing TRE operations and the applicable legal, regulatory and data governance frameworks in place.
