@@ -6,7 +6,7 @@ short_title: Shared Responsibility Model
 ```{figure} ../static/fridge_shared_responsibility_model.svg
 ---
 name: fig-shared-responsibility-diagram
-alt: FRIDGE Shared Responsibility Model diagram
+alt: A diagram showing the FRIDGE Shared Responsibility Model, organised into three horizontal layers mapped against the Five Safes framework. The Resource Allocator layer at the top covers Project Suitability and Workspace Resource Allocation, corresponding to Safe Projects. The TRE Provider Organisation layer in the middle covers Study Membership (Safe Projects), Safe Researcher Accreditation (Safe People), Data Lifecycle Management (Safe Data), Output Management (Safe Outputs), and a Safe Setting group comprising TRE Platform, TRE Code, Applications, Identity and Access Management, Client Side Encryption, and Network Traffic Protection. The FRIDGE Hosting Organisation layer at the bottom covers Tenancy Isolation, Kubernetes Clusters, Public IP Addressing, and Physical Hardware and Network, also mapped to Safe Setting. 
 ---
 A high-level view of the responsibilities shared between the three key organisations.
 Each responsibility is mapped to one of the [5 Safes](https://ukdataservice.ac.uk/help/secure-lab/what-is-the-five-safes-framework/).
