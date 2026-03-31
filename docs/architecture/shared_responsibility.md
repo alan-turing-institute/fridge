@@ -1,6 +1,7 @@
 ---
 short_title: Shared Responsibility Model
 ---
+(arch-shared-responsibility)=
 # Shared Responsibility Model
 
 Security, governance and compliance in FRIDGE is a shared responsibility between the {term}`TRE Operator Organisation` and the{term}`FRIDGE Hosting Organisation`.
