@@ -9,9 +9,28 @@ project:
   # keywords: []
   # authors: []
   github: https://github.com/alan-turing-institute/fridge
-  # To autogenerate a Table of Contents, run "myst init --write-toc"
+  toc:
+    - file: index.md
+    - title: Architecture
+      children:
+        - file: architecture/introduction.md
+        - file: architecture/roles.md
+        - file: architecture/shared_responsibility.md
+        - file: architecture/architecture.md
+        - file: architecture/defence_in_depth.md
+        - file: architecture/lifecycle.md
+        - file: architecture/responsibility_and_5_safes.md
+    - title: Deploy
+      children:
+        - file: deploy/prerequisites.md
+        - file: deploy/infrastructure.md
+        - file: deploy/services.md
+    - title: Develop
+      children:
+        - file: develop/target.md
 site:
   template: book-theme
-  # options:
+  options:
+    style: ./style.css
   #   favicon: favicon.ico
   #   logo: site_logo.png
