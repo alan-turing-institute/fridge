@@ -128,6 +128,7 @@ A diagram showing the key internal components of the FRIDGE Kubernetes clusters.
 Lines indicate access to private volumes.
 :::
 
+(arch-arch-internal-cni)=
 ### Network Policy
 
 Network traffic within the FRIDGE clusters is restricted.
