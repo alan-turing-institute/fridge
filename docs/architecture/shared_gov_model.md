@@ -4,6 +4,7 @@ short_title: Shared Governance
 # Shared Governance Structure
 
 FRIDGE operates a two-tier governance structure adapted from the [UCL Research Data information governance framework](https://isms.arc.ucl.ac.uk/rism02-roles_and_responsibilities/#3-the-information-governance-framework).
+
 A summary of this structure is shown in [](#fig-governance-diagram).
 
 ```{figure} ../static/fridge_governance.svg
@@ -22,13 +23,13 @@ It includes three groups:
 
 - The {term}`Resource Allocator`, determines project suitability and approving workspace resource allocation.
 - A [PPI (Public and Patient Involvement)](https://glossary.uktre.org/en/stable/#term-patient-and-public-involvement--ppi-) function ensures research activities reflect public interests.
-- {term}`Operational Management Group` representatives provide the formal link between strategic governance and operational delivery, receiving risk and performance reporting from and issuing requirements to the OMG.
+- The {term}`Operational Management Group` representatives provide the formal link between strategic governance and operational delivery, receiving risk and performance reporting from, and issuing requirements to, the OMG.
 
 ## Operational Management Group
 
 The {term}`Operational Management Group` is responsible for the day-to-day operation of the FRIDGE platform. It comprises four groups:
 
-- The [Information Governance](https://glossary.uktre.org/en/stable/#term-information-governance--ig-) Team (IG Lead and IG Officer), responsible for maintaining compliance and governance processes.
+- The [Information Governance](https://glossary.uktre.org/en/stable/#term-information-governance--ig-) Team, responsible for maintaining compliance and governance processes.
 - The {term}`Hosting Administrator`, accountable for the safe operation of the underlying infrastructure.
-- {term}`Principal Investigators` and/or {term}`Safe Researchers`, who carry out approved research within the environment ensure the FRIDGE is fit for purpose.
+- The {term}`Principal Investigators` and {term}`Safe Researchers`, who carry out approved research within the environment ensure the FRIDGE is fit for purpose.
 - The {term}`TRE Administrator`, responsible for the technical operation and maintenance of the Trusted Research Environment.
