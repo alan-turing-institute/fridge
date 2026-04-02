@@ -1,6 +1,7 @@
 ---
 short_title: Lifecycle
 ---
+(arch-lifecycle)=
 # FRIDGE Lifecycle and Data Flow
 
 The series of sequence diagrams presented here outline the lifecycle of a FRIDGE instance and project.
