@@ -64,7 +64,7 @@ Data Owner
 (role-tre-operator-organisation)=
 ### TRE Operator Organisation
 
-The organisation that runs the {term}`Trusted Research Environment` used by researchers — the "front door" through which researchers access sensitive data.
+The organisation that runs the {term}`Trusted Research Environment` used by researchers, which is the "front door" through which researchers access sensitive data.
 This is typically a university, research institution or data provider that operates a TRE.
 The {term}`TRE Operator Organisation` is accountable for researcher accreditation, data governance within the TRE, and the security of the research environment built on top of the FRIDGE infrastructure.
 
@@ -187,7 +187,7 @@ Typically research computing or platform engineers who understand both the secur
 ### Hosting Administrator
 
 A technical team from the {term}`FRIDGE Hosting Organisation` with hands-on responsibility for the underlying supercomputing infrastructure.
-Operates at the infrastructure layer — managing physical or virtual hardware, network isolation, and cluster provisioning with no access to the TRE itself.
+Operates at the infrastructure layer by managing physical or virtual hardware, network isolation, and cluster provisioning with no access to the TRE itself.
 They act on instructions from the {term}`TRE Administrator` but operate within the security boundary and policies of the {term}`FRIDGE Hosting Organisation`.
 
 #### Governance and architecture responsibilities
@@ -245,7 +245,8 @@ A researcher who has been formally accredited to access sensitive data within th
 (role-job-submitter)=
 ### Job Submitter
 
-A {term}`Safe Researcher` who has been granted additional permissions to interact directly with the FRIDGE API — submitting compute jobs, managing container images, and retrieving results.
+A {term}`Safe Researcher` who has been granted additional permissions to interact directly with the FRIDGE API.
+They may use the API to submit compute jobs, manage container images, and retrieve results.
 Not all {term}`Safe Researchers <Safe Researcher>` will need or hold this role; it is assigned to those members of the research team who are responsible for the computational aspects of the project, such as running AI models or large-scale data processing workloads on the supercomputer.
 
 #### Governance and architecture responsibilities
@@ -265,7 +266,7 @@ Not all {term}`Safe Researchers <Safe Researcher>` will need or hold this role; 
 
 The organisation or individual that owns the sensitive data being used in the research project.
 This is typically an NHS organisation, government body, or other institution that holds personal or sensitive data and has the legal authority to permit its use for research purposes.
-The {term}`Data Owner` sets the conditions under which data may be used and must receive assurance that those conditions — including data deletion at project end — have been met.
+The {term}`Data Owner` sets the conditions under which data may be used and must receive assurance that those conditions, including data deletion at project end, have been met.
 
 #### Process responsibilities
 
