@@ -32,12 +32,12 @@ FRIDGE uses Kubernetes [Role Based Access Control](https://kubernetes.io/docs/co
 This then allows certain pods to interact with the Kubernetes API in a limited way.
 
 For example, the [](#arch-arch-internal-workflow) inherits a role which allows it to create jobs in the job namespace only.
-This allows it to dispatch job requests from {term}`Job Submitters`, but not create resources in other namespaces or modify other FRIDGE components.
+This allows it to dispatch job requests from {term}`Job Submitters <Job Submitter>`, but not create resources in other namespaces or modify other FRIDGE components.
 
 ### On Cluster Nodes
 
 The built in Kubernetes [Restricted](https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted) [Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/) are applied to all namespaces, except those which need additional privileges.
-Specifically, all pods launched by {term}`Job Submitters` must comply with the Restricted standard.
+Specifically, all pods launched by {term}`Job Submitters <Job Submitter>` must comply with the Restricted standard.
 This prevents running as root, accessing host storage, and accessing the host network amongst other restrictions.
 
 Compromising the host of a pod is therefore unlikely.
