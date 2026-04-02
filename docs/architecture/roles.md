@@ -85,8 +85,6 @@ The organisation that owns and operates the supercomputing infrastructure on whi
 - Confirms teardown completion and provides data deletion assurance to the {term}`TRE Operator Organisation` at project termination.
 - Closes the FRIDGE allocation at project end.
 
----
-
 (role-resource-allocator)=
 ### Resource Allocator
 
@@ -96,8 +94,6 @@ Responsible for managing access to the supercomputing platform. This role contro
 - Approves compute resource requests for the supercomputing platform hosting FRIDGE.
 - Monitors resource utilisation of the platform.
 - Retains responsibility for ensuring that projects and their associated workspace resource allocations are appropriate and justified.
-
----
 
 ## Governance Roles
 
@@ -112,8 +108,6 @@ The strategic governance body for the FRIDGE federation, bringing together senio
 - Receives risk and performance monitoring reports from the {term}`Operational Management Group`.
 - Incorporates the {term}`Resource Allocator`, a PPIE function, and {term}`Operational Management Group` representation.
 
----
-
 (role-operational-management-group)=
 ### Operational Management Group
 
@@ -126,8 +120,6 @@ A cross-organisational working group made up of representatives from the technic
 - Reports risk and performance information to {term}`FRIDGE Federation Governance`.
 - Comprises the {term}`Information Governance Team`, {term}`Hosting Administrator`, {term}`TRE Administrator`, and {term}`Principal Investigators <Principal Investigator>` / {term}`Safe Researchers <Safe Researcher>` as appropriate.
 
----
-
 (role-information-governance-team)=
 ### Information Governance Team
 
@@ -138,8 +130,6 @@ The team within the {term}`TRE Operator Organisation` responsible for informatio
 - Provides expertise and liaison between governance tiers and research teams.
 - Acts as the primary IG contact for external parties and as an escalation point for IG matters.
 - Represented on the {term}`Operational Management Group`.
-
----
 
 ## Technical Roles
 
@@ -160,8 +150,6 @@ A technical team within the {term}`TRE Operator Organisation` with hands-on resp
 - Initiates TRE disconnection from FRIDGE at teardown.
 - Requests FRIDGE teardown from {term}`Hosting Administrator`.
 
----
-
 (role-hosting-administrator)=
 ### Hosting Administrator
 
@@ -178,8 +166,6 @@ A technical team from the {term}`FRIDGE Hosting Organisation` with hands-on resp
 - Applies network and cluster lockdown configurations on instruction from {term}`TRE Administrator`.
 - Confirms lockdown completion.
 - Tears down the Access Cluster and Isolated Cluster at project end.
-
----
 
 ## Researcher Roles
 
@@ -201,8 +187,6 @@ The academic or research lead responsible for a specific research project using 
 - Requests FRIDGE instance teardown when research is complete.
 - Receives and passes on data deletion confirmation to the {term}`Data Owner` at project termination.
 
----
-
 (role-safe-researcher)=
 ### Safe Researcher
 
@@ -214,8 +198,6 @@ A researcher who has been formally accredited to access sensitive data within th
 
 #### Process responsibilities:
 - Works within the TRE to identify research questions for FRIDGE.
-
----
 
 (role-job-submitter)=
 ### Job Submitter
@@ -229,8 +211,6 @@ A {term}`Safe Researcher` who has been granted additional permissions to interac
 - Pushes custom container images to the FRIDGE API.
 - Submits job specifications to the FRIDGE API.
 - Monitors job status and downloads results from the FRIDGE API.
-
----
 
 ## External Role
 
