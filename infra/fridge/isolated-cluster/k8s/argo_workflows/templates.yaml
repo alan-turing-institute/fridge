@@ -17,19 +17,21 @@ spec:
         - name: workflow-data-ingress
           persistentVolumeClaim:
             claimName: replace_me
+        - name: ssl-certs
+          secret:
+            secretName: trusted-certificates
       container:
         name: copy
         image: buildpack-deps:curl
         command: ["/bin/sh", "-c"]
         args:
           - |
-            cert_file=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
             copy_jobs=""
             for file in $(echo "{{inputs.parameters.files}}" | tr ";" " "); do
               echo "Copying $file"
               (
                 tmp_out=$(mktemp)
-                http_code=$(curl -s --cacert $cert_file \
+                http_code=$(curl -s \
                   https://minio.argo-artifacts.svc.cluster.local/{{inputs.parameters.bucket}}/$file \
                   -o $tmp_out \
                   -w "%{http_code}")
@@ -61,3 +63,6 @@ spec:
         volumeMounts:
           - name: workflow-data-ingress
             mountPath: /data
+          - name: ssl-certs
+            mountPath: /etc/ssl/certs
+            readOnly: true
