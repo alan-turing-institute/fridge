@@ -38,7 +38,13 @@ class NetworkPolicies(ComponentResource):
                 )
                 k8s_api_port = "443"
                 k8s_api_endpoint_rule = {
-                    "toFQDNs": [args.config.require("isolated_cluster_api_endpoint")],
+                    "toFQDNs": [
+                        {
+                            "matchName": args.config.require(
+                                "isolated_cluster_api_endpoint"
+                            )
+                        }
+                    ],
                     "toPorts": [{"ports": [{"port": k8s_api_port, "protocol": "TCP"}]}],
                 }
                 fridge_api_ip_rule = {
@@ -90,13 +96,75 @@ class NetworkPolicies(ComponentResource):
                     opts=child_opts,
                 )
 
-        self.api_jumpbox_cnp = CustomResource(
-            "network_policy_api_jumpbox",
+        self.fridge_api_jumpbox_cnp = CustomResource(
+            "network_policy_fridge_api_jumpbox",
             api_version="cilium.io/v2",
             kind="CiliumNetworkPolicy",
-            metadata={"name": "api-jumpbox-access", "namespace": "api-jumpbox"},
+            metadata={
+                "name": "fridge-api-jumpbox-access",
+                "namespace": "fridge-api-jumpbox",
+            },
             spec={
-                "endpointSelector": {"matchLabels": {"app": "api-jumpbox"}},
+                "endpointSelector": {"matchLabels": {"app": "fridge-api-jumpbox"}},
+                "ingress": [
+                    {
+                        "fromEndpoints": [
+                            {
+                                "matchLabels": {
+                                    "k8s:app.kubernetes.io/name": "ingress-nginx",
+                                    "k8s:app.kubernetes.io/component": "controller",
+                                    "k8s:io.kubernetes.pod.namespace": "ingress-nginx",
+                                }
+                            }
+                        ],
+                        "toPorts": [{"ports": [{"port": "2222", "protocol": "TCP"}]}],
+                    }
+                ],
+                "egress": [
+                    {
+                        "toEndpoints": [
+                            {
+                                "matchLabels": {
+                                    "k8s:io.kubernetes.pod.namespace": "kube-system",
+                                    "k8s-app": "kube-dns",
+                                }
+                            }
+                        ],
+                        "toPorts": [
+                            {
+                                "ports": [{"port": "53", "protocol": "ANY"}],
+                                "rules": {"dns": [{"matchPattern": "*"}]},
+                            }
+                        ],
+                    },
+                    {
+                        "toEndpoints": [
+                            {
+                                "matchLabels": {
+                                    "k8s:app.kubernetes.io/name": "ingress-nginx",
+                                    "k8s:app.kubernetes.io/component": "controller",
+                                    "k8s:io.kubernetes.pod.namespace": "ingress-nginx",
+                                }
+                            }
+                        ],
+                        "toPorts": [{"ports": [{"port": "2222", "protocol": "TCP"}]}],
+                    },
+                    fridge_api_ip_rule,
+                ],
+            },
+            opts=child_opts,
+        )
+
+        self.k8s_api_jumpbox_cnp = CustomResource(
+            "network_policy_k8s_api_jumpbox",
+            api_version="cilium.io/v2",
+            kind="CiliumNetworkPolicy",
+            metadata={
+                "name": "k8s-api-jumpbox-access",
+                "namespace": "k8s-api-jumpbox",
+            },
+            spec={
+                "endpointSelector": {"matchLabels": {"app": "k8s-api-jumpbox"}},
                 "ingress": [
                     {
                         "fromEndpoints": [
@@ -140,7 +208,6 @@ class NetworkPolicies(ComponentResource):
                         ],
                         "toPorts": [{"ports": [{"port": "2222", "protocol": "TCP"}]}],
                     },
-                    fridge_api_ip_rule,
                     k8s_api_endpoint_rule,
                 ],
             },
@@ -198,7 +265,14 @@ class NetworkPolicies(ComponentResource):
                 "ingress": [
                     {
                         "fromCIDR": ssh_ip_allowlist,
-                        "toPorts": [{"ports": [{"port": "2222", "protocol": "TCP"}]}],
+                        "toPorts": [
+                            {
+                                "ports": [
+                                    {"port": "2500", "protocol": "TCP"},
+                                    {"port": "2800", "protocol": "TCP"},
+                                ]
+                            }
+                        ],
                     }
                 ],
                 "egress": [
@@ -206,10 +280,16 @@ class NetworkPolicies(ComponentResource):
                         "toServices": [
                             {
                                 "k8sService": {
-                                    "serviceName": "api-jumpbox-service",
-                                    "namespace": "api-jumpbox",
+                                    "serviceName": "fridge-api-jumpbox-service",
+                                    "namespace": "fridge-api-jumpbox",
                                 }
-                            }
+                            },
+                            {
+                                "k8sService": {
+                                    "serviceName": "k8s-api-jumpbox-service",
+                                    "namespace": "k8s-api-jumpbox",
+                                }
+                            },
                         ]
                     }
                 ],
