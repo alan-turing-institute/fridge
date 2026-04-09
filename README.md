@@ -9,7 +9,7 @@ The system is built on Kubernetes for portability across cloud providers and on-
 
 ## Documentation
 
-Full documentation is available at **https://alan-turing-institute.github.io/fridge/**
+Full documentation is available [here](https://alan-turing-institute.github.io/fridge/)
 
 ## Repository Structure
 
