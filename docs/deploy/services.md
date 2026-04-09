@@ -159,4 +159,4 @@ However, two additional steps are required before deploying FRIDGE to the isolat
 You may have to use different ports locally if the port suggested above (6443) is in use.
 :::
 
-Once these steps are complete, you can deploy the isolated cluster stack using the same `pulumi up` command as before, after creating the stack, and setting the required configuration keys.
+Once these steps are completed, you can deploy the isolated cluster stack using the same `pulumi up` command as before, after creating the stack, and setting the required configuration keys.
