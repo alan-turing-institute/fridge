@@ -348,7 +348,7 @@ async def get_workflow_template(
     workflow_template = WorkflowTemplate(
         namespace=namespace,
         template_name=template_name,
-        parameters=json_data["spec"]["arguments"]["parameters"],
+        parameters=json_data.get("spec", {}).get("arguments", {}).get("parameters", []),
     )
     if verbose:
         return [json_data, workflow_template]
