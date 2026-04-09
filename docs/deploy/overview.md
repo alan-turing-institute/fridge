@@ -26,5 +26,3 @@ You will need the following tools installed to deploy FRIDGE:
 Additionally, if deploying to Azure, you will need the following:
 
 - [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
-
-We also *highly* recommend the [k9s](https://k9scli.io) tool for working with your Kubernetes clusters.
