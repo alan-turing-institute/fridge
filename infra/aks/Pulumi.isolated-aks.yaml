@@ -4,8 +4,6 @@ config:
   azure-native:tenantId: "4395f4a7-e455-4f95-8a9f-1fbaef6384f9"
   fridge_aks:access_vnet_cidr: 10.10.0.0/16
   fridge_aks:access_nodes_subnet_cidr: 10.10.1.0/24
-  fridge_aks:admin_ip_allowlist:
-    - x.x.x.x/32
   fridge_aks:cluster_name: multi
   fridge_aks:isolated_vnet_cidr: 10.20.0.0/16
   fridge_aks:isolated_nodes_subnet_cidr: 10.20.1.0/24
