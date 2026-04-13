@@ -19,7 +19,6 @@ project:
         - file: architecture/architecture.md
         - file: architecture/defence_in_depth.md
         - file: architecture/lifecycle.md
-        - file: architecture/responsibility_and_5_safes.md
     - title: Deploy
       children:
         - file: deploy/prerequisites.md
