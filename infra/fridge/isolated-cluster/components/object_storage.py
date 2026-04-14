@@ -1,11 +1,12 @@
 import pulumi
 from pulumi import ComponentResource, Output, ResourceOptions
+from pulumi_kubernetes.apiextensions import CustomResource
 from pulumi_kubernetes.core.v1 import Namespace, Secret
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from .storage_classes import StorageClasses
 
-from enums import PodSecurityStandard, TlsEnvironment
+from enums import PodSecurityStandard
 
 
 class ObjectStorageArgs:
@@ -13,10 +14,10 @@ class ObjectStorageArgs:
         self,
         config: pulumi.config.Config,
         storage_classes: StorageClasses,
-        tls_environment: TlsEnvironment,
+        cluster_issuer: CustomResource,
     ) -> None:
         self.config = config
-        self.tls_environment = tls_environment
+        self.cluster_issuer = cluster_issuer
         self.storage_classes = storage_classes
 
 
@@ -31,7 +32,8 @@ class ObjectStorage(ComponentResource):
             "minio-operator-ns",
             metadata=ObjectMetaArgs(
                 name="minio-operator",
-                labels={} | PodSecurityStandard.RESTRICTED.value,
+                labels={"minio-trust-bundle": "enabled"}
+                | PodSecurityStandard.RESTRICTED.value,
             ),
             opts=child_opts,
         )
@@ -40,7 +42,8 @@ class ObjectStorage(ComponentResource):
             "minio-tenant-ns",
             metadata=ObjectMetaArgs(
                 name="argo-artifacts",
-                labels={} | PodSecurityStandard.RESTRICTED.value,
+                labels={"minio-trust-bundle": "enabled"}
+                | PodSecurityStandard.RESTRICTED.value,
             ),
             opts=child_opts,
         )
@@ -85,6 +88,56 @@ class ObjectStorage(ComponentResource):
             ),
         )
 
+        self.minio_tenant_certificate = CustomResource(
+            "minio-tenant-certificate",
+            api_version="cert-manager.io/v1",
+            kind="Certificate",
+            metadata=ObjectMetaArgs(
+                name="argo-artifacts-tls",
+                namespace=self.minio_tenant_ns.metadata.name,
+            ),
+            spec={
+                "secretName": "argo-artifacts-tls",
+                "issuerRef": {
+                    "name": args.cluster_issuer.metadata["name"],
+                    "kind": "ClusterIssuer",
+                },
+                "dnsNames": [
+                    self.minio_cluster_url,
+                ],
+            },
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(depends_on=[self.minio_tenant_ns]),
+            ),
+        )
+
+        self.minio_trust_bundle = CustomResource(
+            "minio-trust-bundle",
+            api_version="trust.cert-manager.io/v1alpha1",
+            kind="Bundle",
+            metadata=ObjectMetaArgs(
+                name="operator-ca-tls-argo-artifacts",
+            ),
+            spec={
+                "sources": [
+                    {"useDefaultCAs": True},
+                    {"secret": {"name": "dev-certificate", "key": "ca.crt"}},
+                ],
+                "target": {
+                    "secret": {
+                        "key": "ca-certificates.crt",
+                    },
+                    "namespaceSelector": {
+                        "matchLabels": {
+                            "minio-trust-bundle": "enabled",
+                        }
+                    },
+                },
+            },
+            opts=child_opts,
+        )
+
         self.minio_tenant = Chart(
             "minio-tenant",
             namespace=self.minio_tenant_ns.metadata.name,
@@ -102,7 +155,9 @@ class ObjectStorage(ComponentResource):
                         {"name": "egress"},
                     ],
                     "certificate": {
-                        "requestAutoCert": "true",
+                        "externalCertSecret": [
+                            {"name": "argo-artifacts-tls", "type": "cert-manager.io/v1"}
+                        ],
                     },
                     "configuration": {
                         "name": "argo-artifacts-env-configuration",
