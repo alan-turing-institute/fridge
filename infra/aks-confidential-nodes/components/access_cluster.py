@@ -101,7 +101,7 @@ class AccessCluster(ComponentResource):
                 type=ResourceIdentityType.USER_ASSIGNED,
                 user_assigned_identities=[args.identity.id],
             ),
-            kubernetes_version="1.33",
+            kubernetes_version="1.35",
             linux_profile=ContainerServiceLinuxProfileArgs(
                 admin_username="fridgeadmin",
                 ssh=ContainerServiceSshConfigurationArgs(
