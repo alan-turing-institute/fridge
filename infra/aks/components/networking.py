@@ -89,7 +89,7 @@ class Networking(ComponentResource):
                     description="Allow HTTPS traffic for Harbor",
                 ),
                 network.SecurityRuleArgs(
-                    name="AllowSSHServerInbound",
+                    name="AllowAdminSSHServerInbound",
                     priority=200,
                     direction=network.SecurityRuleDirection.INBOUND,
                     access=network.SecurityRuleAccess.ALLOW,
@@ -98,6 +98,20 @@ class Networking(ComponentResource):
                     destination_port_range="2500",
                     source_address_prefixes=args.config.require_object(
                         "admin_ip_allowlist"
+                    ),
+                    destination_address_prefix="*",
+                    description="Allow SSH traffic to API Proxy SSH server",
+                ),
+                network.SecurityRuleArgs(
+                    name="AllowUserSSHServerInbound",
+                    priority=300,
+                    direction=network.SecurityRuleDirection.INBOUND,
+                    access=network.SecurityRuleAccess.ALLOW,
+                    protocol=network.SecurityRuleProtocol.TCP,
+                    source_port_range="*",
+                    destination_port_range="2800",
+                    source_address_prefixes=args.config.require_object(
+                        "user_ip_allowlist"
                     ),
                     destination_address_prefix="*",
                     description="Allow SSH traffic to API Proxy SSH server",
