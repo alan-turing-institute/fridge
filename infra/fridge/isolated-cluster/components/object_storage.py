@@ -121,12 +121,11 @@ class ObjectStorage(ComponentResource):
             ),
             spec={
                 "sources": [
-                    {"useDefaultCAs": True},
                     {"secret": {"name": "dev-certificate", "key": "ca.crt"}},
                 ],
                 "target": {
                     "secret": {
-                        "key": "ca-certificates.crt",
+                        "key": "ca.crt",
                     },
                     "namespaceSelector": {
                         "matchLabels": {
@@ -155,8 +154,12 @@ class ObjectStorage(ComponentResource):
                         {"name": "egress"},
                     ],
                     "certificate": {
+                        "requestAutoCert": False,
                         "externalCertSecret": [
-                            {"name": "argo-artifacts-tls", "type": "cert-manager.io/v1"}
+                            {
+                                "name": "argo-artifacts-tls",
+                                "type": "kubernetes.io/tls",
+                            }
                         ],
                     },
                     "configuration": {
