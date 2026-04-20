@@ -9,7 +9,7 @@ The system is built on Kubernetes for portability across cloud providers and on-
 
 ## Documentation
 
-Full documentation is available at **https://alan-turing-institute.github.io/fridge/**
+Full documentation is available [here](https://alan-turing-institute.github.io/fridge/)
 
 ## Repository Structure
 
@@ -18,7 +18,3 @@ Full documentation is available at **https://alan-turing-institute.github.io/fri
 | `fridge-job-api/` | FastAPI service for submitting and managing workflows, and passing data between the FRIDGE and TRE |
 | `infra/` | Pulumi infrastructure-as-code for supported deployment targets |
 | `docs/` | Source for the [project documentation site](https://alan-turing-institute.github.io/fridge/) |
-
-## License
-
-BSD 3-Clause — see [LICENSE](LICENSE) for details.

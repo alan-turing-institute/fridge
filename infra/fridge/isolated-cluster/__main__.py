@@ -51,7 +51,6 @@ cert_manager = components.CertManager(
     args=components.CertManagerArgs(
         config=config,
         k8s_environment=k8s_environment,
-        tls_environment=tls_environment,
     ),
 )
 
@@ -93,7 +92,7 @@ minio = components.ObjectStorage(
     "minio",
     args=components.ObjectStorageArgs(
         config=config,
-        tls_environment=tls_environment,
+        cluster_issuer=cert_manager.cert_manager_dev_issuer,
         storage_classes=storage_classes,
     ),
     opts=ResourceOptions(
