@@ -53,7 +53,7 @@ class IsolatedCluster(ComponentResource):
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
         self.isolated_cluster = ManagedCluster(
-            args.cluster_name,
+            resource_name=args.cluster_name,
             resource_group_name=args.resource_group_name,
             api_server_access_profile=ManagedClusterAPIServerAccessProfileArgs(
                 enable_private_cluster=True,
@@ -109,7 +109,7 @@ class IsolatedCluster(ComponentResource):
                 type=ResourceIdentityType.USER_ASSIGNED,
                 user_assigned_identities=[args.identity.id],
             ),
-            kubernetes_version="1.33",
+            kubernetes_version="1.35",
             linux_profile=ContainerServiceLinuxProfileArgs(
                 admin_username="fridgeadmin",
                 ssh=ContainerServiceSshConfigurationArgs(
