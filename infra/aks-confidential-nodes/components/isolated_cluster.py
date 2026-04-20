@@ -68,14 +68,14 @@ class IsolatedCluster(ComponentResource):
                     name="cvmnodepool",
                     node_labels={
                         "context": "fridge",
-                        "size": "DC2s_v2",
+                        "size": "DC2ads_v5",
                         "arch": "x86_64",
                     },
                     os_disk_size_gb=0,  # when == 0 sets default size
                     os_type="Linux",
                     os_sku="Ubuntu",
                     type="VirtualMachineScaleSets",
-                    vm_size="Standard_DC2s_v2",
+                    vm_size="Standard_DC2ads_v5",
                     vnet_subnet_id=args.nodes_subnet_id,
                 ),
                 ManagedClusterAgentPoolProfileArgs(
