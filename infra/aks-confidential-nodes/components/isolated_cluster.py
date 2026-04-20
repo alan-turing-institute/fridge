@@ -64,18 +64,18 @@ class IsolatedCluster(ComponentResource):
                     max_count=5,
                     max_pods=100,
                     min_count=2,
-                    mode="System",
-                    name="gppool",
+                    mode="User",
+                    name="cvmnodepool",
                     node_labels={
                         "context": "fridge",
-                        "size": "B4als_v2",
+                        "size": "DC2s_v2",
                         "arch": "x86_64",
                     },
                     os_disk_size_gb=0,  # when == 0 sets default size
                     os_type="Linux",
                     os_sku="Ubuntu",
                     type="VirtualMachineScaleSets",
-                    vm_size="Standard_B4als_v2",
+                    vm_size="Standard_DC2s_v2",
                     vnet_subnet_id=args.nodes_subnet_id,
                 ),
                 ManagedClusterAgentPoolProfileArgs(
