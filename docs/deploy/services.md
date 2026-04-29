@@ -20,7 +20,7 @@ The isolated cluster hosts the FRIDGE services.
 
 The deployment process uses Pulumi to manage the infrastructure as code.
 
-Currently, FRIDGE is configured to support deployment on Azure Kubernetes Service (AKS) and on DAWN AI.
+Currently, FRIDGE is configured to support deployment on Azure Kubernetes Service (AKS) and on DAWN.
 The isolated cluster can be deployed to a local k3s instance.
 
 In the table below, you can see the components that need to be deployed to each target after cluster creation.
