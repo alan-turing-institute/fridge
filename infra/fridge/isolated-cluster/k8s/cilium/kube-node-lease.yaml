@@ -1,0 +1,11 @@
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: deny-all-traffic
+  namespace: kube-node-lease
+spec:
+  endpointSelector: {}
+  ingress:
+    - {}
+  egress:
+    - {}

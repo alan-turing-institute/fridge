@@ -96,7 +96,9 @@ class Networking(ComponentResource):
                     protocol=network.SecurityRuleProtocol.TCP,
                     source_port_range="*",
                     destination_port_range="2500",
-                    source_address_prefix="Internet",
+                    source_address_prefixes=args.config.require_object(
+                        "admin_ip_allowlist"
+                    ),
                     destination_address_prefix="*",
                     description="Allow SSH traffic to API Proxy SSH server",
                 ),
@@ -121,7 +123,7 @@ class Networking(ComponentResource):
                     protocol=network.SecurityRuleProtocol.ASTERISK,
                     source_port_range="*",
                     destination_port_range="*",
-                    source_address_prefix=args.config.require("Isolated_vnet_cidr"),
+                    source_address_prefix=args.config.require("isolated_vnet_cidr"),
                     destination_address_prefix="*",
                     description="Deny all other inbound from Isolated cluster",
                 ),
@@ -157,7 +159,7 @@ class Networking(ComponentResource):
                     destination_port_range="*",
                     source_address_prefix="*",
                     destination_address_prefix=args.config.require(
-                        "Isolated_vnet_cidr"
+                        "isolated_vnet_cidr"
                     ),
                     description="Deny all other outbound to Isolated cluster",
                 ),
@@ -203,7 +205,7 @@ class Networking(ComponentResource):
             f"{name}-isolated-nodes",
             resource_group_name=args.resource_group_name,
             virtual_network_name=self.isolated_vnet.name,
-            address_prefix=args.config.require("Isolated_nodes_subnet_cidr"),
+            address_prefix=args.config.require("isolated_nodes_subnet_cidr"),
             network_security_group=network.NetworkSecurityGroupArgs(
                 id=self.isolated_nsg.id
             ),

@@ -1,0 +1,34 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: argo-workflows-server
+  namespace: argo-server
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: argo-workflows-server
+  ingress:
+    - fromEndpoints:
+      - matchLabels:
+          app: fridge-api-server
+          k8s:io.kubernetes.pod.namespace: fridge-api
+      toPorts:
+        - ports:
+          - port: "2746"
+            protocol: TCP
+  egress:
+    - toEntities:
+        - kube-apiserver
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: argo-workflows-controller
+  namespace: argo-server
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: argo-workflows-workflow-controller
+  egress:
+    - toEntities:
+        - kube-apiserver

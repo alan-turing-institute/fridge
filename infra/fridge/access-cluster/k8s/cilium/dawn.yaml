@@ -1,0 +1,277 @@
+# Notes on the below policies:
+# - the `world` entity is used frequently below. as of Cilium 1.18 and the
+#   current Dawn deployment of k3s clusters, many Cilium interprets several
+#   internal IP address as being from the `world` entity. For those, we have to
+#   allow traffic to/from world or the traffic will be blocked. This may be a
+#   Cilium bug. The IP addresses typically come from the range that is used for
+#   the cluster's own networking, and are usually cilium node IP addresses or
+#   underlying cilium_host addresses. They are not from external sources.
+#   Traffic that is genuinely form outside the clusters should be not reach the #   clusters by anything other than approved routes
+
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: kube-dns-dawn
+  namespace: kube-system
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s-app: kube-dns
+  egress:
+    # Allow kube-dns to communicate with the local DAWN DNS servers
+    - toCIDR:
+        - 192.168.3.2/32
+        - 192.168.3.3/32
+        - 131.111.8.42/32
+        - 131.111.12.20/32
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+    - toEntities:
+        - world
+  ingress:
+    - fromEntities:
+        - world
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: webhook-ingress-nginx
+  namespace: ingress-nginx
+  # Allow traffic from the remote-node entity on port 8443. This is webhook related traffic
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s:app.kubernetes.io/name: ingress-nginx
+      k8s:app.kubernetes.io/component: controller
+  ingress:
+    - fromEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "10254"
+              protocol: TCP
+            - port: "8443"
+              protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: metrics-server
+  namespace: kube-system
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s-app: metrics-server
+  # The metrics-server collects realtime metrics from kubelets
+  # and provides them to the Kubernetes API server for use in autoscaling
+  # https://kubernetes-sigs.github.io/metrics-server/
+  ingress:
+    - fromEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "10250"
+              protocol: TCP
+  egress:
+    - toEntities:
+        - host
+        - remote-node
+      toPorts:
+        - ports:
+            - port: "6443"
+              protocol: TCP
+            - port: "10250"
+              protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: cert-manager-remote-node
+  namespace: cert-manager
+spec:
+  endpointSelector:
+    matchLabels:
+      app: webhook
+  ingress:
+    - fromEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "6080"
+              protocol: TCP
+            - port: "10250"
+              protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: hubble-ui-dawn
+  namespace: kube-system
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s-app: hubble-ui
+  ingress:
+    - fromEntities:
+        - world
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: hubble-relay-dawn
+  namespace: kube-system
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s-app: hubble-relay
+  ingress:
+    - fromEntities:
+        - world
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: longhorn-allow-manager-kubelets
+  namespace: longhorn-system
+spec:
+  endpointSelector:
+    matchLabels:
+      app: longhorn-manager
+  ingress:
+    - fromEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "9501"
+              protocol: TCP
+            - port: "9502"
+              protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: longhorn-allow-managed-by
+  namespace: longhorn-system
+spec:
+  endpointSelector:
+    matchLabels:
+      longhorn.io/managed-by: longhorn-manager
+  ingress:
+    - fromEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "3260"
+              protocol: TCP
+            - port: "2049"
+              protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: longhorn-allow-csiplugin
+  namespace: longhorn-system
+spec:
+  endpointSelector:
+    matchLabels:
+      app: longhorn-csi-plugin
+  ingress:
+    - fromEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "9808"
+              protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: cert-manager-controller
+  namespace: cert-manager
+spec:
+  endpointSelector:
+    matchLabels:
+      app: cert-manager
+  ingress:
+    - fromEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "9403"
+              protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: harbor-dawn
+  namespace: harbor
+spec:
+  endpointSelector:
+    matchLabels:
+      app: harbor
+  ingress:
+    - fromEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+            - port: "5000"
+              protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: harbor-dawn-redis
+  namespace: harbor
+spec:
+  endpointSelector:
+    matchLabels:
+      app: harbor
+      component: redis
+  ingress:
+    - fromEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "6379"
+              protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: harbor-dawn-coredns
+  namespace: harbor
+spec:
+  endpointSelector:
+    matchLabels:
+      app: harbor
+      component: core
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s-app: kube-dns
+            k8s:io.kubernetes.pod.namespace: kube-system
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: local-path-provisioner
+  namespace: kube-system
+spec:
+  endpointSelector:
+    matchLabels:
+      app: local-path-provisioner
+  egress:
+    - toEntities:
+        - host
+      toPorts:
+        - ports:
+            - port: "6443"
+              protocol: TCP

@@ -18,6 +18,7 @@ on:
       - main
     paths:
       - "fridge-job-api/**"
+  workflow_dispatch:
 
 concurrency:
   group: "build"
@@ -43,6 +44,12 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Extract metadata (tags, labels) for Docker
         if: github.event_name != 'pull_request'
@@ -71,21 +78,6 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-
-  # Remove untagged images from the registry
-  # Note that this leaves behind the most recent image from the development branch
-  cleanup-dev-images:
-    runs-on: ubuntu-latest
-    if: |
-      github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: build
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Delete API development images
-        uses: vlaurin/action-ghcr-prune@v0.6.0
-        with:
-          container: ${{ github.event.repository.name }}
-          prune-untagged: true
-          token: ${{ secrets.GITHUB_TOKEN }}
+          platforms: linux/amd64,linux/arm64
+          provenance: false
+          sbom: false

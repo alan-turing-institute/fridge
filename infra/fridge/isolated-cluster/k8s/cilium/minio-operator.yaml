@@ -1,0 +1,41 @@
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: minio-operator
+  namespace: minio-operator
+spec:
+  # Apply to all pods in this namespace
+  endpointSelector: {}
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: fridge-api
+            app: fridge-api-server
+      toPorts:
+        - ports:
+            - port: "4223"
+              protocol: TCP
+  egress:
+    # Allows the MinIO operator to communicate with the MinIO tenant through the MinIO API
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: argo-artifacts
+            v1.min.io/tenant: argo-artifacts
+      toPorts:
+        - ports:
+            - port: "9000"
+              protocol: TCP
+    # Outbound to k8s DNS to look up IPs
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+    # Allow the MinIO operator to communicate with the API server to deploy and manage MinIO tenants
+    # For full details, check the permissions granted by the `minio-operator` service account
+    # after deployment
+    - toEntities:
+        - kube-apiserver
