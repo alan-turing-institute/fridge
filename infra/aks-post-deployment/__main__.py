@@ -2,6 +2,7 @@ import pulumi
 import components
 
 config = pulumi.Config()
+azure_config = pulumi.Config("azure-native")
 
 stack_outputs = components.StackOutputs(
     "stack-outputs",
@@ -16,6 +17,17 @@ dns_zone = components.PrivateDNSZone(
         stack_outputs=stack_outputs,
     ),
 )
+
+firewall = components.Firewall(
+    "firewall",
+    args=components.FirewallArgs(
+        config=config,
+        location=azure_config.require("location"),
+        resource_group_name=config.require("azure_resource_group"),
+        stack_outputs=stack_outputs,
+    ),
+)
+
 nsg_rules = components.NetworkSecurityRules(
     "network-security-rules",
     args=components.NetworkSecurityRulesArgs(
