@@ -321,36 +321,36 @@ class NetworkSecurityRules(ComponentResource):
         ]
 
         # Create access NSG lockdown rules
-        def lockdown_access_nsg(nsg_info):
-            return network.NetworkSecurityGroup(
+        self.access_subnet_nsg_lockdown = pulumi.Output.all(
+            args.stack_outputs.access_subnet_nsg_name,
+            args.stack_outputs.access_subnet_nsg_id,
+        ).apply(
+            lambda nsg: network.NetworkSecurityGroup(
                 "access-subnet-nsg-lockdown",
                 resource_group_name=args.config.require("azure_resource_group"),
                 location="uksouth",
-                network_security_group_name=nsg_info["name"],
+                network_security_group_name=nsg[0],
                 security_rules=access_cluster_nsg_rules,
                 opts=ResourceOptions.merge(
-                    ResourceOptions(import_=nsg_info["id"]),
+                    ResourceOptions(import_=nsg[1]),
                     child_opts,
                 ),
             )
+        )
 
-        def lockdown_isolated_nsg(nsg_info):
-            return network.NetworkSecurityGroup(
+        self.isolated_subnet_nsg_lockdown = pulumi.Output.all(
+            args.stack_outputs.isolated_subnet_nsg_name,
+            args.stack_outputs.isolated_subnet_nsg_id,
+        ).apply(
+            lambda nsg: network.NetworkSecurityGroup(
                 "isolated-subnet-nsg-lockdown",
                 resource_group_name=args.config.require("azure_resource_group"),
                 location="uksouth",
-                network_security_group_name=nsg_info["name"],
+                network_security_group_name=nsg[0],
                 security_rules=isolated_cluster_nsg_rules,
                 opts=ResourceOptions.merge(
-                    ResourceOptions(import_=nsg_info["id"]),
+                    ResourceOptions(import_=nsg[1]),
                     child_opts,
                 ),
             )
-
-        self.access_subnet_nsg_lockdown = args.stack_outputs.access_subnet_nsg.apply(
-            lockdown_access_nsg
-        )
-
-        self.isolated_subnet_nsg_lockdown = (
-            args.stack_outputs.isolated_subnet_nsg.apply(lockdown_isolated_nsg)
         )
