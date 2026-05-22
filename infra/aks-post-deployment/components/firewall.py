@@ -27,10 +27,19 @@ class Firewall(ComponentResource):
 
         # Create subnet for firewall
         self.firewall_subnet = network.Subnet(
-            "fridge-firewall-subnet",
+            "AzureFirewallSubnet",
             resource_group_name=args.resource_group_name,
+            subnet_name="AzureFirewallSubnet",
             virtual_network_name=args.stack_outputs.isolated_vnet_name,
             address_prefix="10.20.2.0/24",
+            opts=child_opts,
+        )
+        self.firewall_management_subnet = network.Subnet(
+            "AzureFirewallManagementSubnet",
+            resource_group_name=args.resource_group_name,
+            subnet_name="AzureFirewallManagementSubnet",
+            virtual_network_name=args.stack_outputs.isolated_vnet_name,
+            address_prefix="10.20.3.0/24",
             opts=child_opts,
         )
 
@@ -41,10 +50,11 @@ class Firewall(ComponentResource):
         # and does not have a fixed IP address range.
 
         self.firewall_public_ip = network.PublicIPAddress(
-            "fridge-firewall-pip",
+            f"{name}-firewall-pip",
             resource_group_name=args.resource_group_name,
             location=args.location,
-            public_ip_allocation_method=network.IPAllocationMethod.DYNAMIC,
+            public_ip_address_name=f"{name}-firewall-pip",
+            public_ip_allocation_method=network.IPAllocationMethod.STATIC,
             sku=network.PublicIPAddressSkuArgs(
                 name=network.PublicIPAddressSkuName.STANDARD,
             ),
@@ -52,8 +62,22 @@ class Firewall(ComponentResource):
         )
 
         self.firewall = network.AzureFirewall(
-            "fridge-firewall",
+            f"{name}-isolated-firewall",
             resource_group_name=args.resource_group_name,
             location=args.location,
+            azure_firewall_name=f"{name}-isolated-firewall",
+            ip_configurations=[
+                network.AzureFirewallIPConfigurationArgs(
+                    name="firewall-ip-config",
+                    subnet=network.SubResourceArgs(id=self.firewall_subnet.id),
+                    public_ip_address=network.SubResourceArgs(
+                        id=self.firewall_public_ip.id
+                    ),
+                )
+            ],
+            sku=network.AzureFirewallSkuArgs(
+                name=network.AzureFirewallSkuName.AZF_W_V_NET,
+                tier=network.AzureFirewallSkuTier.BASIC,
+            ),
             opts=child_opts,
         )
