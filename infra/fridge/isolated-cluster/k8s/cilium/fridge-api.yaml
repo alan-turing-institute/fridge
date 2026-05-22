@@ -76,10 +76,10 @@ spec:
             protocol: ANY
           rules:
             dns:
-              - matchName: "argo-workflows-server.argo-server.svc.cluster.local"
-              - matchName: "minio.argo-artifacts.svc.cluster.local"
-              - matchName: "sts.minio-operator.svc.cluster.local"
+              - matchPattern: "argo-workflows-server.argo-server.svc.cluster.local"
+              - matchPattern: "minio.argo-artifacts.svc.cluster.local"
+              - matchPattern: "sts.minio-operator.svc.cluster.local"
     - toFQDNs:
-      - matchName: "argo-workflows-server.argo-server.svc.cluster.local"
-      - matchName: "minio.argo-artifacts.svc.cluster.local"
-      - matchName: "sts.minio-operator.svc.cluster.local"
+      - matchPattern: "argo-workflows-server.argo-server.svc.cluster.local"
+      - matchPattern: "minio.argo-artifacts.svc.cluster.local"
+      - matchPattern: "sts.minio-operator.svc.cluster.local"

@@ -96,7 +96,9 @@ class Networking(ComponentResource):
                     protocol=network.SecurityRuleProtocol.TCP,
                     source_port_range="*",
                     destination_port_range="2500",
-                    source_address_prefix="Internet",
+                    source_address_prefixes=args.config.require_object(
+                        "admin_ip_allowlist"
+                    ),
                     destination_address_prefix="*",
                     description="Allow SSH traffic to API Proxy SSH server",
                 ),

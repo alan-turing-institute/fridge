@@ -24,7 +24,17 @@ from pulumi_kubernetes.core.v1 import (
 )
 from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
-from pulumi_kubernetes.networking.v1 import Ingress
+from pulumi_kubernetes.networking.v1 import (
+    HTTPIngressPathArgs,
+    HTTPIngressRuleValueArgs,
+    Ingress,
+    IngressBackendArgs,
+    IngressRuleArgs,
+    IngressServiceBackendArgs,
+    IngressSpecArgs,
+    IngressTLSArgs,
+    ServiceBackendPortArgs,
+)
 from pulumi_kubernetes.yaml import ConfigGroup
 
 from .storage_classes import StorageClasses
@@ -54,6 +64,8 @@ class ContainerRegistry(ComponentResource):
         super().__init__("fridge:ContainerRegistry", name, {}, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
+        k8s_environment = K8sEnvironment(args.config.get("k8s_env"))
+
         self.harbor_ns = Namespace(
             "harbor-ns",
             metadata=ObjectMetaArgs(
@@ -78,15 +90,6 @@ class ContainerRegistry(ComponentResource):
             else "ReadWriteOnce",
         }
 
-        api_service_annotations = (
-            {
-                "service.beta.kubernetes.io/azure-load-balancer-internal": "true",
-                "service.beta.kubernetes.io/azure-load-balancer-internal-subnet": "networking-access-nodes",
-            }
-            if K8sEnvironment(args.config.get("k8s_env")) == K8sEnvironment.AKS
-            else {}
-        )
-
         self.harbor = Release(
             "harbor",
             ReleaseArgs(
@@ -98,12 +101,12 @@ class ContainerRegistry(ComponentResource):
                 ),
                 values={
                     "expose": {
-                        "type": "loadBalancer",
-                        "loadBalancer": {"annotations": api_service_annotations},
+                        "type": "clusterIP",
                         "tls": {
                             "enabled": False,
                             "certSource": "none",
                         },
+                        "labels": "fridge=harbor",
                     },
                     "externalURL": self.harbor_external_url,
                     "harborAdminPassword": args.config.require_secret(
@@ -138,38 +141,36 @@ class ContainerRegistry(ComponentResource):
                     ],
                 },
             ),
-            spec={
-                "ingress_class_name": "nginx",
-                "tls": [
-                    {
-                        "hosts": [
-                            self.harbor_fqdn,
-                        ],
-                        "secret_name": "harbor-ingress-tls",
-                    }
+            spec=IngressSpecArgs(
+                ingress_class_name="nginx",
+                tls=[
+                    IngressTLSArgs(
+                        hosts=[self.harbor_fqdn],
+                        secret_name="harbor-ingress-tls",
+                    )
                 ],
-                "rules": [
-                    {
-                        "host": self.harbor_fqdn,
-                        "http": {
-                            "paths": [
-                                {
-                                    "path": "/",
-                                    "path_type": "Prefix",
-                                    "backend": {
-                                        "service": {
-                                            "name": "harbor",
-                                            "port": {
-                                                "number": 80,
-                                            },
-                                        }
-                                    },
-                                }
+                rules=[
+                    IngressRuleArgs(
+                        host=self.harbor_fqdn,
+                        http=HTTPIngressRuleValueArgs(
+                            paths=[
+                                HTTPIngressPathArgs(
+                                    path="/",
+                                    path_type="Prefix",
+                                    backend=IngressBackendArgs(
+                                        service=IngressServiceBackendArgs(
+                                            name="harbor",
+                                            port=ServiceBackendPortArgs(
+                                                number=80,
+                                            ),
+                                        )
+                                    ),
+                                )
                             ]
-                        },
-                    }
+                        ),
+                    )
                 ],
-            },
+            ),
             opts=ResourceOptions.merge(
                 child_opts,
                 ResourceOptions(
@@ -180,25 +181,40 @@ class ContainerRegistry(ComponentResource):
             ),
         )
 
-        self.harbor_internal_loadbalancer = Service.get(
-            "harbor-internal-lb",
-            id=pulumi.Output.concat(self.harbor_ns.metadata.name, "/harbor"),
-            opts=ResourceOptions.merge(
-                child_opts,
-                ResourceOptions(
-                    depends_on=[
-                        self.harbor,
-                    ]
+        if k8s_environment == K8sEnvironment.AKS:
+            self.harbor_internal_loadbalancer = Service(
+                "harbor-internal-lb",
+                metadata=ObjectMetaArgs(
+                    name="harbor-lb",
+                    namespace=self.harbor_ns.metadata.name,
+                    annotations={
+                        "service.beta.kubernetes.io/azure-load-balancer-internal": "true",
+                        "service.beta.kubernetes.io/azure-load-balancer-internal-subnet": "networking-access-nodes",
+                    },
                 ),
-            ),
-        )
-
-        # Extract the dynamically assigned IP address
-        self.harbor_lb_ip = self.harbor_internal_loadbalancer.status.apply(
-            lambda status: status.load_balancer.ingress[0].ip
-            if status and status.load_balancer and status.load_balancer.ingress
-            else None
-        )
+                spec=ServiceSpecArgs(
+                    type="LoadBalancer",
+                    selector={"app": "harbor", "component": "nginx"},
+                    ports=[ServicePortArgs(port=80, target_port=8080)],
+                ),
+                opts=ResourceOptions.merge(
+                    child_opts,
+                    ResourceOptions(
+                        depends_on=[
+                            self.harbor,
+                        ]
+                    ),
+                ),
+            )
+            # Extract the dynamically assigned LoadBalancer IP address
+            self.harbor_ip = self.harbor_internal_loadbalancer.status.apply(
+                lambda status: status.load_balancer.ingress[0].ip
+                if status and status.load_balancer and status.load_balancer.ingress
+                else None
+            )
+        elif k8s_environment == K8sEnvironment.DAWN:
+            # Extract the ClusterIP for DAWN environment
+            self.harbor_ip = args.config.require("dawn_load_balancer_ip")
 
         # Create a daemonset to skip TLS verification for the harbor registry
         # This is needed while using staging/self-signed certificates for Harbor

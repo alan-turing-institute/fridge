@@ -224,3 +224,22 @@ spec:
         - ports:
             - port: "443"
               protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-azure-health-probes
+  namespace: harbor
+spec:
+  # Allow Azure health probes to access the nginx component of Harbor on port 8080
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: harbor
+      component: nginx
+  ingress:
+    - fromCIDR:
+      - 168.63.129.16/32
+      toPorts:
+        - ports:
+          - port: "8080"
+            protocol: TCP
