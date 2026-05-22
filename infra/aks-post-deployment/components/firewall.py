@@ -43,12 +43,7 @@ class Firewall(ComponentResource):
             opts=child_opts,
         )
 
-        # Create Azure Firewall
-        # A firewall is necessary to support node bootstrapping in the isolated cluster
-        # without imposing overly open NSG rules. Node bootstrapping requires
-        # outbound connectivity to packages.aks.azure.com, which is not covered by any ServiceTags
-        # and does not have a fixed IP address range.
-
+        # create public IPs for firewall and firewall management
         self.firewall_public_ip = network.PublicIPAddress(
             f"{name}-firewall-pip",
             resource_group_name=args.resource_group_name,
@@ -60,6 +55,24 @@ class Firewall(ComponentResource):
             ),
             opts=child_opts,
         )
+
+        self.public_ip_management = network.PublicIPAddress(
+            f"{name}-firewall-management-pip",
+            resource_group_name=args.resource_group_name,
+            location=args.location,
+            public_ip_address_name=f"{name}-firewall-management-pip",
+            public_ip_allocation_method=network.IPAllocationMethod.STATIC,
+            sku=network.PublicIPAddressSkuArgs(
+                name=network.PublicIPAddressSkuName.STANDARD,
+            ),
+            opts=child_opts,
+        )
+
+        # Create Azure Firewall
+        # A firewall is necessary to support node bootstrapping in the isolated cluster
+        # without imposing overly open NSG rules. Node bootstrapping requires
+        # outbound connectivity to packages.aks.azure.com, which is not covered by any ServiceTags
+        # and does not have a fixed IP address range.
 
         self.firewall = network.AzureFirewall(
             f"{name}-isolated-firewall",
@@ -75,6 +88,13 @@ class Firewall(ComponentResource):
                     ),
                 )
             ],
+            management_ip_configuration=network.AzureFirewallIPConfigurationArgs(
+                name="firewall-management-ip-config",
+                subnet=network.SubResourceArgs(id=self.firewall_management_subnet.id),
+                public_ip_address=network.SubResourceArgs(
+                    id=self.public_ip_management.id
+                ),
+            ),
             sku=network.AzureFirewallSkuArgs(
                 name=network.AzureFirewallSkuName.AZF_W_V_NET,
                 tier=network.AzureFirewallSkuTier.BASIC,
