@@ -209,6 +209,7 @@ outputs = {
     "isolated_subnet_nsg_id": networking.isolated_nsg.id,
     "isolated_vnet_cidr": networking.isolated_vnet.address_space.address_prefixes[0],
     "isolated_vnet_id": networking.isolated_vnet_id,
+    "isolated_vnet_name": networking.isolated_vnet.name,
 }
 
 for key, value in outputs.items():
