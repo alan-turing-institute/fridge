@@ -39,30 +39,35 @@ class StackOutputs(ComponentResource):
             opts=child_opts,
         )
 
-        self.access_nodes_subnet_cidr = self.infrastructure_stack.get_output(
+        self.access_nodes_subnet_cidr = self.infrastructure_stack.require_output(
             "access_nodes_subnet_cidr"
         )
-        self.access_subnet_nsg_name = self.infrastructure_stack.get_output(
+        self.access_subnet_nsg_name = self.infrastructure_stack.require_output(
             "access_subnet_nsg_name"
         )
-        self.access_subnet_nsg_id = self.infrastructure_stack.get_output(
+        self.access_subnet_nsg_id = self.infrastructure_stack.require_output(
             "access_subnet_nsg_id"
         )
-        self.access_vnet_cidr = self.infrastructure_stack.get_output("access_vnet_cidr")
-        self.fridge_api_ip = self.isolated_stack.get_output("fridge_api_ip")
-        self.harbor_ip_address = self.access_stack.get_output("harbor_ip_address")
-        self.isolated_cluster_api_server_ip = self.infrastructure_stack.get_output(
+        self.access_vnet_cidr = self.infrastructure_stack.require_output(
+            "access_vnet_cidr"
+        )
+        self.admin_ip_allowlist = self.infrastructure_stack.require_output(
+            "admin_ip_allowlist"
+        )
+        self.fridge_api_ip = self.isolated_stack.require_output("fridge_api_ip")
+        self.harbor_ip_address = self.access_stack.require_output("harbor_ip_address")
+        self.isolated_cluster_api_server_ip = self.infrastructure_stack.require_output(
             "isolated_cluster_api_server_ip"
         )
-        self.isolated_nodes_subnet_cidr = self.infrastructure_stack.get_output(
+        self.isolated_nodes_subnet_cidr = self.infrastructure_stack.require_output(
             "isolated_nodes_subnet_cidr"
         )
-        self.isolated_subnet_nsg_name = self.infrastructure_stack.get_output(
+        self.isolated_subnet_nsg_name = self.infrastructure_stack.require_output(
             "isolated_subnet_nsg_name"
         )
-        self.isolated_subnet_nsg_id = self.infrastructure_stack.get_output(
+        self.isolated_subnet_nsg_id = self.infrastructure_stack.require_output(
             "isolated_subnet_nsg_id"
         )
-        self.isolated_vnet_cidr = self.infrastructure_stack.get_output(
+        self.isolated_vnet_cidr = self.infrastructure_stack.require_output(
             "isolated_vnet_cidr"
         )
