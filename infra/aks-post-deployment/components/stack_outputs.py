@@ -71,3 +71,9 @@ class StackOutputs(ComponentResource):
         self.isolated_vnet_cidr = self.infrastructure_stack.require_output(
             "isolated_vnet_cidr"
         )
+        self.isolated_vnet_name = self.infrastructure_stack.require_output(
+            "isolated_vnet_name"
+        )
+        self.isolated_vnet_id = self.infrastructure_stack.require_output(
+            "isolated_vnet_id"
+        )
