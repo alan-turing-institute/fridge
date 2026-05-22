@@ -201,6 +201,7 @@ pulumi.export("access_subnet_nsg_id", networking.access_nsg.id)
 pulumi.export(
     "access_vnet_cidr", networking.access_vnet.address_space.address_prefixes[0]
 )
+pulumi.export("admin_ip_allowlist", config.require_object("admin_ip_allowlist"))
 pulumi.export("isolated_cluster_api_server_fqdn", isolated_cluster.fqdn)
 pulumi.export("isolated_cluster_api_server_ip", isolated_cluster.isolated_cluster_ip)
 pulumi.export("isolated_kubeconfig", isolated_kubeconfig)
