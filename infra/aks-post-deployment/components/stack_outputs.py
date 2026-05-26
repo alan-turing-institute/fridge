@@ -65,6 +65,9 @@ class StackOutputs(ComponentResource):
         self.isolated_nodes_subnet_id = self.infrastructure_stack.require_output(
             "isolated_nodes_subnet_id"
         )
+        self.isolated_nodes_subnet_name = self.infrastructure_stack.require_output(
+            "isolated_nodes_subnet_name"
+        )
         self.isolated_subnet_nsg_name = self.infrastructure_stack.require_output(
             "isolated_subnet_nsg_name"
         )
@@ -79,4 +82,10 @@ class StackOutputs(ComponentResource):
         )
         self.isolated_vnet_id = self.infrastructure_stack.require_output(
             "isolated_vnet_id"
+        )
+        self.network_route_table_id = self.infrastructure_stack.require_output(
+            "network_route_table_id"
+        )
+        self.network_route_table_name = self.infrastructure_stack.require_output(
+            "network_route_table_name"
         )
