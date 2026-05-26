@@ -261,8 +261,10 @@ class Networking(ComponentResource):
 
         self.access_vnet_id = self.access_vnet.id
         self.access_nodes_subnet_id = self.access_nodes.id
+        self.access_nodes_subnet_name = self.access_nodes.name
         self.isolated_vnet_id = self.isolated_vnet.id
         self.isolated_nodes_subnet_id = self.isolated_nodes.id
+        self.isolated_nodes_subnet_name = self.isolated_nodes.name
 
         self.register_outputs(
             {
