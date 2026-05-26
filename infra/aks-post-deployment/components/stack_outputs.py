@@ -62,6 +62,9 @@ class StackOutputs(ComponentResource):
         self.isolated_nodes_subnet_cidr = self.infrastructure_stack.require_output(
             "isolated_nodes_subnet_cidr"
         )
+        self.isolated_nodes_subnet_id = self.infrastructure_stack.require_output(
+            "isolated_nodes_subnet_id"
+        )
         self.isolated_subnet_nsg_name = self.infrastructure_stack.require_output(
             "isolated_subnet_nsg_name"
         )

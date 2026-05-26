@@ -204,6 +204,7 @@ outputs = {
     "isolated_cluster_api_server_fqdn": isolated_cluster.fqdn,
     "isolated_cluster_api_server_ip": isolated_cluster.isolated_cluster_ip,
     "isolated_kubeconfig": isolated_kubeconfig,
+    "isolated_nodes_subnet_id": networking.isolated_nodes_subnet_id,
     "isolated_nodes_subnet_cidr": networking.isolated_nodes.address_prefix,
     "isolated_subnet_nsg_name": networking.isolated_nsg.name,
     "isolated_subnet_nsg_id": networking.isolated_nsg.id,
