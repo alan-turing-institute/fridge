@@ -101,3 +101,23 @@ class Firewall(ComponentResource):
             ),
             opts=child_opts,
         )
+
+        self.route_table = network.RouteTable(
+            f"{name}-firewall-route-table",
+            resource_group_name=args.resource_group_name,
+            location=args.location,
+            route_table_name=f"{name}-firewall-route-table",
+            routes=[
+                network.RouteArgs(
+                    name="default-route",
+                    address_prefix="0.0.0.0/0",
+                    next_hop_type=network.RouteNextHopType.VIRTUAL_APPLIANCE,
+                    next_hop_ip_address=self.firewall.ip_configurations[
+                        0
+                    ].private_ip_address,
+                )
+            ],
+            opts=ResourceOptions.merge(
+                child_opts, ResourceOptions(parent=self.firewall)
+            ),
+        )
