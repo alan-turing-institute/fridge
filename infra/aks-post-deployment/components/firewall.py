@@ -73,11 +73,37 @@ class Firewall(ComponentResource):
         # without imposing overly open NSG rules. Node bootstrapping requires
         # outbound connectivity to packages.aks.azure.com, which is not covered by any ServiceTags
         # and does not have a fixed IP address range.
+        self.firewall_application_rules = [
+            network.AzureFirewallApplicationRuleCollectionArgs(
+                name="allow-aks-outbound",
+                priority=100,
+                action=network.AzureFirewallRCActionArgs(
+                    type=network.AzureFirewallRCActionType.ALLOW
+                ),
+                rules=[
+                    network.AzureFirewallApplicationRuleArgs(
+                        description="Allow AKS node bootstrapping to packages.aks.azure.com",
+                        name="allow-aks-packages",
+                        source_addresses=[
+                            args.stack_outputs.isolated_nodes_subnet_cidr
+                        ],
+                        protocols=[
+                            network.AzureFirewallApplicationRuleProtocolArgs(
+                                protocol_type=network.AzureFirewallApplicationRuleProtocolType.HTTPS,
+                                port=443,
+                            )
+                        ],
+                        target_fqdns=["packages.aks.azure.com"],
+                    )
+                ],
+            )
+        ]
 
         self.firewall = network.AzureFirewall(
             f"{name}-isolated-firewall",
             resource_group_name=args.resource_group_name,
             location=args.location,
+            application_rule_collections=self.firewall_application_rules,
             azure_firewall_name=f"{name}-isolated-firewall",
             ip_configurations=[
                 network.AzureFirewallIPConfigurationArgs(
