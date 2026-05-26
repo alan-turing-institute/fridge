@@ -99,25 +99,23 @@ class Firewall(ComponentResource):
                 name=network.AzureFirewallSkuName.AZF_W_V_NET,
                 tier=network.AzureFirewallSkuTier.BASIC,
             ),
-            opts=child_opts,
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(
+                    depends_on=[self.firewall_subnet, self.firewall_management_subnet]
+                ),
+            ),
         )
 
-        self.route_table = network.RouteTable(
-            f"{name}-firewall-route-table",
+        self.default_route = network.Route(
+            f"{name}-firewall-default-route",
             resource_group_name=args.resource_group_name,
-            location=args.location,
-            route_table_name=f"{name}-firewall-route-table",
-            routes=[
-                network.RouteArgs(
-                    name="default-route",
-                    address_prefix="0.0.0.0/0",
-                    next_hop_type=network.RouteNextHopType.VIRTUAL_APPLIANCE,
-                    next_hop_ip_address=self.firewall.ip_configurations[
-                        0
-                    ].private_ip_address,
-                )
-            ],
+            route_table_name=args.stack_outputs.network_route_table_name,
+            name="default-route",
+            address_prefix="0.0.0.0/0",
+            next_hop_type=network.RouteNextHopType.VIRTUAL_APPLIANCE,
+            next_hop_ip_address=self.firewall.ip_configurations[0].private_ip_address,
             opts=ResourceOptions.merge(
-                child_opts, ResourceOptions(parent=self.firewall)
+                child_opts, ResourceOptions(depends_on=self.firewall)
             ),
         )
