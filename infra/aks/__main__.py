@@ -212,6 +212,8 @@ outputs = {
     "isolated_vnet_cidr": networking.isolated_vnet.address_space.address_prefixes[0],
     "isolated_vnet_id": networking.isolated_vnet_id,
     "isolated_vnet_name": networking.isolated_vnet.name,
+    "network_route_table_id": networking.route_table.id,
+    "network_route_table_name": networking.route_table.name,
 }
 
 for key, value in outputs.items():
