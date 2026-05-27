@@ -1,5 +1,6 @@
 import pulumi
 from .stack_outputs import StackOutputs
+from enums import AksCoreOutboundFqdn
 from pulumi import ComponentResource, ResourceOptions
 from pulumi_azure_native import network
 
@@ -82,7 +83,7 @@ class Firewall(ComponentResource):
                 ),
                 rules=[
                     network.AzureFirewallApplicationRuleArgs(
-                        description="Allow AKS node bootstrapping to packages.aks.azure.com",
+                        description="Allow Microsoft container pulls for node bootstrapping",
                         name="allow-aks-packages",
                         source_addresses=[
                             args.stack_outputs.isolated_nodes_subnet_cidr
@@ -93,8 +94,13 @@ class Firewall(ComponentResource):
                                 port=443,
                             )
                         ],
-                        target_fqdns=["packages.aks.azure.com"],
-                    )
+                        target_fqdns=[
+                            AksCoreOutboundFqdn.PACKAGES_AKS_AZURE_COM.value,
+                            AksCoreOutboundFqdn.MCR.value,
+                            AksCoreOutboundFqdn.MCR_DATA.value,
+                            AksCoreOutboundFqdn.MCR_DATA_EDGE.value,
+                        ],
+                    ),
                 ],
             )
         ]
