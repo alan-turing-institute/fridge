@@ -54,3 +54,6 @@ artifactRepository:
     secretKeySecret:
       name: argo-artifacts-minio
       key: secretkey
+    caSecret:
+      name: trusted-certificates
+      key: ca-certificates.crt

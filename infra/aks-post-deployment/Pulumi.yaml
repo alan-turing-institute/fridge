@@ -1,0 +1,11 @@
+name: fridge-lockdown
+description: Locking down an AKS FRIDGE after deployment
+runtime:
+  name: python
+  options:
+    toolchain: pip
+    virtualenv: venv
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: python
