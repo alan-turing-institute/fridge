@@ -5,7 +5,7 @@ from pulumi_kubernetes.helm.v3 import Release
 from pulumi_kubernetes.helm.v4 import RepositoryOptsArgs
 from pulumi_kubernetes.storage.v1 import StorageClass
 
-from enums import K8sEnvironment, PodSecurityStandard
+from enums import K8sEnvironment, PodSecurityStandard, SoftwareVersion
 
 STORAGE_CLASS_NAME = "fridge"
 
@@ -66,7 +66,7 @@ class StorageClasses(ComponentResource):
                     "longhorn",
                     namespace=longhorn_ns.metadata.name,
                     chart="longhorn",
-                    version="1.9.0",
+                    version=SoftwareVersion.LONGHORN.value,
                     repository_opts=RepositoryOptsArgs(
                         repo="https://charts.longhorn.io",
                     ),
