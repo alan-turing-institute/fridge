@@ -6,7 +6,7 @@ from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from .storage_classes import StorageClasses
 
-from enums import PodSecurityStandard
+from enums import PodSecurityStandard, SoftwareVersion
 
 
 class ObjectStorageArgs:
@@ -55,7 +55,7 @@ class ObjectStorage(ComponentResource):
             repository_opts=RepositoryOptsArgs(
                 repo="https://operator.min.io",
             ),
-            version="7.1.1",
+            version=SoftwareVersion.MINIO_OPERATOR.value,
             opts=ResourceOptions.merge(
                 child_opts,
                 ResourceOptions(depends_on=[self.minio_operator_ns]),
@@ -142,7 +142,7 @@ class ObjectStorage(ComponentResource):
             namespace=self.minio_tenant_ns.metadata.name,
             chart="tenant",
             name="argo-artifacts",
-            version="7.1.1",
+            version=SoftwareVersion.MINIO_TENANT.value,
             repository_opts=RepositoryOptsArgs(
                 repo="https://operator.min.io",
             ),
