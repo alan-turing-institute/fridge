@@ -26,3 +26,8 @@ tls_issuer_names = {
     TlsEnvironment.PRODUCTION: "letsencrypt-prod",
     TlsEnvironment.DEVELOPMENT: "dev-issuer",
 }
+
+
+@unique
+class SoftwareVersion(Enum):
+    CERT_MANAGER = "1.19.4"
