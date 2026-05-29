@@ -27,7 +27,12 @@ tls_issuer_names = {
     TlsEnvironment.DEVELOPMENT: "dev-issuer",
 }
 
-
+# Class for software versions - e.g. for helm charts and container images
+# where possible, these should be set to specific versions rather than "latest" to ensure reproducibility,
+# and protect against breaking changes.
+# But in some cases (e.g. curl-jq) no numbered version tags are available.
 @unique
 class SoftwareVersion(Enum):
     CERT_MANAGER = "1.19.4"
+    CURL_JQ = "badouralix/curl-jq:latest"
+    HARBOR = "1.17.1"
