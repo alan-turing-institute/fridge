@@ -37,3 +37,4 @@ class SoftwareVersion(Enum):
     CURL_JQ = "badouralix/curl-jq:latest"
     HARBOR = "1.17.1"
     OPENSSH_SERVER = "linuxserver/openssh-server:version-10.2_p1-r0"
+    INGRESS_NGINX = "4.13.2"
