@@ -109,6 +109,18 @@ class ApiServer(ComponentResource):
                         "update",
                     ],
                 ),
+                PolicyRuleArgs(
+                    api_groups=[""],
+                    resources=[
+                        "pods",
+                        "pods/log",
+                    ],
+                    verbs=[
+                        "get",
+                        "list",
+                        "watch",
+                    ],
+                ),
             ],
             opts=child_opts,
         )
@@ -122,7 +134,7 @@ class ApiServer(ComponentResource):
             opts=child_opts,
         )
 
-        CustomResource(
+        self.minio_policy = CustomResource(
             resource_name="minio-policy-readwrite",
             api_version="sts.min.io/v1alpha1",
             kind="PolicyBinding",

@@ -43,8 +43,22 @@ class MinioConfigJob(ComponentResource):
         minio_setup_sh = """
             #!/bin/sh
             mkdir -p /tmp/.mc/certs/CAs/
-            cp /var/run/secrets/kubernetes.io/serviceaccount/ca.crt /tmp/.mc/certs/CAs/
-            mc alias set "$MINIO_ALIAS" "$MINIO_URL" "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
+            cp /tmp/minio-ca/ca.crt /tmp/.mc/certs/CAs/ca.crt
+
+            MAX_RETRIES=15
+            RETRY_INTERVAL=5
+            i=0
+
+            until mc alias set "$MINIO_ALIAS" "$MINIO_URL" "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"; do
+                i=$((i+1))
+                if [ $i -ge $MAX_RETRIES ]; then
+                    echo "Failed to configure MinIO alias after $MAX_RETRIES attempts. Exiting."
+                    exit 1
+                fi
+                echo "MinIO not ready yet. Retrying in $RETRY_INTERVAL seconds... (Attempt $i/$MAX_RETRIES)"
+                sleep $RETRY_INTERVAL
+            done
+
             echo "Configuring ingress and egress buckets with anonymous S3 policies"
             mc anonymous set upload "$MINIO_ALIAS/egress"
             mc anonymous set download "$MINIO_ALIAS/ingress"
@@ -133,7 +147,12 @@ class MinioConfigJob(ComponentResource):
                                     VolumeMountArgs(
                                         name="minio-config-volume",
                                         mount_path="/tmp/scripts/",
-                                    )
+                                    ),
+                                    VolumeMountArgs(
+                                        name="minio-tls-ca",
+                                        mount_path="/tmp/minio-ca/",
+                                        read_only=True,
+                                    ),
                                 ],
                             )
                         ],
@@ -144,7 +163,14 @@ class MinioConfigJob(ComponentResource):
                                     name=minio_config_map.metadata.name,
                                     default_mode=0o777,
                                 ),
-                            )
+                            ),
+                            VolumeArgs(
+                                name="minio-tls-ca",
+                                secret={
+                                    "secretName": "argo-artifacts-tls",
+                                    "items": [{"key": "ca.crt", "path": "ca.crt"}],
+                                },
+                            ),
                         ],
                         restart_policy="Never",
                     ),
