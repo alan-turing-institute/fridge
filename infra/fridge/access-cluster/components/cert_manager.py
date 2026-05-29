@@ -7,7 +7,13 @@ from pulumi_kubernetes.helm.v3 import Release
 from pulumi_kubernetes.helm.v4 import RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 
-from enums import K8sEnvironment, PodSecurityStandard, TlsEnvironment, tls_issuer_names
+from enums import (
+    K8sEnvironment,
+    PodSecurityStandard,
+    SoftwareVersion,
+    TlsEnvironment,
+    tls_issuer_names,
+)
 
 
 class CertManagerArgs:
@@ -48,7 +54,7 @@ class CertManager(ComponentResource):
                     "cert-manager",
                     namespace=cert_manager_ns.metadata.name,
                     chart="cert-manager",
-                    version="1.19.4",
+                    version=SoftwareVersion.CERT_MANAGER.value,
                     repository_opts=RepositoryOptsArgs(
                         repo="https://charts.jetstack.io",
                     ),
