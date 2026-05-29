@@ -31,4 +31,6 @@ tls_issuer_names = {
 @unique
 class SoftwareVersion(Enum):
     CERT_MANAGER = "1.17.1"
+    INTEL_GPU_OPERATOR = "0.35.0"
+    NODE_FEATURE_DISCOVERY = "0.18.3"
     TRUST_MANAGER = "0.21.1"
