@@ -21,7 +21,7 @@ from pulumi_kubernetes.core.v1 import (
 from pulumi_kubernetes.meta.v1 import LabelSelectorArgs, ObjectMetaArgs
 
 
-from enums import K8sEnvironment, PodSecurityStandard
+from enums import K8sEnvironment, PodSecurityStandard, SoftwareVersion
 
 
 class FridgeAPIJumpboxArgs:
@@ -95,7 +95,7 @@ class FridgeAPIJumpbox(ComponentResource):
                         containers=[
                             ContainerArgs(
                                 name="ssh-server",
-                                image="linuxserver/openssh-server:latest",
+                                image=SoftwareVersion.OPENSSH_SERVER.value,
                                 ports=[ContainerPortArgs(container_port=2222)],
                                 env=[
                                     EnvVarArgs(name="PUID", value="1000"),

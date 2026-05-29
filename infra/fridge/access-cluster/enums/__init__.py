@@ -36,3 +36,4 @@ class SoftwareVersion(Enum):
     CERT_MANAGER = "1.19.4"
     CURL_JQ = "badouralix/curl-jq:latest"
     HARBOR = "1.17.1"
+    OPENSSH_SERVER = "linuxserver/openssh-server:version-10.2_p1-r0"
