@@ -32,5 +32,6 @@ tls_issuer_names = {
 class SoftwareVersion(Enum):
     CERT_MANAGER = "1.17.1"
     INTEL_GPU_OPERATOR = "0.35.0"
+    MINIO_MC = "RELEASE.2025-08-13T08-35-41Z"
     NODE_FEATURE_DISCOVERY = "0.18.3"
     TRUST_MANAGER = "0.21.1"
