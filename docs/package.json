@@ -4,6 +4,6 @@
     "start": "myst start"
   },
   "dependencies": {
-    "mystmd": "^1.8.2"
+    "mystmd": "^1.8.3"
   }
 }

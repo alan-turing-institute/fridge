@@ -86,41 +86,14 @@ spec:
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
 metadata:
-  name: "cert-manager-certificate-issuers"
+  name: "trust-manager"
   namespace: "cert-manager"
 spec:
-  # Apply to controller
+  # Apply to trust manager pods
   endpointSelector:
     matchLabels:
-      app: cert-manager
+      app: trust-manager
   egress:
-    # Allow outbound to LetsEncrypt servers, necessary to set up certificate issuers
-    - toFQDNs:
-        - matchName: acme-staging-v02.api.letsencrypt.org
-        - matchName: acme-v02.api.letsencrypt.org
-      toPorts:
-        - ports:
-            - port: "443"
-              protocol: TCP
-  ingress:
-    - {}
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
-  name: "cert-manager-acmesolver"
-  namespace: "cert-manager"
-spec:
-  # Apply to ephemeral ACME solver
-  endpointSelector:
-    matchLabels:
-      app: acme-solver
-  # Allow ingress from the internet for HTTP challenge
-  ingress:
-    - fromEntities:
-        - world
-      toPorts:
-        - ports:
-            - port: "80"
-  egress:
-    - {}
+    # Allow outbound to kube API to get and update CA certs
+    - toEntities:
+        - kube-apiserver

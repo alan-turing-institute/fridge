@@ -52,11 +52,171 @@ class CertManager(ComponentResource):
                     repository_opts=RepositoryOptsArgs(
                         repo="https://charts.jetstack.io",
                     ),
+                    # Adapted from https://cert-manager.io/docs/installation/best-practice/#best-practice-helm-chart-values
                     values={
                         "crds": {"enabled": True},
                         "extraArgs": [
                             "--acme-http01-solver-nameservers=8.8.8.8:53,1.1.1.1:53"
                         ],
+                        "global": {
+                            "priorityClass": "system-cluster-critical",
+                        },
+                        "automountServiceAccountToken": False,
+                        "serviceAccount": {
+                            "automountServiceAccountToken": False,
+                        },
+                        "volumes": [
+                            {
+                                "name": "serviceaccount-token",
+                                "projected": {
+                                    "defaultMode": 0o444,
+                                    "sources": [
+                                        {
+                                            "serviceAccountToken": {
+                                                "expirationSeconds": 3607,
+                                                "path": "token",
+                                            }
+                                        },
+                                        {
+                                            "configMap": {
+                                                "name": "kube-root-ca.crt",
+                                                "items": [
+                                                    {"key": "ca.crt", "path": "ca.crt"}
+                                                ],
+                                            }
+                                        },
+                                        {
+                                            "downwardAPI": {
+                                                "items": [
+                                                    {
+                                                        "path": "namespace",
+                                                        "fieldRef": {
+                                                            "apiVersion": "v1",
+                                                            "fieldPath": "metadata.namespace",
+                                                        },
+                                                    }
+                                                ]
+                                            }
+                                        },
+                                    ],
+                                },
+                            }
+                        ],
+                        "volumeMounts": [
+                            {
+                                "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+                                "name": "serviceaccount-token",
+                                "readOnly": True,
+                            }
+                        ],
+                        "webhook": {
+                            "replicaCount": 2,
+                            "automountServiceAccountToken": False,
+                            "serviceAccount": {
+                                "automountServiceAccountToken": False,
+                            },
+                            "volumes": [
+                                {
+                                    "name": "serviceaccount-token",
+                                    "projected": {
+                                        "defaultMode": 0o444,
+                                        "sources": [
+                                            {
+                                                "serviceAccountToken": {
+                                                    "expirationSeconds": 3607,
+                                                    "path": "token",
+                                                }
+                                            },
+                                            {
+                                                "configMap": {
+                                                    "name": "kube-root-ca.crt",
+                                                    "items": [
+                                                        {
+                                                            "key": "ca.crt",
+                                                            "path": "ca.crt",
+                                                        }
+                                                    ],
+                                                }
+                                            },
+                                            {
+                                                "downwardAPI": {
+                                                    "items": [
+                                                        {
+                                                            "path": "namespace",
+                                                            "fieldRef": {
+                                                                "apiVersion": "v1",
+                                                                "fieldPath": "metadata.namespace",
+                                                            },
+                                                        }
+                                                    ]
+                                                }
+                                            },
+                                        ],
+                                    },
+                                }
+                            ],
+                            "volumeMounts": [
+                                {
+                                    "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+                                    "name": "serviceaccount-token",
+                                    "readOnly": True,
+                                }
+                            ],
+                        },
+                        "cainjector": {
+                            "replicaCount": 2,
+                            "automountServiceAccountToken": False,
+                            "serviceAccount": {
+                                "automountServiceAccountToken": False,
+                            },
+                            "volumes": [
+                                {
+                                    "name": "serviceaccount-token",
+                                    "projected": {
+                                        "defaultMode": 0o444,
+                                        "sources": [
+                                            {
+                                                "serviceAccountToken": {
+                                                    "expirationSeconds": 3607,
+                                                    "path": "token",
+                                                }
+                                            },
+                                            {
+                                                "configMap": {
+                                                    "name": "kube-root-ca.crt",
+                                                    "items": [
+                                                        {
+                                                            "key": "ca.crt",
+                                                            "path": "ca.crt",
+                                                        }
+                                                    ],
+                                                }
+                                            },
+                                            {
+                                                "downwardAPI": {
+                                                    "items": [
+                                                        {
+                                                            "path": "namespace",
+                                                            "fieldRef": {
+                                                                "apiVersion": "v1",
+                                                                "fieldPath": "metadata.namespace",
+                                                            },
+                                                        }
+                                                    ]
+                                                }
+                                            },
+                                        ],
+                                    },
+                                }
+                            ],
+                            "volumeMounts": [
+                                {
+                                    "mountPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+                                    "name": "serviceaccount-token",
+                                    "readOnly": True,
+                                }
+                            ],
+                        },
                     },
                     opts=ResourceOptions.merge(
                         child_opts,

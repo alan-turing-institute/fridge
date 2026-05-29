@@ -38,7 +38,13 @@ class NetworkPolicies(ComponentResource):
                 )
                 k8s_api_port = "443"
                 k8s_api_endpoint_rule = {
-                    "toFQDNs": [args.config.require("isolated_cluster_api_endpoint")],
+                    "toFQDNs": [
+                        {
+                            "matchName": args.config.require(
+                                "isolated_cluster_api_endpoint"
+                            )
+                        }
+                    ],
                     "toPorts": [{"ports": [{"port": k8s_api_port, "protocol": "TCP"}]}],
                 }
                 fridge_api_ip_rule = {
