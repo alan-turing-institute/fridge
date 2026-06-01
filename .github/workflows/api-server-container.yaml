@@ -10,7 +10,7 @@ on:
       - main
       - api/**
     tags:
-      - "v*"
+      - "api-v*"
     paths:
       - "fridge-job-api/**"
   pull_request:
@@ -59,16 +59,10 @@ jobs:
           images: |
             ghcr.io/${{ github.repository }}
           tags: |
-            # Branch name for all branches
             type=ref,event=branch
-            # Full version v1.2.3
-            type=semver,pattern=v{{version}}
-            # Major.minor version v1.2
-            type=semver,pattern=v{{major}}.{{minor}}
-            # Major version v1
-            type=semver,pattern=v{{major}}
-            # latest tag
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}},value={{tag}},match=^api-v(.*)$
+            type=semver,pattern={{major}}.{{minor}},value={{tag}},match=^api-v(.*)$
+            type=raw,value=latest,enable={{is_tag}}
       - name: Build and push image to registry
         uses: docker/build-push-action@v6
         with:
