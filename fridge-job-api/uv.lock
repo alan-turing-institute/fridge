@@ -247,7 +247,7 @@ wheels = [
 [[package]]
 name = "fridge-job-api"
 version = "0.3.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "dotenv" },
     { name = "fastapi", extra = ["standard"] },
