@@ -18,6 +18,7 @@ def get_version() -> str:
     try:
         return version("fridge-job-api")
     except PackageNotFoundError:
+        print("Package metadata not found. Returning default version.")
         return "0.0.0-dev"  # Default version if package metadata is not found
 
 
