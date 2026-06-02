@@ -3,7 +3,7 @@ import pulumi
 from pulumi import ResourceOptions
 from pulumi_kubernetes.core.v1 import NamespacePatch
 from pulumi_kubernetes.meta.v1 import ObjectMetaPatchArgs
-from pulumi_kubernetes.yaml import ConfigFile
+from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
 
 import components
 from enums import K8sEnvironment, PodSecurityStandard, TlsEnvironment
@@ -130,6 +130,16 @@ argo_workflows = components.WorkflowServer(
     opts=ResourceOptions(
         depends_on=[
             cert_manager,
+        ]
+    ),
+)
+
+argo_example = ConfigGroup(
+    "argo-example",
+    files=["./k8s/argo_workflows/examples/*.yaml"],
+    opts=ResourceOptions(
+        depends_on=[
+            argo_workflows,
         ]
     ),
 )
