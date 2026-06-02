@@ -95,7 +95,7 @@ class FridgeAPIJumpbox(ComponentResource):
                         containers=[
                             ContainerArgs(
                                 name="ssh-server",
-                                image=SoftwareVersion.OPENSSH_SERVER.value,
+                                image=f"linuxserver/openssh-server:{SoftwareVersion.OPENSSH_SERVER.value}",
                                 ports=[ContainerPortArgs(container_port=2222)],
                                 env=[
                                     EnvVarArgs(name="PUID", value="1000"),

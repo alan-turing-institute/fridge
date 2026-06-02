@@ -308,7 +308,7 @@ class ContainerRegistry(ComponentResource):
                         containers=[
                             ContainerArgs(
                                 name="harbor-config-job",
-                                image=SoftwareVersion.CURL_JQ.value,
+                                image=f"badouralix/curl-jq:{SoftwareVersion.CURL_JQ.value}",
                                 env=[
                                     EnvVarArgs(
                                         name="HARBOR_URL",
