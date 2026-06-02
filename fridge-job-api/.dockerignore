@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+.python-version
+package-lock.json

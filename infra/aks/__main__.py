@@ -1,5 +1,6 @@
 import base64
 
+import components
 import pulumi
 import pulumi_random as random
 import pulumi_tls as tls
@@ -15,7 +16,7 @@ from pulumi_azure_native import (
 
 def get_kubeconfig(
     credentials: list[containerservice.outputs.CredentialResultResponse],
-) -> str:
+) -> str | None:
     for credential in credentials:
         if credential.name == "clusterAdmin":
             return base64.b64decode(credential.value).decode()
@@ -112,89 +113,108 @@ authorization.RoleAssignment(
     # set is located. However, the scope of the disk encryption set seems sufficient.
     # Disks are created in the AKS managed resource group
     # https://learn.microsoft.com/en-us/azure/aks/azure-disk-customer-managed-keys#encrypt-your-aks-cluster-data-disk
+    # scope=f"/subscriptions/{azure_config.require('subscriptionId')}"
     scope=disk_encryption_set.id,
 )
 
-managed_cluster = containerservice.ManagedCluster(
-    config.require("cluster_name"),
-    resource_group_name=resource_group.name,
-    agent_pool_profiles=[
-        containerservice.ManagedClusterAgentPoolProfileArgs(
-            enable_auto_scaling=True,
-            max_count=5,
-            max_pods=100,
-            min_count=3,
-            mode="System",
-            name="gppool",
-            node_labels={
-                "context": "fridge",
-                "size": "B4als_v2",
-                "arch": "x86_64",
-            },
-            os_disk_size_gb=0,  # when == 0 sets default size
-            os_type="Linux",
-            os_sku="Ubuntu",
-            type="VirtualMachineScaleSets",
-            vm_size="Standard_B4als_v2",
-        ),
-        containerservice.ManagedClusterAgentPoolProfileArgs(
-            enable_auto_scaling=True,
-            max_count=5,
-            max_pods=100,
-            min_count=2,
-            mode="System",
-            name="systempool",
-            node_labels={
-                "context": "fridge",
-                "size": "B2als_v2",
-                "arch": "x86_64",
-            },
-            node_taints=[
-                # allow only system pods
-                # https://learn.microsoft.com/en-us/azure/aks/use-system-pools?tabs=azure-cli#system-and-user-node-pools
-                "CriticalAddonsOnly=true:NoSchedule",
-            ],
-            os_disk_size_gb=0,  # when == 0 sets default size
-            os_type="Linux",
-            os_sku="Ubuntu",
-            type="VirtualMachineScaleSets",
-            vm_size="Standard_B2als_v2",
-        ),
-    ],
-    disk_encryption_set_id=disk_encryption_set.id,
-    dns_prefix="fridge",
-    identity=containerservice.ManagedClusterIdentityArgs(
-        type=containerservice.ResourceIdentityType.USER_ASSIGNED,
-        user_assigned_identities=[identity.id],
+# Networking
+networking = components.Networking(
+    "networking",
+    components.NetworkingArgs(
+        config=config,
+        resource_group_name=resource_group.name,
+        location=resource_group.location,
     ),
-    kubernetes_version="1.32",
-    linux_profile=containerservice.ContainerServiceLinuxProfileArgs(
-        admin_username="fridgeadmin",
-        ssh=containerservice.ContainerServiceSshConfigurationArgs(
-            public_keys=[
-                containerservice.ContainerServiceSshPublicKeyArgs(
-                    key_data=ssh_key.public_key_openssh,
-                )
-            ],
-        ),
-    ),
-    network_profile=containerservice.ContainerServiceNetworkProfileArgs(
-        advanced_networking=containerservice.AdvancedNetworkingArgs(
-            enabled=True,
-            observability=containerservice.AdvancedNetworkingObservabilityArgs(
-                enabled=True,
-            ),
-        ),
-        network_dataplane=containerservice.NetworkDataplane.CILIUM,
-        network_plugin=containerservice.NetworkPlugin.AZURE,
-        network_policy=containerservice.NetworkPolicy.CILIUM,
-    ),
-    opts=pulumi.ResourceOptions(replace_on_changes=["agent_pool_profiles"]),
 )
 
-admin_credentials = containerservice.list_managed_cluster_admin_credentials_output(
-    resource_group_name=resource_group.name, resource_name=managed_cluster.name
+# Grant the managed identity Contributor role on the access vnet so it can manage network interfaces
+# This allows the creation of internal load balancers to make it easier to direct traffic between the subnets
+authorization.RoleAssignment(
+    "cluster_role_assignment_access_vnet",
+    principal_id=identity.principal_id,
+    principal_type=authorization.PrincipalType.SERVICE_PRINCIPAL,
+    # Contributor: https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles
+    role_definition_id=f"/subscriptions/{azure_config.require('subscriptionId')}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c",
+    scope=networking.access_nodes.id,
 )
 
-kubeconfig = admin_credentials.kubeconfigs.apply(get_kubeconfig)
-pulumi.export("kubeconfig", kubeconfig)
+# Grant the managed identity Contributor role on the isolated vnet so it can manage network interfaces
+# This allows the creation of internal load balancers to make it easier to direct traffic to the right place on the isolated network
+authorization.RoleAssignment(
+    "cluster_role_assignment_isolated_vnet",
+    principal_id=identity.principal_id,
+    principal_type=authorization.PrincipalType.SERVICE_PRINCIPAL,
+    # Contributor: https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles
+    role_definition_id=f"/subscriptions/{azure_config.require('subscriptionId')}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c",
+    scope=networking.isolated_nodes.id,
+)
+
+# Create isolated cluster to host private workloads
+isolated_cluster = components.IsolatedCluster(
+    "isolated-cluster",
+    components.IsolatedClusterArgs(
+        config=config,
+        disk_encryption_set=disk_encryption_set,
+        resource_group_name=resource_group.name,
+        cluster_name=f"{config.require('cluster_name')}-isolated",
+        identity=identity,
+        nodes_subnet_id=networking.isolated_nodes_subnet_id,
+        ssh_key=ssh_key,
+    ),
+)
+
+isolated_admin_credentials = (
+    containerservice.list_managed_cluster_admin_credentials_output(
+        resource_group_name=resource_group.name, resource_name=isolated_cluster.name
+    )
+)
+
+# Create access cluster
+
+# This is a public facing cluster that will run proxies to the private cluster
+
+access_cluster = components.AccessCluster(
+    "access-cluster",
+    components.AccessClusterArgs(
+        config=config,
+        resource_group_name=resource_group.name,
+        cluster_name=f"{config.require('cluster_name')}-access",
+        identity=identity,
+        nodes_subnet_id=networking.access_nodes_subnet_id,
+        ssh_key=ssh_key,
+    ),
+)
+
+access_admin_credentials = (
+    containerservice.list_managed_cluster_admin_credentials_output(
+        resource_group_name=resource_group.name, resource_name=access_cluster.name
+    )
+)
+
+isolated_kubeconfig = isolated_admin_credentials.kubeconfigs.apply(get_kubeconfig)
+access_kubeconfig = access_admin_credentials.kubeconfigs.apply(get_kubeconfig)
+
+outputs = {
+    "access_kubeconfig": access_kubeconfig,
+    "access_nodes_subnet_cidr": networking.access_nodes.address_prefix,
+    "access_subnet_nsg_name": networking.access_nsg.name,
+    "access_subnet_nsg_id": networking.access_nsg.id,
+    "access_vnet_cidr": networking.access_vnet.address_space.address_prefixes[0],
+    "admin_ip_allowlist": config.require_object("admin_ip_allowlist"),
+    "isolated_cluster_api_server_fqdn": isolated_cluster.fqdn,
+    "isolated_cluster_api_server_ip": isolated_cluster.isolated_cluster_ip,
+    "isolated_kubeconfig": isolated_kubeconfig,
+    "isolated_nodes_subnet_cidr": networking.isolated_nodes.address_prefix,
+    "isolated_nodes_subnet_id": networking.isolated_nodes_subnet_id,
+    "isolated_nodes_subnet_name": networking.isolated_nodes_subnet_name,
+    "isolated_subnet_nsg_name": networking.isolated_nsg.name,
+    "isolated_subnet_nsg_id": networking.isolated_nsg.id,
+    "isolated_vnet_cidr": networking.isolated_vnet.address_space.address_prefixes[0],
+    "isolated_vnet_id": networking.isolated_vnet_id,
+    "isolated_vnet_name": networking.isolated_vnet.name,
+    "network_route_table_id": networking.route_table.id,
+    "network_route_table_name": networking.route_table.name,
+}
+
+for key, value in outputs.items():
+    pulumi.export(key, value)

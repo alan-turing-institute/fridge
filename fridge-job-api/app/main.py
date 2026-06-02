@@ -4,10 +4,22 @@ import requests
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, UploadFile, File
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from importlib.metadata import PackageNotFoundError, version
 from pydantic import BaseModel
 from secrets import compare_digest
 from typing import Annotated, Any, Union
 from app.minio_client import MinioClient
+
+
+def get_version() -> str:
+    """
+    Get the version of the application from the package metadata.
+    """
+    try:
+        return version("fridge-job-api")
+    except PackageNotFoundError:
+        print("Package metadata not found. Returning default version.")
+        return "0.0.0-dev"  # Default version if package metadata is not found
 
 
 # Check if running in the Kubernetes cluster
@@ -25,9 +37,8 @@ else:
     FRIDGE_API_ADMIN = os.getenv("FRIDGE_API_ADMIN")
     FRIDGE_API_PASSWORD = os.getenv("FRIDGE_API_PASSWORD")
     ARGO_SERVER = os.getenv("ARGO_SERVER")
-    MINIO_URL = os.getenv("MINIO_URL")
-    MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY")
-    MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY")
+
+APP_VERSION = get_version()
 
 # Disable TLS verification in development mode
 VERIFY_TLS = os.getenv("VERIFY_TLS", "False") == "True"
@@ -49,7 +60,7 @@ and submit workflows based on templates.
 
 """
 
-app = FastAPI(title="FRIDGE API", description=description, version="0.2.0")
+app = FastAPI(title="FRIDGE API", description=description, version=APP_VERSION)
 
 
 # On the Kubernetes cluster, the Argo token is stored in a service account token file on a projected volume
@@ -75,11 +86,16 @@ def argo_token() -> str:
 
 security = HTTPBasic()
 
-# Init minio client (insecure enabled for dev)
+# Init minio client. Will fallback to STS if access/secret key are not set
 minio_client = MinioClient(
     endpoint=os.getenv("MINIO_URL"),
-    access_key=os.getenv("MINIO_ACCESS_KEY"),
-    secret_key=os.getenv("MINIO_SECRET_KEY"),
+    sts_endpoint=os.getenv(
+        "MINIO_STS_URL", "https://sts.minio-operator.svc.cluster.local:4223"
+    ),
+    tenant=os.getenv("MINIO_TENANT_NAME", "argo-artifacts"),
+    access_key=os.getenv("MINIO_ACCESS_KEY", None),
+    secret_key=os.getenv("MINIO_SECRET_KEY", None),
+    secure=os.getenv("MINIO_SECURE", True),
 )
 
 
@@ -236,6 +252,42 @@ async def get_workflows(
     return extract_argo_workflows(r.json())
 
 
+@app.get("/workflows/{namespace}/{workflow_name}/log", tags=["Argo Workflows"])
+async def get_workflow_log(
+    namespace: str,
+    workflow_name: str,
+    pod_name: str | None = None,
+    container_name: str = "main",
+    verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
+        verify_request
+    ),
+):
+    params = {
+        "podName": pod_name or workflow_name,
+        "logOptions.container": container_name,
+    }
+
+    r = requests.get(
+        f"{ARGO_SERVER}/api/v1/workflows/{namespace}/{workflow_name}/log",
+        verify=VERIFY_TLS,
+        headers={"Authorization": f"Bearer {argo_token()}"},
+        params=params,
+        stream=True,
+    )
+    if r.status_code != 200:
+        raise HTTPException(
+            status_code=r.status_code, detail=parse_argo_error(r.json())
+        )
+
+    lines = []
+    for line in r.iter_lines():
+        if line:
+            parsed = json.loads(line)
+            if "result" in parsed:
+                lines.append(parsed["result"].get("content", ""))
+    return {"podName": workflow_name, "log": "\n".join(lines)}
+
+
 @app.get("/workflows/{namespace}/{workflow_name}", tags=["Argo Workflows"])
 async def get_single_workflow(
     namespace: Annotated[str, "The namespace to list workflows from"],
@@ -311,7 +363,7 @@ async def get_workflow_template(
     workflow_template = WorkflowTemplate(
         namespace=namespace,
         template_name=template_name,
-        parameters=json_data["spec"]["arguments"]["parameters"],
+        parameters=json_data.get("spec", {}).get("arguments", {}).get("parameters", []),
     )
     if verbose:
         return [json_data, workflow_template]
@@ -372,13 +424,54 @@ async def upload_object(
 async def get_object(
     bucket: str,
     file_name: str,
-    target_file: str = None,
-    version: str = None,
+    target_file: str | None = None,
+    version: str | None = None,
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
     ),
 ):
     return minio_client.get_object(bucket, file_name, target_file, version)
+
+
+# Trigger Argo workflow
+@app.post("/object/move", tags=["s3"])
+async def move_object(
+    files: Annotated[
+        str, "The name of files to move (Separate with ; for multiple files)"
+    ],
+    version: str | None = None,
+    verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
+        verify_request
+    ),
+) -> dict:
+    r = requests.post(
+        f"{ARGO_SERVER}/api/v1/workflows/argo-workflows/submit",
+        verify=VERIFY_TLS,
+        headers={"Authorization": f"Bearer {argo_token()}"},
+        data=json.dumps(
+            {
+                "resourceKind": "WorkflowTemplate",
+                "resourceName": "data-copy",
+                "submitOptions": {
+                    "generateName": "data-copy-",
+                    "parameters": [
+                        "bucket=ingress",
+                        f"files={files}",
+                    ],
+                },
+            }
+        ),
+    )
+
+    if r.status_code != 200:
+        raise HTTPException(
+            status_code=r.status_code, detail=parse_argo_error(r.json())
+        )
+    return {
+        "status": r.status_code,
+        "files": files.split(";"),
+        "workflow": r.json()["metadata"]["name"],
+    }
 
 
 @app.post("/object/bucket", tags=["s3"])
@@ -396,7 +489,7 @@ async def create_bucket(
 async def delete_object(
     bucket: str,
     file_name: str,
-    version: str = None,
+    version: str | None = None,
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
     ),

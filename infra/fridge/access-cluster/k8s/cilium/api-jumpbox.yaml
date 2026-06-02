@@ -1,0 +1,44 @@
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: api-jumpbox-access
+  namespace: api-jumpbox
+spec:
+  endpointSelector:
+    matchLabels:
+      app: api-jumpbox
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:app.kubernetes.io/name: ingress-nginx
+            k8s:app.kubernetes.io/component: controller
+            k8s:io.kubernetes.pod.namespace: ingress-nginx
+      toPorts:
+        - ports:
+            - port: "2222"
+              protocol: ANY
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+    - toEndpoints:
+        - matchLabels:
+            k8s:app.kubernetes.io/name: ingress-nginx
+            k8s:app.kubernetes.io/component: controller
+            k8s:io.kubernetes.pod.namespace: ingress-nginx
+      toPorts:
+        - ports:
+            - port: "2222"
+              protocol: TCP
+    # Access to the isolated cluster
+    - toCIDRSet:
+        - cidr: 10.20.1.0/16
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
