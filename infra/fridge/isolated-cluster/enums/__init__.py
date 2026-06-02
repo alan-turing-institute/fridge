@@ -28,7 +28,6 @@ tls_issuer_names = {
 }
 
 
-@unique
 class SoftwareVersion(Enum):
     ARGO_WORKFLOWS = "0.45.20"  # Corresponds to Argo Workflows v3.6.10
     CERT_MANAGER = "1.17.1"
