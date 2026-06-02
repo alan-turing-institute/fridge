@@ -28,7 +28,7 @@ You will need to supply the desired CIDR for each VNet in the Pulumi configurati
 Basic Network Security Groups (NSGs) will also be set up for the VNets.
 
 :::{important}
-Note that when the `TRE Administrators` deploy FRIDGE services to the access cluster, they will include an SSH server listening on port 2500.
+Note that when the `TRE Administrators` deploy FRIDGE services to the access cluster, the services will include an SSH server listening on port 2500.
 
 The `TRE Administrators` must supply a range of IP addresses from which the server should accept connections.
 
@@ -70,7 +70,7 @@ The `isolated` cluster has a private API server endpoint, which will be made acc
 
 When the infrastructure has finished deploying, you should provide the TRE Administrators reponsible for deploying FRIDGE with the necessary connection details, including the public IP address of the Kubernetes cluster, and credentials for the two clusters.
 
-## Dawn AI
+## Dawn
 
 Deployment on Dawn is currently a partly manual, partly Pulumi based process.
 
@@ -78,7 +78,7 @@ The `fridge/infra/dawn/` directory contains Pulumi code for the deployment of th
 
 On Dawn, [K3s](https://k3s.io/) is the Kubernetes distribution of choice.
 
-The deployment of two K3s clusters onto the associated nodes should be completed manually.
+The deployment of two K3s clusters onto the associated nodes should be completed manually by the `Hosting Organisation` Administrators.
 
 Once setup is complete, you should provide the TRE Administrators with the following:
 
