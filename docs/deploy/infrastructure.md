@@ -68,7 +68,7 @@ In production, it would be private and accessed via a bastion.
 
 The `isolated` cluster has a private API server endpoint, which will be made accessible only from within the access cluster.
 
-When the infrastructure has finished deploying, you should provide the TRE Administrators reponsible for deploying FRIDGE with the necessary connection details, including the public IP address of the Kubernetes cluster, and credentials for the two clusters.
+When the infrastructure has finished deploying, you should provide the `TRE Administrators` reponsible for deploying FRIDGE with the necessary connection details, including the public IP address of the Kubernetes cluster, and credentials for the two clusters.
 
 ## Dawn
 
@@ -78,19 +78,19 @@ The `fridge/infra/dawn/` directory contains Pulumi code for the deployment of th
 
 On Dawn, [K3s](https://k3s.io/) is the Kubernetes distribution of choice.
 
-The deployment of two K3s clusters onto the associated nodes should be completed manually by the `Hosting Organisation` Administrators.
+The deployment of two K3s clusters onto the associated nodes should be completed manually by the `Hosting  Administrators`.
 
-Once setup is complete, you should provide the TRE Administrators with the following:
+Once setup is complete, you should provide the `TRE Administrators` with the following:
 
 - public IP address of bastion host for accessing the access cluster
 - Kubernetes credentials for the access and isolated clusters
 - internal and external IP addresses of the load balancer on the access cluster
 
-The TRE Adminstrators responsible for deploying the FRIDGE services will require this information.
+The `TRE Adminstrators` responsible for deploying the FRIDGE services will require this information.
 
 ## Network lockdown
 
-Once the TRE Administrators have completed deployment of the FRIDGE services to the access and isolated clusters, it is the responsibility of the Hosting Provider Administrators to complete a final network lockdown.
+Once the `TRE Administrators` have completed deployment of the FRIDGE services to the access and isolated clusters, it is the responsibility of the `Hosting Administrators` to complete a final network lockdown.
 
 The final lockdown step ensures that:
 1. outbound network traffic from the isolated cluster is only permitted to the container registry hosted in the access cluster
