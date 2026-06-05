@@ -5,7 +5,7 @@ This process includes configuration for various components such as Argo Workflow
 It does not deploy the Kubernetes clusters within the FRIDGE tenancy; instead, it assumes that Kubernetes clusters have already been deployed.
 
 :::{seealso}
-To read about deploying the required Kubernetes clusters see [Deploy Infrastructure](./infrastructure.md).
+To read about deploying the required Kubernetes clusters and tenancy see [Deploy Infrastructure](./infrastructure.md).
 :::
 
 :::{warning}
@@ -21,23 +21,7 @@ The isolated cluster hosts the FRIDGE services.
 The deployment process uses Pulumi to manage the infrastructure as code.
 
 Currently, FRIDGE is configured to support deployment on Azure Kubernetes Service (AKS) and on DAWN.
-The isolated cluster can be deployed to a local k3s instance.
-
-In the table below, you can see the components that need to be deployed to each target after cluster creation.
-Some components are pre-installed on AKS and DAWN.
-
-| Component         | AKS   | DAWN  | Local |
-| ----------------- | ----- | ----- | ----- |
-| argo-workflows    | ✅    | ✅    | ✅    |
-| cert-manager.io   | ✅    |       | ✅    |
-| cilium            |       |       | ✅    |
-| fridge-api        | ✅    | ✅    | ✅    |
-| harbor            | ✅    | ✅    | ✅    |
-| hubble            | ✅    |       | ✅    |
-| ingress-nginx     | ✅    |       | ✅    |
-| longhorn          |       | ✅    | ✅    |
-| minio             | ✅    | ✅    | ✅    |
-
+The isolated cluster can also be deployed to a local k3s instance.
 
 You will require appropriate Kubernetes contexts set up for both clusters.
 The FRIDGE hosting organisation should provide you with the required Kubernetes credentials.
@@ -48,7 +32,7 @@ The following instructions assume you already have access to Kubernetes clusters
 
 ### Pulumi Backend
 
-You can use any backend you like for Pulumi.
+Pulumi stores state in a backend.
 The [Pulumi documentation](https://www.pulumi.com/docs/iac/concepts/state-and-backends/) details how to use set up an appropriate backend.
 For local development and testing, you can use the local backend:
 
@@ -56,7 +40,7 @@ For local development and testing, you can use the local backend:
 pulumi login --local
 ```
 
-For production, another backend, such as Azure Blob Storage, will be more appropriate.
+For production, another backend, such as Azure Blob Storage, will likely be more appropriate.
 
 ### Access cluster
 
@@ -110,12 +94,6 @@ The other will be copied to the K8s API proxy, and can be used to set up the SSH
 #### Kubernetes context
 
 Pulumi requires that the Kubernetes context is set for the stack.
-For example, to set the Kubernetes context for the `dawn` stack, you can use:
-
-```console
-pulumi config set kubernetes:context dawn
-```
-
 This must match one of the Kubernetes contexts in your local `kubeconfig`.
 You can check the available contexts with `kubectl`:
 
@@ -123,7 +101,17 @@ You can check the available contexts with `kubectl`:
 kubectl config get-contexts
 ```
 
+For example, to set the Kubernetes context for the `dawn` stack, you can use:
+
+```console
+pulumi config set kubernetes:context dawn
+```
+
 #### Deploying with Pulumi
+
+Ensure that you are able to connect to the Kubernetes API of the access cluster.
+On AKS, the Kubernetes API is currently publicly accessible, so no changes to your local kubeconfig are required.
+On Dawn, you will need to set up an SSH connection to the bastion host on the access cluster's local network.
 
 Once you have set up the stack and its configuration, you can deploy the stack using the following command:
 
@@ -143,7 +131,7 @@ However, two additional steps are required before deploying FRIDGE to the isolat
    You can use the following command to set up SSH port forwarding:
 
    ```console
-   ssh -i <path-to-your-private-ssh-key> -L 6443:<isolated-cluster-api-server>:443 fridgeoperator@<access-cluster-ssh-server-ip> -p 2800 -N
+   ssh -i <path-to-your-private-ssh-key> -L 6443:<isolated-cluster-api-server>:443 fridgeoperator@<access-cluster-ssh-server-ip> -p 2222 -N
    ```
 
    Replace `<path-to-your-private-ssh-key>`, `<isolated-cluster-api-server>`, and `<access-cluster-ssh-server-ip>` with the appropriate values for your setup.
