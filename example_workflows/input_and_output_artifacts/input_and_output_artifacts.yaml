@@ -1,0 +1,27 @@
+metadata:
+  name: input-and-output-artifact-s3
+  namespace: argo-workflows
+spec:
+  templates:
+    - name: s3-input-and-output-example
+      inputs:
+        artifacts:
+          - name: rscript
+            path: /tmp/test/generate_plots_no_txt.R
+            s3:
+              key: generate_plots_no_txt.R
+      outputs:
+        artifacts:
+          - name: routput
+            path: /tmp/routput
+            s3:
+              key: /plot_gen.tgz
+      container:
+        image: rocker/tidyverse:latest
+        command:
+          - sh
+          - -c
+        args:
+          - mkdir /tmp/routput; Rscript /tmp/test/generate_plots_no_txt.R
+  entrypoint: s3-input-and-output-example
+  serviceAccountName: argo-workflow

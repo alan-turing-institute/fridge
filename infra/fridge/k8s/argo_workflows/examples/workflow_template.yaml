@@ -1,0 +1,58 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: example-curl-external
+  namespace: argo-workflows
+spec:
+  serviceAccountName: argo-workflow
+  entrypoint: steps
+  arguments:
+    parameters:
+      - name: url
+        value: ipinfo.io
+      - name: ip
+        value: 34.117.59.81
+  templates:
+    - name: steps
+      steps:
+        - - name: FQDN
+            template: curl-fqdn
+          - name: IP
+            template: curl-ip
+    - name: curl-fqdn
+      inputs:
+        parameters:
+          - name: url
+            value: "{{workflow.parameters.url}}"
+      script:
+        name: main
+        image: alpine/curl
+        command:
+          - sh
+        source: |
+          curl -s https://{{inputs.parameters.url}}
+          # exit code 6 - Could not resolve host
+          test $? -eq 6
+    - name: curl-ip
+      inputs:
+        parameters:
+          - name: url
+            value: "{{workflow.parameters.url}}"
+          - name: ip
+            value: "{{workflow.parameters.ip}}"
+      script:
+        name: main
+        image: alpine/curl
+        command:
+          - sh
+        source: |
+          curl -s https://{{inputs.parameters.url}} --resolve {{inputs.parameters.url}}:443:{{inputs.parameters.ip}} --connect-timeout 30
+          #  exit code 28 - Timeout
+          #  exit code 7 - Failed to c onnect to host
+          code=$?
+          test $code -eq 28 || test $code -eq 7
+  ttlStrategy:
+    secondsAfterCompletion: 300
+  podGC:
+    strategy: OnPodCompletion
+    deleteDelayDuration: 300s

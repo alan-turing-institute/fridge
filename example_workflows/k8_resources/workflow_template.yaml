@@ -1,0 +1,30 @@
+metadata:
+  name: create-pod-example
+  namespace: argo-workflows
+spec:
+  templates:
+    - name: create-pod
+      resource:
+        action: create
+        manifest: |
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            name: create-curl-pod
+            namespace: argo-workflows
+          spec:
+            containers:
+              - name: main
+                image: alpine/curl
+                command:
+                  - curl
+                args:
+                  - "-s"
+                  - "https://ipinfo.io"
+  entrypoint: create-pod
+  serviceAccountName: argo-workflow
+  ttlStrategy:
+    secondsAfterCompletion: 300
+  podGC:
+    strategy: OnPodCompletion
+    deleteDelayDuration: 30s
