@@ -15,7 +15,7 @@ RUN uv sync --locked --no-editable
 FROM python:3.13-slim-bookworm
 RUN groupadd -g 1001 appuser && useradd -m -u 1001 -g appuser appuser
 WORKDIR /app
-COPY --from=builder --chown=appuser:appuseer /app /app
+COPY --from=builder --chown=appuser:appuser /app /app
 ENV PATH="/app/.venv/bin:$PATH"
 USER appuser
 CMD ["fastapi", "run", "--host", "0.0.0.0", "app/main.py"]
