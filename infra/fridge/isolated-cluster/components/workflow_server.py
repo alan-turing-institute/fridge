@@ -11,7 +11,7 @@ from pulumi_kubernetes.rbac.v1 import (
     SubjectArgs,
 )
 
-from enums import PodSecurityStandard, TlsEnvironment
+from enums import PodSecurityStandard, SoftwareVersion, TlsEnvironment
 
 
 class WorkflowServerArgs:
@@ -78,7 +78,7 @@ class WorkflowServer(ComponentResource):
             "argo-workflows",
             namespace=argo_server_ns.metadata.name,
             chart="argo-workflows",
-            version="0.45.20",
+            version=SoftwareVersion.ARGO_WORKFLOWS.value,
             repository_opts=RepositoryOptsArgs(
                 repo="https://argoproj.github.io/argo-helm",
             ),

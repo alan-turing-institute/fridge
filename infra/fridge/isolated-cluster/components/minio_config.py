@@ -18,6 +18,8 @@ from pulumi_kubernetes.core.v1 import (
 from pulumi_kubernetes.helm.v4 import Chart
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 
+from enums import SoftwareVersion
+
 
 class MinioConfigArgs:
     def __init__(
@@ -92,7 +94,7 @@ class MinioConfigJob(ComponentResource):
                         containers=[
                             ContainerArgs(
                                 name="minio-config-job",
-                                image="minio/mc:latest",
+                                image=f"minio/mc:{SoftwareVersion.MINIO_MC.value}",
                                 command=[
                                     "/bin/sh",
                                     "-c",
