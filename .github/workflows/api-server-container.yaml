@@ -10,7 +10,7 @@ on:
       - main
       - api/**
     tags:
-      - "v*"
+      - "api-v*"
     paths:
       - "fridge-job-api/**"
   pull_request:
@@ -35,42 +35,36 @@ jobs:
 
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Login to GitHub Container Registry
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Extract metadata (tags, labels) for Docker
         if: github.event_name != 'pull_request'
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: |
             ghcr.io/${{ github.repository }}
           tags: |
-            # Branch name for all branches
             type=ref,event=branch
-            # Full version v1.2.3
-            type=semver,pattern=v{{version}}
-            # Major.minor version v1.2
-            type=semver,pattern=v{{major}}.{{minor}}
-            # Major version v1
-            type=semver,pattern=v{{major}}
-            # latest tag
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}},value={{tag}},match=^api-v(.*),enable=${{startsWith(github.ref, 'refs/tags/api-v')}}
+            type=semver,pattern={{major}}.{{minor}},value={{tag}},match=^api-v(.*),enable=${{startsWith(github.ref, 'refs/tags/api-v')}}
+            type=raw,value=latest,enable=${{startsWith(github.ref, 'refs/tags/api-v')}}
       - name: Build and push image to registry
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./fridge-job-api
           # Don't push builds to ghcr on pull requests
@@ -79,21 +73,5 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64,linux/arm64
-
-  # Remove untagged images from the registry
-  # Note that this leaves behind the most recent image from the development branch
-  cleanup-dev-images:
-    runs-on: ubuntu-latest
-    if: |
-      github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: build
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Delete API development images
-        uses: vlaurin/action-ghcr-prune@v0.6.0
-        with:
-          container: ${{ github.event.repository.name }}
-          prune-untagged: true
-          token: ${{ secrets.GITHUB_TOKEN }}
+          provenance: false
+          sbom: false

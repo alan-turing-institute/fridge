@@ -19,6 +19,20 @@ class Networking(ComponentResource):
         super().__init__("fridge_aks:Networking", name, {}, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
+        self.route_table = network.RouteTable(
+            f"{name}_route_table",
+            location=args.location,
+            resource_group_name=args.resource_group_name,
+            route_table_name=f"{name}-route-table",
+            routes=[],
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(
+                    ignore_changes=["routes"]
+                ),  # allow routes to be created outside this definition
+            ),
+        )
+
         # Create NSGs for each cluster
         self.isolated_nsg = network.NetworkSecurityGroup(
             f"{name}-isolated-nsg",
@@ -96,7 +110,9 @@ class Networking(ComponentResource):
                     protocol=network.SecurityRuleProtocol.TCP,
                     source_port_range="*",
                     destination_port_range="2500",
-                    source_address_prefix="Internet",
+                    source_address_prefixes=args.config.require_object(
+                        "admin_ip_allowlist"
+                    ),
                     destination_address_prefix="*",
                     description="Allow SSH traffic to API Proxy SSH server",
                 ),
@@ -207,6 +223,7 @@ class Networking(ComponentResource):
             network_security_group=network.NetworkSecurityGroupArgs(
                 id=self.isolated_nsg.id
             ),
+            route_table=network.RouteTableArgs(id=self.route_table.id),
             opts=ResourceOptions.merge(
                 child_opts, ResourceOptions(depends_on=[self.isolated_vnet])
             ),
@@ -259,8 +276,10 @@ class Networking(ComponentResource):
 
         self.access_vnet_id = self.access_vnet.id
         self.access_nodes_subnet_id = self.access_nodes.id
+        self.access_nodes_subnet_name = self.access_nodes.name
         self.isolated_vnet_id = self.isolated_vnet.id
         self.isolated_nodes_subnet_id = self.isolated_nodes.id
+        self.isolated_nodes_subnet_name = self.isolated_nodes.name
 
         self.register_outputs(
             {

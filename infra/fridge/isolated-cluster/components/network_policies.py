@@ -1,20 +1,31 @@
+import pulumi
 from pulumi import ComponentResource, ResourceOptions
 from pulumi_kubernetes.yaml import ConfigFile
 
 from enums import K8sEnvironment
 
 
+class NetworkPoliciesArgs:
+    def __init__(
+        self,
+        config: pulumi.config.Config,
+        k8s_environment: K8sEnvironment,
+    ):
+        self.config = config
+        self.k8s_environment = k8s_environment
+
+
 class NetworkPolicies(ComponentResource):
     def __init__(
         self,
         name: str,
-        k8s_environment: K8sEnvironment,
+        args: NetworkPoliciesArgs,
         opts: ResourceOptions | None = None,
     ) -> None:
         super().__init__("fridge:k8s:NetworkPolicies", name, {}, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
-        match k8s_environment:
+        match args.k8s_environment:
             case K8sEnvironment.AKS:
                 # AKS uses Konnectivity to mediate some API/webhook traffic, and uses a different external DNS server
                 ConfigFile(

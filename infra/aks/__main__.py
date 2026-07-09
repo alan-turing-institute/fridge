@@ -127,6 +127,17 @@ networking = components.Networking(
     ),
 )
 
+# Grant the managed identity Contributor role on the access vnet so it can manage network interfaces
+# This allows the creation of internal load balancers to make it easier to direct traffic between the subnets
+authorization.RoleAssignment(
+    "cluster_role_assignment_access_vnet",
+    principal_id=identity.principal_id,
+    principal_type=authorization.PrincipalType.SERVICE_PRINCIPAL,
+    # Contributor: https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles
+    role_definition_id=f"/subscriptions/{azure_config.require('subscriptionId')}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c",
+    scope=networking.access_nodes.id,
+)
+
 # Grant the managed identity Contributor role on the isolated vnet so it can manage network interfaces
 # This allows the creation of internal load balancers to make it easier to direct traffic to the right place on the isolated network
 authorization.RoleAssignment(
@@ -183,5 +194,27 @@ access_admin_credentials = (
 isolated_kubeconfig = isolated_admin_credentials.kubeconfigs.apply(get_kubeconfig)
 access_kubeconfig = access_admin_credentials.kubeconfigs.apply(get_kubeconfig)
 
-pulumi.export("isolated_kubeconfig", isolated_kubeconfig)
-pulumi.export("access_kubeconfig", access_kubeconfig)
+outputs = {
+    "access_kubeconfig": access_kubeconfig,
+    "access_nodes_subnet_cidr": networking.access_nodes.address_prefix,
+    "access_subnet_nsg_name": networking.access_nsg.name,
+    "access_subnet_nsg_id": networking.access_nsg.id,
+    "access_vnet_cidr": networking.access_vnet.address_space.address_prefixes[0],
+    "admin_ip_allowlist": config.require_object("admin_ip_allowlist"),
+    "isolated_cluster_api_server_fqdn": isolated_cluster.fqdn,
+    "isolated_cluster_api_server_ip": isolated_cluster.isolated_cluster_ip,
+    "isolated_kubeconfig": isolated_kubeconfig,
+    "isolated_nodes_subnet_cidr": networking.isolated_nodes.address_prefix,
+    "isolated_nodes_subnet_id": networking.isolated_nodes_subnet_id,
+    "isolated_nodes_subnet_name": networking.isolated_nodes_subnet_name,
+    "isolated_subnet_nsg_name": networking.isolated_nsg.name,
+    "isolated_subnet_nsg_id": networking.isolated_nsg.id,
+    "isolated_vnet_cidr": networking.isolated_vnet.address_space.address_prefixes[0],
+    "isolated_vnet_id": networking.isolated_vnet_id,
+    "isolated_vnet_name": networking.isolated_vnet.name,
+    "network_route_table_id": networking.route_table.id,
+    "network_route_table_name": networking.route_table.name,
+}
+
+for key, value in outputs.items():
+    pulumi.export(key, value)

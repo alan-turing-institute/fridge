@@ -1,8 +1,12 @@
 from .api_server import ApiServer, ApiServerArgs
 from .block_storage import BlockStorage, BlockStorageArgs
 from .cert_manager import CertManager, CertManagerArgs
+from .container_runtime import ContainerRuntimeConfig, ContainerRuntimeConfigArgs
+from .dns_configuration import DNSConfig, DNSConfigArgs
+from .gpu_operator import GPUOperator, GPUOperatorArgs
 from .minio_config import MinioConfigJob, MinioConfigArgs
-from .network_policies import NetworkPolicies
+from .network_policies import NetworkPolicies, NetworkPoliciesArgs
 from .object_storage import ObjectStorage, ObjectStorageArgs
 from .storage_classes import StorageClasses, StorageClassesArgs
+from .test_workflows import TestWorkflows, TestWorkflowsArgs
 from .workflow_server import WorkflowServer, WorkflowServerArgs
