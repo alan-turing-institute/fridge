@@ -6,7 +6,7 @@ from pulumi_kubernetes.helm.v4 import RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.yaml import ConfigFile
 
-from enums import K8sEnvironment
+from enums import K8sEnvironment, SoftwareVersion
 
 
 class GPUOperatorArgs:
@@ -40,7 +40,7 @@ class GPUOperator(ComponentResource):
                 name="node-feature-discovery",
                 namespace=self.node_feature_discovery_ns.metadata.name,
                 chart="node-feature-discovery",
-                version="0.18.3",
+                version=SoftwareVersion.NODE_FEATURE_DISCOVERY.value,
                 repository_opts=RepositoryOptsArgs(
                     repo="https://kubernetes-sigs.github.io/node-feature-discovery/charts",
                 ),
@@ -73,7 +73,7 @@ class GPUOperator(ComponentResource):
                     name="intel-gpu-operator",
                     namespace=self.gpu_operator_ns.metadata.name,
                     chart="intel-device-plugins-operator",
-                    version="0.35.0",
+                    version=SoftwareVersion.INTEL_GPU_OPERATOR.value,
                     repository_opts=RepositoryOptsArgs(
                         repo="https://intel.github.io/helm-charts/",
                     ),

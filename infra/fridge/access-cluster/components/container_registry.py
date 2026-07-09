@@ -39,7 +39,13 @@ from pulumi_kubernetes.yaml import ConfigGroup
 
 from .storage_classes import StorageClasses
 
-from enums import K8sEnvironment, PodSecurityStandard, TlsEnvironment, tls_issuer_names
+from enums import (
+    K8sEnvironment,
+    PodSecurityStandard,
+    SoftwareVersion,
+    TlsEnvironment,
+    tls_issuer_names,
+)
 
 
 class ContainerRegistryArgs:
@@ -95,7 +101,7 @@ class ContainerRegistry(ComponentResource):
             ReleaseArgs(
                 chart="harbor",
                 namespace="harbor",
-                version="1.17.1",
+                version=SoftwareVersion.HARBOR.value,
                 repository_opts=RepositoryOptsArgs(
                     repo="https://helm.goharbor.io",
                 ),
@@ -302,7 +308,7 @@ class ContainerRegistry(ComponentResource):
                         containers=[
                             ContainerArgs(
                                 name="harbor-config-job",
-                                image="badouralix/curl-jq:latest",
+                                image=f"badouralix/curl-jq:{SoftwareVersion.CURL_JQ.value}",
                                 env=[
                                     EnvVarArgs(
                                         name="HARBOR_URL",

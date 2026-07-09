@@ -26,3 +26,16 @@ tls_issuer_names = {
     TlsEnvironment.PRODUCTION: "letsencrypt-prod",
     TlsEnvironment.DEVELOPMENT: "dev-issuer",
 }
+
+
+class SoftwareVersion(Enum):
+    ARGO_WORKFLOWS = "0.45.20"  # Corresponds to Argo Workflows v3.6.10
+    CERT_MANAGER = "1.17.1"
+    FRIDGE_API = "0.3.0"
+    INTEL_GPU_OPERATOR = "0.35.0"
+    LONGHORN = "1.9.0"
+    MINIO_MC = "RELEASE.2025-08-13T08-35-41Z"
+    MINIO_OPERATOR = "7.1.1"
+    MINIO_TENANT = "7.1.1"
+    NODE_FEATURE_DISCOVERY = "0.18.3"
+    TRUST_MANAGER = "0.21.1"
