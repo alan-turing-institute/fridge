@@ -4,7 +4,7 @@ from pulumi_kubernetes.apps.v1 import Deployment, DeploymentSpecArgs
 from pulumi_kubernetes.core.v1 import ConfigMap, Namespace
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 
-from enums import PodSecurityStandard
+from enums import PodSecurityStandard, SoftwareVersion
 
 
 class VpnServerArgs:
@@ -28,42 +28,30 @@ class VpnServer(ComponentResource):
             opts=child_opts,
         )
 
-        vpn_proxy_config = ConfigMap(
-            "vpn-proxy-config",
+        self.haproxy_config = ConfigMap(
+            "haproxy-config",
             metadata=ObjectMetaArgs(
                 namespace=self.vpn_ns.metadata.name,
                 name="vpn-proxy-config",
             ),
             data={
-                "nginx.conf": """
-worker_processes auto;
+                "haproxy.cfg": """
 
-events {
-  worker_connections 1024;
-}
+global
+  log stdout format raw local0
 
-stream {
-  upstream private_dns_server {
-    # Private API server FQDN:53
-    server kube-dns.kube-system.svc.cluster.local:53;
-  }
+defaults
+  mode tcp
+  timeout connect 30s
+  timeout client 3600s
+  timeout server 3600s
 
-  server {
-    # TCP listener inside the pod
-    listen 8443;
+frontend fridge_api_in
+    bind *:8000
+    default_backend fridge_api_out
 
-    # Timeouts suitable for long-lived kubectl streams
-    proxy_connect_timeout 30s;
-    proxy_timeout 3600s;
-
-    # Pure TCP passthrough to the upstream
-    proxy_pass private_dns_server;
-
-    proxy_ssl_server_name on;
-    proxy_ssl_verify off;
-    proxy_ssl_trusted_certificate /etc/nginx/conf.d/certs/api/certificate;
-  }
-}
+backend fridge_api_out
+    server fridge_api 10.20.1.60:443 check
 """,
             },
         )
@@ -81,8 +69,6 @@ stream {
                         "labels": {"app": "netbird-proxy"},
                     },
                     "spec": {
-                        # "hostNetwork": True,
-                        # "dnsPolicy": "ClusterFirstWithHostNet",
                         "containers": [
                             {
                                 "name": "netbird-proxy",
@@ -111,20 +97,18 @@ stream {
                                     },
                                 },
                             },
-                            # {
-                            #     "name": "nginx-proxy",
-                            #     "image": "nginx:latest",
-                            #     "ports": [
-                            #         {"containerPort": 8443, "protocol": "TCP"}
-                            #     ],
-                            #     "volumeMounts": [
-                            #         {
-                            #             "name": "vpn-proxy-config",
-                            #             "mountPath": "/etc/nginx/nginx.conf",
-                            #             "subPath": "nginx.conf",
-                            #         },
-                            #     ],
-                            # },
+                            {
+                                "name": "haproxy",
+                                "image": f"haproxy:{SoftwareVersion.HAPROXY.value}",
+                                "ports": [{"containerPort": 8000, "protocol": "TCP"}],
+                                "volumeMounts": [
+                                    {
+                                        "name": "haproxy-config",
+                                        "mountPath": "/usr/local/etc/haproxy/haproxy.cfg",
+                                        "subPath": "haproxy.cfg",
+                                    },
+                                ],
+                            },
                         ],
                         "volumes": [
                             {
@@ -132,8 +116,10 @@ stream {
                                 "emptyDir": {},
                             },
                             {
-                                "name": "vpn-proxy-config",
-                                "configMap": {"name": vpn_proxy_config.metadata.name},
+                                "name": "haproxy-config",
+                                "configMap": {
+                                    "name": self.haproxy_config.metadata.name
+                                },
                             },
                         ],
                     },
