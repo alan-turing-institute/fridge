@@ -52,6 +52,13 @@ frontend fridge_api_in
 
 backend fridge_api_out
     server fridge_api 10.20.1.60:443 check
+
+frontend home_tre_in
+    bind *:8001
+    default_backend home_tre_out
+
+backend home_tre_out
+    server home_tre 100.99.123.30:8000 check
 """,
             },
         )
