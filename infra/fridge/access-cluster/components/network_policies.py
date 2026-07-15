@@ -189,6 +189,7 @@ class NetworkPolicies(ComponentResource):
             opts=child_opts,
         )
 
+        # This CNP is to allow SSH to come through ingress nginx to the api-jumpbox pod
         self.api_ssh_ingress_cnp = CustomResource(
             "network_policy_api_ssh_ingress",
             api_version="cilium.io/v2",
@@ -268,5 +269,11 @@ class NetworkPolicies(ComponentResource):
         ConfigFile(
             "network_policy_kubernetes_system",
             file="./k8s/cilium/kube-system.yaml",
+            opts=child_opts,
+        )
+
+        ConfigFile(
+            "network_policy_vpn_server",
+            file="./k8s/cilium/vpn-server.yaml",
             opts=child_opts,
         )

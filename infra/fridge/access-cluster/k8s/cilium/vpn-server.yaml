@@ -1,0 +1,68 @@
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: limit-vpn-connectivity
+  namespace: vpn-server
+spec:
+  endpointSelector:
+    matchLabels:
+      app: netbird-proxy
+  egress:
+  - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+    toPorts:
+      - ports:
+          - port: "53"
+            protocol: ANY
+        rules:
+          dns:
+            - matchName: "api.netbird.io"
+            - matchName: "relay.netbird.io"
+            - matchName: "signal.netbird.io"
+            - matchName: "stun.netbird.io"
+            - matchName: "turn.netbird.io"
+            - matchPattern: "*.relay.netbird.io"
+  - toFQDNs:
+      - matchName: "api.netbird.io"
+      - matchName: "signal.netbird.io"
+      - matchName: "relay.netbird.io"
+      - matchPattern: "*.relay.netbird.io"
+    toPorts:
+      - ports:
+          - port: "443"
+            protocol: TCP
+  - toFQDNs:
+      - matchName: "stun.netbird.io"
+    toPorts:
+      - ports:
+          - port: "80"
+            protocol: UDP
+          - port: "443"
+            protocol: UDP
+          - port: "3478"
+            protocol: UDP
+          - port: "5555"
+            protocol: UDP
+  - toFQDNs:
+    - matchName: "turn.netbird.io"
+    toPorts:
+      - ports:
+          - port: "80"
+            protocol: UDP
+          - port: "443"
+            endPort: 65535
+            protocol: UDP
+  - toCIDR:
+      - 10.20.1.4/32
+    toPorts:
+      - ports:
+          - port: "443"
+            protocol: ANY
+  - toCIDR:
+      - 10.20.1.60/32
+    toPorts:
+      - ports:
+          - port: "443"
+            protocol: ANY
