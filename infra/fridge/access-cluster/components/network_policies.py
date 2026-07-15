@@ -1,6 +1,7 @@
 import pulumi
 from pulumi import ComponentResource, ResourceOptions
 from pulumi_kubernetes.apiextensions import CustomResource
+from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.yaml import ConfigFile
 
 from enums import K8sEnvironment
@@ -100,7 +101,7 @@ class NetworkPolicies(ComponentResource):
             "network_policy_api_jumpbox",
             api_version="cilium.io/v2",
             kind="CiliumNetworkPolicy",
-            metadata={"name": "api-jumpbox-access", "namespace": "api-jumpbox"},
+            metadata=ObjectMetaArgs(name="api-jumpbox-access", namespace="api-jumpbox"),
             spec={
                 "endpointSelector": {"matchLabels": {"app": "api-jumpbox"}},
                 "ingress": [
@@ -157,7 +158,9 @@ class NetworkPolicies(ComponentResource):
             "network_policy_cert_manager_to_harbor",
             api_version="cilium.io/v2",
             kind="CiliumNetworkPolicy",
-            metadata={"name": "cert-manager-to-harbor", "namespace": "cert-manager"},
+            metadata=ObjectMetaArgs(
+                name="cert-manager-to-harbor", namespace="cert-manager"
+            ),
             spec={
                 "endpointSelector": {"matchLabels": {"app": "cert-manager"}},
                 "egress": [
@@ -194,7 +197,9 @@ class NetworkPolicies(ComponentResource):
             "network_policy_api_ssh_ingress",
             api_version="cilium.io/v2",
             kind="CiliumNetworkPolicy",
-            metadata={"name": "enable-ssh-access", "namespace": "ingress-nginx"},
+            metadata=ObjectMetaArgs(
+                name="enable-ssh-access", namespace="ingress-nginx"
+            ),
             spec={
                 "endpointSelector": {
                     "matchLabels": {
