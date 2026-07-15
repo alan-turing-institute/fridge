@@ -79,7 +79,7 @@ backend home_tre_out
                         "containers": [
                             {
                                 "name": "netbird-proxy",
-                                "image": "netbirdio/netbird:latest",
+                                "image": f"netbirdio/netbird:{SoftwareVersion.NETBIRD.value}",
                                 "env": [
                                     {
                                         "name": "NB_SETUP_KEY",
