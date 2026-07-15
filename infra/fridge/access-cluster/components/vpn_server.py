@@ -77,6 +77,8 @@ backend home_tre_out
             },
         )
 
+        netbird_config = args.config.require_object("netbird")
+
         self.vpn_deployment = Deployment(
             "netbird-proxy",
             metadata=ObjectMetaArgs(
@@ -97,10 +99,16 @@ backend home_tre_out
                                 env=[
                                     EnvVarArgs(
                                         name="NB_SETUP_KEY",
-                                        value=args.config.require_secret(
-                                            "netbird_setup_key"
-                                        ),
-                                    )
+                                        value=netbird_config["setup_key"],
+                                    ),
+                                    EnvVarArgs(
+                                        name="NB_MANAGEMENT_URL",
+                                        value=netbird_config["management_url"],
+                                    ),
+                                    EnvVarArgs(
+                                        name="NB_HOSTNAME",
+                                        value="fridge-access",
+                                    ),
                                 ],
                                 volume_mounts=[
                                     VolumeMountArgs(
