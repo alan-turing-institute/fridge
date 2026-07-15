@@ -1,8 +1,22 @@
 import pulumi
 from pulumi import ComponentResource, ResourceOptions
 from pulumi_kubernetes.apps.v1 import Deployment, DeploymentSpecArgs
-from pulumi_kubernetes.core.v1 import ConfigMap, Namespace
-from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
+from pulumi_kubernetes.core.v1 import (
+    CapabilitiesArgs,
+    ConfigMap,
+    ConfigMapVolumeSourceArgs,
+    ContainerArgs,
+    ContainerPortArgs,
+    EmptyDirVolumeSourceArgs,
+    EnvVarArgs,
+    Namespace,
+    PodSpecArgs,
+    PodTemplateSpecArgs,
+    SecurityContextArgs,
+    VolumeArgs,
+    VolumeMountArgs,
+)
+from pulumi_kubernetes.meta.v1 import LabelSelectorArgs, ObjectMetaArgs
 
 from enums import PodSecurityStandard, SoftwareVersion
 
@@ -69,68 +83,75 @@ backend home_tre_out
                 namespace=self.vpn_ns.metadata.name,
             ),
             spec=DeploymentSpecArgs(
-                selector={"matchLabels": {"app": "netbird-proxy"}},
+                selector=LabelSelectorArgs(match_labels={"app": "netbird-proxy"}),
                 replicas=1,
-                template={
-                    "metadata": {
-                        "labels": {"app": "netbird-proxy"},
-                    },
-                    "spec": {
-                        "containers": [
-                            {
-                                "name": "netbird-proxy",
-                                "image": f"netbirdio/netbird:{SoftwareVersion.NETBIRD.value}",
-                                "env": [
-                                    {
-                                        "name": "NB_SETUP_KEY",
-                                        "value": args.config.require_secret(
+                template=PodTemplateSpecArgs(
+                    metadata=ObjectMetaArgs(
+                        labels={"app": "netbird-proxy"},
+                    ),
+                    spec=PodSpecArgs(
+                        containers=[
+                            ContainerArgs(
+                                name="netbird-proxy",
+                                image=f"netbirdio/netbird:{SoftwareVersion.NETBIRD.value}",
+                                env=[
+                                    EnvVarArgs(
+                                        name="NB_SETUP_KEY",
+                                        value=args.config.require_secret(
                                             "netbird_setup_key"
                                         ),
-                                    },
+                                    )
                                 ],
-                                "volumeMounts": [
-                                    {
-                                        "name": "netbird-data",
-                                        "mountPath": "/var/lib/netbird",
-                                    },
+                                volume_mounts=[
+                                    VolumeMountArgs(
+                                        name="netbird-data",
+                                        mount_path="/var/lib/netbird",
+                                    ),
                                 ],
-                                "securityContext": {
-                                    "capabilities": {
-                                        "add": [
+                                security_context=SecurityContextArgs(
+                                    capabilities=CapabilitiesArgs(
+                                        add=[
                                             "NET_ADMIN",
                                             "SYS_RESOURCE",
                                             "SYS_ADMIN",
                                         ]
-                                    },
-                                },
-                            },
-                            {
-                                "name": "haproxy",
-                                "image": f"haproxy:{SoftwareVersion.HAPROXY.value}",
-                                "ports": [{"containerPort": 8000, "protocol": "TCP"}],
-                                "volumeMounts": [
-                                    {
-                                        "name": "haproxy-config",
-                                        "mountPath": "/usr/local/etc/haproxy/haproxy.cfg",
-                                        "subPath": "haproxy.cfg",
-                                    },
+                                    ),
+                                ),
+                            ),
+                            ContainerArgs(
+                                name="haproxy",
+                                image=f"haproxy:{SoftwareVersion.HAPROXY.value}",
+                                ports=[
+                                    ContainerPortArgs(
+                                        container_port=8000, protocol="TCP"
+                                    )
                                 ],
-                            },
+                                volume_mounts=[
+                                    VolumeMountArgs(
+                                        name="haproxy-config",
+                                        mount_path="/usr/local/etc/haproxy/haproxy.cfg",
+                                        sub_path="haproxy.cfg",
+                                    ),
+                                ],
+                            ),
                         ],
-                        "volumes": [
-                            {
-                                "name": "netbird-data",
-                                "emptyDir": {},
-                            },
-                            {
-                                "name": "haproxy-config",
-                                "configMap": {
-                                    "name": self.haproxy_config.metadata.name
-                                },
-                            },
+                        volumes=[
+                            VolumeArgs(
+                                name="netbird-data",
+                                empty_dir=EmptyDirVolumeSourceArgs(),
+                            ),
+                            VolumeArgs(
+                                name="haproxy-config",
+                                config_map=ConfigMapVolumeSourceArgs(
+                                    name=self.haproxy_config.metadata.name
+                                ),
+                            ),
                         ],
-                    },
-                },
+                    ),
+                ),
             ),
-            opts=child_opts,
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(depends_on=[self.haproxy_config, self.vpn_ns]),
+            ),
         )
