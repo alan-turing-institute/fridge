@@ -23,6 +23,7 @@ spec:
             - matchName: "signal.netbird.io"
             - matchName: "stun.netbird.io"
             - matchName: "turn.netbird.io"
+            # note that this is a placeholder until the setup is properly codified/documented
             - matchName: "test-netbird-deploy.netbird.io"
             - matchPattern: "*.relay.netbird.io"
   - toFQDNs:
@@ -67,6 +68,7 @@ spec:
       - ports:
           - port: "443"
             protocol: ANY
+  # Change this later
   - toFQDNs:
     - matchName: "test-netbird-deploy.netbird.io"
     toPorts:
