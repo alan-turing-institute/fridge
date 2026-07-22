@@ -206,12 +206,12 @@ backend home_tre_out
                 name="netbird-proxy-svc",
             ),
             spec=ServiceSpecArgs(
-                selector=LabelSelectorArgs(match_labels={"app": "netbird-proxy"}),
+                selector={"app": "netbird-proxy"},
                 ports=[
                     ServicePortArgs(
                         name="vpn-port",
                         port=8000,
-                        target_port=8000,
+                        target_port=8001,
                         protocol="TCP",
                     )
                 ],
