@@ -25,6 +25,7 @@ spec:
             - matchName: "turn.netbird.io"
             # note that this is a placeholder until the setup is properly codified/documented
             - matchName: "test-netbird-deploy.netbird.io"
+            - matchPattern: "*.vpn-server.svc.cluster.local"
             - matchPattern: "*.relay.netbird.io"
   - toFQDNs:
       - matchName: "api.netbird.io"
@@ -62,12 +63,6 @@ spec:
       - ports:
           - port: "443"
             protocol: ANY
-  - toCIDR:
-      - 10.20.1.60/32
-    toPorts:
-      - ports:
-          - port: "443"
-            protocol: ANY
   # Change this later
   - toFQDNs:
     - matchName: "test-netbird-deploy.netbird.io"
@@ -75,3 +70,7 @@ spec:
       - ports:
           - port: "8000"
             protocol: TCP
+  - toServices:
+      - k8sService:
+          serviceName: fridge-api-service
+          namespace: vpn-server
