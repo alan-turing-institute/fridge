@@ -75,25 +75,25 @@ defaults
   option dontlognull
   option log-separate-errors
 
-frontend fridge_api_in
+frontend in_fridge_api_in
     bind *:8000
-    default_backend fridge_api_out
+    default_backend out_fridge_api
 
-backend fridge_api_out
+backend out_fridge_api
     server fridge_api fridge-api-service:8000 check
 
-frontend k8s_api_in
+frontend in_k8s_api
     bind *:6443
-    default_backend k8s_api_out
+    default_backend out_k8s_api
 
-backend k8s_api_out
+backend out_k8s_api
     server k8s_api isolated-k8s-api-service:443 check
 
-frontend home_tre_in
+frontend in_home_tre
     bind *:8001
-    default_backend home_tre_out
+    default_backend out_home_tre
 
-backend home_tre_out
+backend out_home_tre
     server home_tre test-netbird-deploy.netbird.cloud:8000 check
 """,
             },
@@ -172,6 +172,9 @@ backend home_tre_out
                                     ),
                                     ContainerPortArgs(
                                         container_port=6443, protocol="TCP"
+                                    ),
+                                    ContainerPortArgs(
+                                        container_port=8001, protocol="TCP"
                                     ),
                                 ],
                                 volume_mounts=[
