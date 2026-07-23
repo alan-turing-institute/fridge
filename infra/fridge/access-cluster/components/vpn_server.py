@@ -68,8 +68,12 @@ global
 defaults
   mode tcp
   timeout connect 30s
-  timeout client 3600s
-  timeout server 3600s
+  timeout client 300s
+  timeout server 300s
+  log global
+  option tcplog
+  option dontlognull
+  option log-separate-errors
 
 frontend fridge_api_in
     bind *:8000
@@ -83,7 +87,7 @@ frontend k8s_api_in
     default_backend k8s_api_out
 
 backend k8s_api_out
-    server k8s_api 10.20.1.4:443 check
+    server k8s_api isolated-k8s-api-service:443 check
 
 frontend home_tre_in
     bind *:8001
@@ -248,6 +252,26 @@ backend home_tre_out
                 ResourceOptions(
                     depends_on=[
                         self.fridge_api_service,
+                    ]
+                ),
+            ),
+        )
+
+        self.isolated_k8s_api_service = Service(
+            "isolated-k8s-api-service",
+            metadata=ObjectMetaArgs(
+                name="isolated-k8s-api-service",
+                namespace=self.vpn_ns.metadata.name,
+            ),
+            spec=ServiceSpecArgs(
+                type="ExternalName",
+                external_name=args.config.require("isolated_cluster_api_endpoint"),
+            ),
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(
+                    depends_on=[
+                        self.vpn_ns,
                     ]
                 ),
             ),
