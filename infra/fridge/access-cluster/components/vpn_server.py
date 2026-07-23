@@ -205,6 +205,9 @@ backend home_tre_out
             ),
         )
 
+        # Create an internal service to expose the FRIDGE API to the VPN server
+        # By using this, HAproxy can be pointed to the service instead of the specific IP address of the FRIDGE API
+        # The FRIDGE API may have different IP addresses in different environments
         self.fridge_api_service = Service(
             "fridge-api-service",
             metadata=ObjectMetaArgs(
@@ -224,6 +227,10 @@ backend home_tre_out
             ),
         )
 
+        # Create an EndpointSlice to point to the FRIDGE API IP address
+        # Since this IP address is external to this K8s cluster, we need to create an EndpointSlice to point to it
+        fridge_api_ip_raw = args.config.require("fridge_api_ip_address").strip()
+        fridge_api_ip = fridge_api_ip_raw.split("/", 1)[0]
         self.fridge_api_endpoint = EndpointSlice(
             "fridge-api-endpoint",
             metadata=ObjectMetaArgs(
@@ -234,9 +241,7 @@ backend home_tre_out
                 },
             ),
             address_type="IPv4",
-            endpoints=[
-                {"addresses": ["10.20.1.60"], "conditions": {"ready": True}}
-            ],  # [args.config.require("fridge_api_ip_address")]}],
+            endpoints=[{"addresses": [fridge_api_ip], "conditions": {"ready": True}}],
             ports=[{"name": "", "port": 443, "protocol": "TCP"}],
             opts=ResourceOptions.merge(
                 child_opts,
