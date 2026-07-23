@@ -26,6 +26,7 @@ from pulumi_kubernetes.core.v1 import (
     VolumeMountArgs,
     VolumeResourceRequirementsArgs,
 )
+from pulumi_kubernetes.discovery.v1 import EndpointSlice
 from pulumi_kubernetes.meta.v1 import LabelSelectorArgs, ObjectMetaArgs
 
 from enums import PodSecurityStandard, SoftwareVersion
@@ -75,7 +76,14 @@ frontend fridge_api_in
     default_backend fridge_api_out
 
 backend fridge_api_out
-    server fridge_api 10.20.1.60:443 check
+    server fridge_api fridge-api-service:8000 check
+
+frontend k8s_api_in
+    bind *:6443
+    default_backend k8s_api_out
+
+backend k8s_api_out
+    server k8s_api 10.20.1.4:443 check
 
 frontend home_tre_in
     bind *:8001
@@ -89,6 +97,7 @@ backend home_tre_out
 
         netbird_config = args.config.require_object("netbird")
 
+        # Use a PersistentVolumeClaim to store Netbird data, so that it persists across pod restarts
         self.netbird_data_volume = PersistentVolumeClaim(
             "netbird-data",
             metadata=ObjectMetaArgs(
@@ -196,28 +205,45 @@ backend home_tre_out
             ),
         )
 
-        # this service exposes the netbird proxy internally, but only to the access cluster
-        # ideally, want to point the internal load balancer at this, so the isolated cluster can talk to it
-
-        self.netbird_svc = Service(
-            "netbird-proxy-svc",
+        self.fridge_api_service = Service(
+            "fridge-api-service",
             metadata=ObjectMetaArgs(
+                name="fridge-api-service",
                 namespace=self.vpn_ns.metadata.name,
-                name="netbird-proxy-svc",
             ),
             spec=ServiceSpecArgs(
-                selector={"app": "netbird-proxy"},
-                ports=[
-                    ServicePortArgs(
-                        name="vpn-port",
-                        port=8000,
-                        target_port=8001,
-                        protocol="TCP",
-                    )
-                ],
-                type="ClusterIP",
+                ports=[ServicePortArgs(port=8000, target_port=443, protocol="TCP")]
             ),
             opts=ResourceOptions.merge(
-                child_opts, ResourceOptions(depends_on=[self.vpn_deployment])
+                child_opts,
+                ResourceOptions(
+                    depends_on=[
+                        self.vpn_ns,
+                    ]
+                ),
+            ),
+        )
+
+        self.fridge_api_endpoint = EndpointSlice(
+            "fridge-api-endpoint",
+            metadata=ObjectMetaArgs(
+                name="fridge-api-endpoint",
+                namespace=self.vpn_ns.metadata.name,
+                labels={
+                    "kubernetes.io/service-name": self.fridge_api_service.metadata.name
+                },
+            ),
+            address_type="IPv4",
+            endpoints=[
+                {"addresses": ["10.20.1.60"], "conditions": {"ready": True}}
+            ],  # [args.config.require("fridge_api_ip_address")]}],
+            ports=[{"name": "", "port": 443, "protocol": "TCP"}],
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(
+                    depends_on=[
+                        self.fridge_api_service,
+                    ]
+                ),
             ),
         )
