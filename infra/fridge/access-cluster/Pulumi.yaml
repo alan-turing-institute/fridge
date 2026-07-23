@@ -46,6 +46,16 @@ config:
     type: string
     description: Harbor admin password
     secret: true
+  netbird:
+    value:
+      setup_key:
+        type: string
+        description: Netbird setup key for the access cluster
+        secret: true
+      management_url:
+        type: string
+        description: Netbird management URL for the access cluster
+        secret: true
   kubernetes:context:
     value: ""
     description: Kubernetes context for the FRIDGE deployment

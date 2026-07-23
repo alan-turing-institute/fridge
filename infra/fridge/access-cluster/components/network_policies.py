@@ -1,6 +1,7 @@
 import pulumi
 from pulumi import ComponentResource, ResourceOptions
 from pulumi_kubernetes.apiextensions import CustomResource
+from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.yaml import ConfigFile
 
 from enums import K8sEnvironment
@@ -100,7 +101,7 @@ class NetworkPolicies(ComponentResource):
             "network_policy_api_jumpbox",
             api_version="cilium.io/v2",
             kind="CiliumNetworkPolicy",
-            metadata={"name": "api-jumpbox-access", "namespace": "api-jumpbox"},
+            metadata=ObjectMetaArgs(name="api-jumpbox-access", namespace="api-jumpbox"),
             spec={
                 "endpointSelector": {"matchLabels": {"app": "api-jumpbox"}},
                 "ingress": [
@@ -157,7 +158,9 @@ class NetworkPolicies(ComponentResource):
             "network_policy_cert_manager_to_harbor",
             api_version="cilium.io/v2",
             kind="CiliumNetworkPolicy",
-            metadata={"name": "cert-manager-to-harbor", "namespace": "cert-manager"},
+            metadata=ObjectMetaArgs(
+                name="cert-manager-to-harbor", namespace="cert-manager"
+            ),
             spec={
                 "endpointSelector": {"matchLabels": {"app": "cert-manager"}},
                 "egress": [
@@ -189,11 +192,14 @@ class NetworkPolicies(ComponentResource):
             opts=child_opts,
         )
 
+        # This CNP is to allow SSH to come through ingress nginx to the api-jumpbox pod
         self.api_ssh_ingress_cnp = CustomResource(
             "network_policy_api_ssh_ingress",
             api_version="cilium.io/v2",
             kind="CiliumNetworkPolicy",
-            metadata={"name": "enable-ssh-access", "namespace": "ingress-nginx"},
+            metadata=ObjectMetaArgs(
+                name="enable-ssh-access", namespace="ingress-nginx"
+            ),
             spec={
                 "endpointSelector": {
                     "matchLabels": {
@@ -268,5 +274,11 @@ class NetworkPolicies(ComponentResource):
         ConfigFile(
             "network_policy_kubernetes_system",
             file="./k8s/cilium/kube-system.yaml",
+            opts=child_opts,
+        )
+
+        ConfigFile(
+            "network_policy_vpn_server",
+            file="./k8s/cilium/vpn-server.yaml",
             opts=child_opts,
         )

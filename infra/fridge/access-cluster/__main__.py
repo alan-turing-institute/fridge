@@ -105,6 +105,13 @@ harbor = components.ContainerRegistry(
     ),
 )
 
+vpn_server = components.VpnServer(
+    "vpn-server",
+    components.VpnServerArgs(
+        config=config,
+    ),
+)
+
 # Network policy (through Cilium)
 # Network policies should be deployed last to ensure that none of them interfere with the deployment process
 resources = [
@@ -113,6 +120,7 @@ resources = [
     harbor,
     ingress_nginx,
     storage_classes,
+    vpn_server,
 ]
 
 network_policies = components.NetworkPolicies(
