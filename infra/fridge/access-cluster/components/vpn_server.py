@@ -169,7 +169,10 @@ backend home_tre_out
                                 ports=[
                                     ContainerPortArgs(
                                         container_port=8000, protocol="TCP"
-                                    )
+                                    ),
+                                    ContainerPortArgs(
+                                        container_port=6443, protocol="TCP"
+                                    ),
                                 ],
                                 volume_mounts=[
                                     VolumeMountArgs(
