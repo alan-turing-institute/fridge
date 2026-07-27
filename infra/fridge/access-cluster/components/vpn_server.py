@@ -29,7 +29,7 @@ from pulumi_kubernetes.core.v1 import (
 from pulumi_kubernetes.discovery.v1 import EndpointSlice
 from pulumi_kubernetes.meta.v1 import LabelSelectorArgs, ObjectMetaArgs
 
-from enums import PodSecurityStandard, SoftwareVersion
+from enums import K8sEnvironment, PodSecurityStandard, SoftwareVersion
 
 
 class VpnServerArgs:
@@ -43,6 +43,8 @@ class VpnServer(ComponentResource):
     ) -> None:
         super().__init__("fridge:fridge-access-cluster:VpnServer", name, {}, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
+
+        k8s_environment = K8sEnvironment(args.config.require("k8s_env"))
 
         self.vpn_ns = Namespace(
             "vpn-ns",
@@ -267,16 +269,25 @@ backend out_home_tre
         # HAProxy points to this service instead of specific IP addresses etc
         # On AKS this points to the private FQDN of the isolated cluster API;
         # on other systems it will point to the IP address
+
+        if k8s_environment == K8sEnvironment.AKS:
+            isolated_k8s_api_service_spec = ServiceSpecArgs(
+                type="ExternalName",
+                external_name=args.config.require("isolated_cluster_api_endpoint"),
+            )
+        else:
+            isolated_k8s_api_service_spec = ServiceSpecArgs(
+                type="ClusterIP",
+                ports=[ServicePortArgs(port=443, target_port=443, protocol="TCP")],
+            )
+
         self.isolated_k8s_api_service = Service(
             "isolated-k8s-api-service",
             metadata=ObjectMetaArgs(
                 name="isolated-k8s-api-service",
                 namespace=self.vpn_ns.metadata.name,
             ),
-            spec=ServiceSpecArgs(
-                type="ExternalName",
-                external_name=args.config.require("isolated_cluster_api_endpoint"),
-            ),
+            spec=isolated_k8s_api_service_spec,
             opts=ResourceOptions.merge(
                 child_opts,
                 ResourceOptions(
