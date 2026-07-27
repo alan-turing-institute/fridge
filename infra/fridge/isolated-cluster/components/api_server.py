@@ -33,9 +33,11 @@ from pulumi_kubernetes.rbac.v1 import (
     SubjectArgs,
 )
 
-from enums import K8sEnvironment, PodSecurityStandard
+from enums import K8sEnvironment, PodSecurityStandard, SoftwareVersion
 
-API_SERVER_IMAGE = "ghcr.io/alan-turing-institute/fridge:main"
+API_SERVER_IMAGE = (
+    f"ghcr.io/alan-turing-institute/fridge:{SoftwareVersion.FRIDGE_API.value}"
+)
 
 
 class ApiServerArgs:

@@ -4,10 +4,23 @@ import requests
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, UploadFile, File
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from importlib.metadata import PackageNotFoundError, version
 from pydantic import BaseModel
 from secrets import compare_digest
 from typing import Annotated, Any, Union
 from app.minio_client import MinioClient
+
+
+def get_version() -> str:
+    """
+    Get the version of the application from the package metadata.
+    """
+    try:
+        return version("fridge-job-api")
+    except PackageNotFoundError:
+        print("Package metadata not found. Returning default version.")
+        return "0.0.0-dev"  # Default version if package metadata is not found
+
 
 # Check if running in the Kubernetes cluster
 # If not in the cluster, load environment variables from .env file
@@ -24,6 +37,8 @@ else:
     FRIDGE_API_ADMIN = os.getenv("FRIDGE_API_ADMIN")
     FRIDGE_API_PASSWORD = os.getenv("FRIDGE_API_PASSWORD")
     ARGO_SERVER = os.getenv("ARGO_SERVER")
+
+APP_VERSION = get_version()
 
 # Disable TLS verification in development mode
 VERIFY_TLS = os.getenv("VERIFY_TLS", "False") == "True"
@@ -45,7 +60,7 @@ and submit workflows based on templates.
 
 """
 
-app = FastAPI(title="FRIDGE API", description=description, version="0.3.0")
+app = FastAPI(title="FRIDGE API", description=description, version=APP_VERSION)
 
 
 # On the Kubernetes cluster, the Argo token is stored in a service account token file on a projected volume
