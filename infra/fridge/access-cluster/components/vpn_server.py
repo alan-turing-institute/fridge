@@ -146,7 +146,7 @@ backend out_home_tre
                                     ),
                                     EnvVarArgs(
                                         name="NB_HOSTNAME",
-                                        value="fridge-access",
+                                        value=netbird_config["hostname"],
                                     ),
                                 ],
                                 volume_mounts=[
@@ -276,6 +276,12 @@ backend out_home_tre
                 external_name=args.config.require("isolated_cluster_api_endpoint"),
             )
         else:
+            isolated_cluster_api_endpoint_raw = args.config.require(
+                "isolated_cluster_api_endpoint"
+            ).strip()
+            isolated_cluster_api_endpoint = isolated_cluster_api_endpoint_raw.split(
+                "/", 1
+            )[0]
             isolated_k8s_api_service_spec = ServiceSpecArgs(
                 type="ClusterIP",
                 ports=[ServicePortArgs(port=443, target_port=443, protocol="TCP")],
@@ -297,3 +303,31 @@ backend out_home_tre
                 ),
             ),
         )
+
+        if k8s_environment != K8sEnvironment.AKS:
+            self.isolated_k8s_api_endpoint = EndpointSlice(
+                "isolated-k8s-api-endpoint",
+                metadata=ObjectMetaArgs(
+                    name="isolated-k8s-api-endpoint",
+                    namespace=self.vpn_ns.metadata.name,
+                    labels={
+                        "kubernetes.io/service-name": self.isolated_k8s_api_service.metadata.name
+                    },
+                ),
+                address_type="IPv4",
+                endpoints=[
+                    {
+                        "addresses": [isolated_cluster_api_endpoint],
+                        "conditions": {"ready": True},
+                    }
+                ],
+                ports=[{"name": "", "port": 6443, "protocol": "TCP"}],
+                opts=ResourceOptions.merge(
+                    child_opts,
+                    ResourceOptions(
+                        depends_on=[
+                            self.isolated_k8s_api_service,
+                        ]
+                    ),
+                ),
+            )
