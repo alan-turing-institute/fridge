@@ -19,6 +19,7 @@ project:
         - file: architecture/architecture.md
         - file: architecture/defence_in_depth.md
         - file: architecture/lifecycle.md
+        - file: architecture/data_flow.md
     - title: Deploy
       children:
         - file: deploy/prerequisites.md
