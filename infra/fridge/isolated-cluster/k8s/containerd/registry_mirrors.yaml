@@ -59,7 +59,7 @@ spec:
     spec:
       initContainers:
       - name: configure-containerd
-        image: busybox
+        image: mcr.microsoft.com/azurelinux/base/core:3.0
         command:
         - /bin/sh
         - -c
@@ -93,7 +93,7 @@ spec:
           readOnly: true
       containers:
         - name: wait
-          image: registry.k8s.io/pause:3.8
+          image: mcr.microsoft.com/oss/kubernetes/pause:3.9
           resources:
             requests:
               cpu: 10m
