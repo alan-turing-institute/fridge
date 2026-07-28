@@ -243,6 +243,11 @@ backend out_home_tre
         # Since this IP address is external to this K8s cluster, we need to create an EndpointSlice to point to it
         fridge_api_ip_raw = args.config.require("fridge_api_ip_address").strip()
         fridge_api_ip = fridge_api_ip_raw.split("/", 1)[0]
+        if k8s_environment == K8sEnvironment.AKS:
+            fridge_api_port = 443
+        else:
+            fridge_api_port = 30180
+
         self.fridge_api_endpoint = EndpointSlice(
             "fridge-api-endpoint",
             metadata=ObjectMetaArgs(
@@ -254,7 +259,7 @@ backend out_home_tre
             ),
             address_type="IPv4",
             endpoints=[{"addresses": [fridge_api_ip], "conditions": {"ready": True}}],
-            ports=[{"name": "", "port": 443, "protocol": "TCP"}],
+            ports=[{"name": "", "port": fridge_api_port, "protocol": "TCP"}],
             opts=ResourceOptions.merge(
                 child_opts,
                 ResourceOptions(
