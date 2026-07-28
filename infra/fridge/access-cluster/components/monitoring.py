@@ -8,7 +8,7 @@ from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.yaml import ConfigFile
 
 
-from enums import K8sEnvironment
+from enums import K8sEnvironment, SoftwareVersion
 
 
 class MonitoringArgs:
@@ -44,7 +44,7 @@ class Monitoring(ComponentResource):
                     ReleaseArgs(
                         name="kube-prometheus-stack",
                         chart="kube-prometheus-stack",
-                        version="82.0.0",
+                        version=SoftwareVersion.KUBE_PROMETHEUS_STACK.value,
                         repository_opts={
                             "repo": "https://prometheus-community.github.io/helm-charts"
                         },
@@ -102,7 +102,7 @@ class Monitoring(ComponentResource):
                     ReleaseArgs(
                         name="grafana-loki",
                         chart="loki",
-                        version="6.53.0",
+                        version=SoftwareVersion.GRAFANA_LOKI.value,
                         repository_opts={
                             "repo": "https://grafana.github.io/helm-charts"
                         },
@@ -185,7 +185,7 @@ class Monitoring(ComponentResource):
                     ReleaseArgs(
                         name="grafana-alloy",
                         chart="alloy",
-                        version="1.6.2",
+                        version=SoftwareVersion.GRAFANA_ALLOY.value,
                         repository_opts={
                             "repo": "https://grafana.github.io/helm-charts"
                         },
@@ -234,7 +234,7 @@ class Monitoring(ComponentResource):
                     "monitoring-operator",
                     ReleaseArgs(
                         chart="kube-prometheus-stack",
-                        version="81.6.3",
+                        version=SoftwareVersion.KUBE_PROMETHEUS_STACK.value,
                         repository_opts={
                             "repo": "https://prometheus-community.github.io/helm-charts"
                         },
@@ -280,7 +280,7 @@ class Monitoring(ComponentResource):
                     "grafana-loki",
                     ReleaseArgs(
                         chart="loki-stack",
-                        version="6.53.0",
+                        version=SoftwareVersion.GRAFANA_LOKI.value,
                         repository_opts={
                             "repo": "https://grafana.github.io/helm-charts"
                         },
