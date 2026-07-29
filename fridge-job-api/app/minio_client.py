@@ -83,7 +83,7 @@ class MinioClient:
         ssl_context = ssl.create_default_context(cafile=self.MINIO_CA_CRT)
 
         # Create urllib3 client which accepts kube CA cert
-        http = urllib3.PoolManager(ssl_context=ssl_context)
+        http = urllib3.PoolManager()  # ssl_context=ssl_context)
 
         # Send the token to the MinIO STS endpoint
         response = http.request(
