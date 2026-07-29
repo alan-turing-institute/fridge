@@ -15,7 +15,7 @@ if os.getenv("KUBERNETES_SERVICE_HOST"):
     FRIDGE_API_PASSWORD = os.getenv("FRIDGE_API_PASSWORD")
     ARGO_SERVER_NS = os.getenv("ARGO_SERVER_NS")
     ARGO_SERVER = (
-        f"https://argo-workflows-server.{ARGO_SERVER_NS}.svc.cluster.local:2746"
+        f"https://argo-workflows-server.{ARGO_SERVER_NS}.svc.cluster.local.:2746"
     )
 else:
     FRIDGE_API_ADMIN = os.getenv("FRIDGE_API_ADMIN")
@@ -45,7 +45,7 @@ if os.getenv("KUBERNETES_SERVICE_HOST"):
     FRIDGE_API_PASSWORD = os.getenv("FRIDGE_API_PASSWORD")
     ARGO_SERVER_NS = os.getenv("ARGO_SERVER_NS")
     ARGO_SERVER = (
-        f"https://argo-workflows-server.{ARGO_SERVER_NS}.svc.cluster.local:2746"
+        f"https://argo-workflows-server.{ARGO_SERVER_NS}.svc.cluster.local.:2746"
     )
 else:
     # Load environment variables from .env file
@@ -86,7 +86,7 @@ def argo_token() -> str:
 minio_client = MinioClient(
     endpoint=os.getenv("MINIO_URL"),
     sts_endpoint=os.getenv(
-        "MINIO_STS_URL", "https://sts.minio-operator.svc.cluster.local:4223"
+        "MINIO_STS_URL", "https://sts.minio-operator.svc.cluster.local.:4223"
     ),
     tenant=os.getenv("MINIO_TENANT_NAME", "argo-artifacts"),
     access_key=os.getenv("MINIO_ACCESS_KEY", None),
