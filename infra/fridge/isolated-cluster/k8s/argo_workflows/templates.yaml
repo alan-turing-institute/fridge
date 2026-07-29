@@ -27,8 +27,9 @@ spec:
         args:
           - |
             copy_jobs=""
+
             if [ "{{inputs.parameters.bucket}}" = "ingress" ]; then
-            # S3 to PVC
+              # S3 to PVC
               for file in $(echo "{{inputs.parameters.files}}" | tr ";" " "); do
                 echo "Copying $file"
                 (
@@ -49,7 +50,7 @@ spec:
               done
 
             elif [ "{{inputs.parameters.bucket}}" = "egress" ]; then
-            # PVC to S3
+              # PVC to S3
               for file in $(echo "{{inputs.parameters.files}}" | tr ";" " "); do
                 echo "Copying $file"
                 (
@@ -57,14 +58,17 @@ spec:
                     echo "File /data/$file does not exist"
                     exit 1
                   fi
-                  http_code=$(curl -s \
+
+                  tmp_out=$(mktemp)
+
+                  http_code=$(curl -sS \
                     -T "/data/$file" \
-                    https://minio.argo-artifacts.svc.cluster.local/{{inputs.parameters.bucket}}/$file \
-                    - o /tmp/curl_out \
+                    "https://minio.argo-artifacts.svc.cluster.local/{{inputs.parameters.bucket}}/$file" \
+                    -o "$tmp_out" \
                     -w "%{http_code}")
                   if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
                     echo "Failed to copy $file (HTTP $http_code)"
-                    echo "Response: $(cat /tmp/curl_out)"
+                    echo "Response: $(cat $tmp_out)"
                     exit 1
                   fi
                 ) &
