@@ -18,6 +18,7 @@ class MinioClient:
     KUBE_CA_CRT = os.getenv(
         "STS_CA_CERT_FILE", "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
     )
+    MINIO_CA_CRT = os.getenv("MINIO_CA_BUNDLE", "/etc/ssl/certs/tls-trust-bundle.crt")
 
     def __init__(
         self,
@@ -74,12 +75,12 @@ class MinioClient:
         """Handle STS authentication with MinIO using Kubernetes service account token."""
 
         # Set the environment variable for minio client to use the k8s certificate
-        os.environ["SSL_CERT_FILE"] = self.KUBE_CA_CRT
+        os.environ["SSL_CERT_FILE"] = self.MINIO_CA_CRT
 
         # Read service account token
         sa_token = Path(self.SA_TOKEN_FILE).read_text().strip()
 
-        ssl_context = ssl.create_default_context(cafile=self.KUBE_CA_CRT)
+        ssl_context = ssl.create_default_context(cafile=self.MINIO_CA_CRT)
 
         # Create urllib3 client which accepts kube CA cert
         http = urllib3.PoolManager(ssl_context=ssl_context)
