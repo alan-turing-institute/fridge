@@ -25,7 +25,7 @@ class Monitoring(ComponentResource):
 
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
-        monitoring_ns = Namespace(
+        self.monitoring_ns = Namespace(
             "monitoring-system",
             metadata=ObjectMetaArgs(
                 name="monitoring-system",
@@ -43,7 +43,7 @@ class Monitoring(ComponentResource):
                 repository_opts={
                     "repo": "https://prometheus-community.github.io/helm-charts"
                 },
-                namespace=monitoring_ns.metadata.name,
+                namespace=self.monitoring_ns.metadata.name,
                 create_namespace=False,
                 values={
                     "alertmanager": {
@@ -97,84 +97,73 @@ class Monitoring(ComponentResource):
                 # 2. Grafana Loki (stores logs)
                 # 3. Grafana Alloy (collects data/logs to feed to Loki)
 
-                self.grafana_loki = Release(
-                    "grafana-loki",
-                    ReleaseArgs(
-                        name="grafana-loki",
-                        chart="loki",
-                        version=SoftwareVersion.GRAFANA_LOKI.value,
-                        repository_opts={
-                            "repo": "https://grafana.github.io/helm-charts"
-                        },
-                        namespace=monitoring_ns.metadata.name,
-                        create_namespace=False,
-                        values={
-                            "deploymentMode": "SingleBinary",
-                            "loki": {
-                                "auth_enabled": False,
-                                "commonConfig": {
-                                    "replication_factor": 1,
-                                },
-                                "schemaConfig": {
-                                    "configs": [
-                                        {
-                                            "from": "2025-10-24",
-                                            "store": "tsdb",
-                                            "object_store": "azure",
-                                            "schema": "v13",
-                                            "index": {
-                                                "prefix": "index_",
-                                                "period": "24h",
-                                            },
-                                        }
-                                    ]
-                                },
-                                "storage": {
-                                    "type": "azure",
-                                    "azure": {
-                                        "connectionString": args.config.require(
-                                            "azure_storage_connection_string"
-                                        ),
+                loki_values = {
+                    "loki": {
+                        "schemaConfig": {
+                            "configs": [
+                                {
+                                    "from": "2025-10-24",
+                                    "store": "tsdb",
+                                    "object_store": "azure",
+                                    "schema": "v13",
+                                    "index": {
+                                        "prefix": "index_",
+                                        "period": "24h",
                                     },
-                                    "bucketNames": {
-                                        "chunks": "loki-chunks",
-                                        "ruler": "loki-ruler",
-                                        "admin": "loki-admin",
-                                    },
-                                },
-                            },
-                            "singleBinary": {
-                                "replicas": 1,
-                                "resources": {
-                                    "requests": {"cpu": "500m", "memory": "512Mi"}
-                                },
-                                "persistence": {
-                                    "enabled": True,
-                                    "size": "10Gi",
-                                    "storageClassName": "default",
-                                },
-                            },
-                            "chunksCache": {
-                                "enabled": False,
-                            },
-                            "resultsCache": {
-                                "enabled": False,
-                            },
-                            "read": {"replicas": 0},
-                            "write": {"replicas": 0},
-                            "backend": {"replicas": 0},
+                                }
+                            ]
                         },
-                    ),
-                    opts=ResourceOptions.merge(
-                        child_opts,
-                        ResourceOptions(depends_on=[self.prometheus_operator]),
-                    ),
-                )
+                        "storage": {
+                            "type": "azure",
+                            "azure": {
+                                "connectionString": args.config.require(
+                                    "azure_storage_connection_string"
+                                ),
+                            },
+                        },
+                    }
+                }
 
             case K8sEnvironment.DAWN:
-                grafana_loki = Release.get(
-                    "grafana-loki", "monitoring-system/loki-stack"
-                )
+                loki_values = {
+                    "loki": {
+                        "schemaConfig": {
+                            "configs": [
+                                {
+                                    "from": "2025-10-24",
+                                    "store": "tsdb",
+                                    "object_store": "filesystem",
+                                    "schema": "v13",
+                                    "index": {
+                                        "prefix": "index_",
+                                        "period": "24h",
+                                    },
+                                }
+                            ]
+                        },
+                        "storage": {
+                            "type": "filesystem",
+                        },
+                    }
+                }
+
+        self.grafana_loki = Release(
+            "grafana-loki",
+            ReleaseArgs(
+                name="grafana-loki",
+                chart="loki",
+                version=SoftwareVersion.GRAFANA_LOKI.value,
+                repository_opts={"repo": "https://grafana.github.io/helm-charts"},
+                namespace=self.monitoring_ns.metadata.name,
+                create_namespace=False,
+                values_yaml_file="k8s/monitoring/loki-values.yaml",
+                values=loki_values,
+            ),
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(depends_on=[self.prometheus_operator]),
+            ),
+        )
 
         alloy_configmap = ConfigFile(
             "alloy-config",
@@ -194,7 +183,7 @@ class Monitoring(ComponentResource):
                 chart="alloy",
                 version=SoftwareVersion.GRAFANA_ALLOY.value,
                 repository_opts={"repo": "https://grafana.github.io/helm-charts"},
-                namespace=monitoring_ns.metadata.name,
+                namespace=self.monitoring_ns.metadata.name,
                 create_namespace=False,
                 values={
                     "alloy": {
@@ -214,7 +203,7 @@ class Monitoring(ComponentResource):
 
         self.register_outputs(
             {
-                "namespace": monitoring_ns.metadata.name,
+                "namespace": self.monitoring_ns.metadata.name,
                 "grafana_loki": self.grafana_loki,
                 "prometheus_operator": self.prometheus_operator,
                 "grafana_alloy": self.grafana_alloy,
