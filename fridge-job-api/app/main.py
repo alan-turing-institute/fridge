@@ -1,14 +1,13 @@
-import json
 import os
-import requests
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException, UploadFile, File
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from importlib.metadata import PackageNotFoundError, version
 from pydantic import BaseModel
 from secrets import compare_digest
-from typing import Annotated, Any, Union
 from app.minio_client import MinioClient
+from .workflows import router as workflows_router
+from .storage import router as storage_router
 
 
 def get_version() -> str:
@@ -226,3 +225,7 @@ def verify_request(credentials: HTTPBasicCredentials = Depends(security)) -> boo
             headers={"WWW-Authenticate": "Basic"},
         )
     return True
+
+
+app.include_router(workflows_router)
+app.include_router(storage_router)
