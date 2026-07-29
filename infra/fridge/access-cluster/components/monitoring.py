@@ -22,19 +22,21 @@ class Monitoring(ComponentResource):
         self, name: str, args: MonitoringArgs, opts: ResourceOptions | None = None
     ) -> None:
         super().__init__("fridge:k8s:Monitoring", name, {}, opts)
+
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
+
+        monitoring_ns = Namespace(
+            "monitoring-system",
+            metadata=ObjectMetaArgs(
+                name="monitoring-system",
+                labels={"name": "monitoring-system"},
+            ),
+            opts=child_opts,
+        )
 
         match args.k8s_environment:
             case K8sEnvironment.AKS:
 
-                monitoring_ns = Namespace(
-                    "monitoring-system",
-                    metadata=ObjectMetaArgs(
-                        name="monitoring-system",
-                        labels={"name": "monitoring-system"},
-                    ),
-                    opts=child_opts,
-                )
                 # Start by deploying the monitoring stack for AKS
                 # 1. Prometheus Operator (scrapes metrics and serves them to Grafana)
                 # 2. Grafana Loki (stores logs)
@@ -209,7 +211,6 @@ class Monitoring(ComponentResource):
 
             case K8sEnvironment.DAWN:
                 # The namespace is already created on Dawn
-                monitoring_ns = Namespace.get("monitoring-ns", "monitoring-system")
                 prometheus_operator = Release.get(
                     "monitoring-operator", "monitoring-system/kube-prometheus-stack"
                 )
@@ -218,14 +219,6 @@ class Monitoring(ComponentResource):
                 )
 
             case K8sEnvironment.K3S:
-                monitoring_ns = Namespace(
-                    "monitoring-system",
-                    metadata=ObjectMetaArgs(
-                        name="monitoring-system",
-                        labels={"name": "monitoring-system"},
-                    ),
-                    opts=child_opts,
-                )
 
                 # Start by deploying the monitoring stack
                 # 1. Prometheus Operator
