@@ -86,7 +86,7 @@ def argo_token() -> str:
 minio_client = MinioClient(
     endpoint=os.getenv("MINIO_URL"),
     sts_endpoint=os.getenv(
-        "MINIO_STS_URL", "https://sts.minio-operator.svc.cluster.local.:4223"
+        "MINIO_STS_URL", "https://sts.minio-operator.svc.cluster.local:4223"
     ),
     tenant=os.getenv("MINIO_TENANT_NAME", "argo-artifacts"),
     access_key=os.getenv("MINIO_ACCESS_KEY", None),
