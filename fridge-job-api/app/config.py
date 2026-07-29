@@ -14,7 +14,7 @@ if os.getenv("KUBERNETES_SERVICE_HOST"):
     FRIDGE_API_PASSWORD = os.getenv("FRIDGE_API_PASSWORD")
     ARGO_SERVER_NS = os.getenv("ARGO_SERVER_NS")
     ARGO_SERVER = (
-        f"https://argo-workflows-server.{ARGO_SERVER_NS}.svc.cluster.local.:2746"
+        f"https://argo-workflows-server.{ARGO_SERVER_NS}.svc.cluster.local:2746"
     )
 else:
     FRIDGE_API_ADMIN = os.getenv("FRIDGE_API_ADMIN")
@@ -44,7 +44,7 @@ if os.getenv("KUBERNETES_SERVICE_HOST"):
     FRIDGE_API_PASSWORD = os.getenv("FRIDGE_API_PASSWORD")
     ARGO_SERVER_NS = os.getenv("ARGO_SERVER_NS")
     ARGO_SERVER = (
-        f"https://argo-workflows-server.{ARGO_SERVER_NS}.svc.cluster.local.:2746"
+        f"https://argo-workflows-server.{ARGO_SERVER_NS}.svc.cluster.local:2746"
     )
     MINIO_CA_BUNDLE = "/etc/ssl/certs/tls-trust-bundle.crt"
 else:
