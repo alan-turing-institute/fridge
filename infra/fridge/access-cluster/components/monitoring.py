@@ -176,27 +176,14 @@ class Monitoring(ComponentResource):
                     "grafana-loki", "monitoring-system/loki-stack"
                 )
 
-            case K8sEnvironment.K3S:
-                grafana_loki = Release(
-                    "grafana-loki",
-                    ReleaseArgs(
-                        chart="loki-stack",
-                        version=SoftwareVersion.GRAFANA_LOKI.value,
-                        repository_opts={
-                            "repo": "https://grafana.github.io/helm-charts"
-                        },
-                        namespace=monitoring_ns.metadata.name,
-                        create_namespace=False,
-                    ),
-                    opts=child_opts,
-                )
-
         alloy_configmap = ConfigFile(
             "alloy-config",
             file="k8s/monitoring/alloy_configmap.yaml",
             opts=ResourceOptions.merge(
                 child_opts,
-                ResourceOptions(depends_on=[prometheus_operator, grafana_loki]),
+                ResourceOptions(
+                    depends_on=[self.prometheus_operator, self.grafana_loki]
+                ),
             ),
         )
 
@@ -220,7 +207,7 @@ class Monitoring(ComponentResource):
                 },
             ),
             opts=ResourceOptions.merge(
-                ResourceOptions(depends_on=[alloy_configmap, grafana_loki]),
+                ResourceOptions(depends_on=[alloy_configmap, self.grafana_loki]),
                 child_opts,
             ),
         )
