@@ -94,9 +94,6 @@ class MinioClient:
     def handle_sts_auth(self):
         """Handle STS authentication with MinIO using Kubernetes service account token."""
 
-        # Set the environment variable for minio client to use the k8s certificate
-        # os.environ["SSL_CERT_FILE"] = self.KUBE_CA_CRT
-
         # Read service account token
         sa_token = Path(self.SA_TOKEN_FILE).read_text().strip()
 
@@ -210,8 +207,9 @@ class MinioClient:
 
         return {
             "status": 201,
-            "response": result._location,
-            "version": result.version_id,
+            "response": getattr(result, "location", "None")
+            or getattr(result, "_location", "None"),
+            "version": getattr(result, "version_id", "None"),
         }
 
     def get_object(self, bucket, file_name, target_file=None, version=None):
