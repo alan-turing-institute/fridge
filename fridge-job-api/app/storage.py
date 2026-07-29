@@ -1,7 +1,7 @@
 import json
 import requests
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from typing import Annotated
+from typing import Annotated, Literal
 from .config import (
     argo_token,
     ARGO_SERVER,
@@ -44,6 +44,7 @@ async def move_object(
     files: Annotated[
         str, "The name of files to move (Separate with ; for multiple files)"
     ],
+    direction: Literal["ingress", "egress"] = "ingress",
     version: str | None = None,
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
@@ -60,7 +61,7 @@ async def move_object(
                 "submitOptions": {
                     "generateName": "data-copy-",
                     "parameters": [
-                        "bucket=ingress",
+                        f"bucket={direction}",
                         f"files={files}",
                     ],
                 },
@@ -74,6 +75,7 @@ async def move_object(
         )
     return {
         "status": r.status_code,
+        "direction": direction,
         "files": files.split(";"),
         "workflow": r.json()["metadata"]["name"],
     }
