@@ -41,7 +41,7 @@ class Monitoring(ComponentResource):
                 # 1. Prometheus Operator (scrapes metrics and serves them to Grafana)
                 # 2. Grafana Loki (stores logs)
                 # 3. Grafana Alloy (collects data/logs to feed to Loki)
-                prometheus_operator = Release(
+                self.prometheus_operator = Release(
                     "monitoring-operator",
                     ReleaseArgs(
                         name="kube-prometheus-stack",
@@ -99,7 +99,7 @@ class Monitoring(ComponentResource):
                     opts=child_opts,
                 )
 
-                grafana_loki = Release(
+                self.grafana_loki = Release(
                     "grafana-loki",
                     ReleaseArgs(
                         name="grafana-loki",
@@ -169,43 +169,7 @@ class Monitoring(ComponentResource):
                     ),
                     opts=ResourceOptions.merge(
                         child_opts,
-                        ResourceOptions(depends_on=[prometheus_operator]),
-                    ),
-                )
-
-                alloy_configmap = ConfigFile(
-                    "alloy-config",
-                    file="k8s/monitoring/alloy_configmap.yaml",
-                    opts=ResourceOptions.merge(
-                        child_opts,
-                        ResourceOptions(depends_on=[prometheus_operator, grafana_loki]),
-                    ),
-                )
-
-                grafana_alloy = Release(
-                    "grafana-alloy",
-                    ReleaseArgs(
-                        name="grafana-alloy",
-                        chart="alloy",
-                        version=SoftwareVersion.GRAFANA_ALLOY.value,
-                        repository_opts={
-                            "repo": "https://grafana.github.io/helm-charts"
-                        },
-                        namespace=monitoring_ns.metadata.name,
-                        create_namespace=False,
-                        values={
-                            "alloy": {
-                                "configMap": {
-                                    "create": False,
-                                    "name": "alloy-config",
-                                    "key": "config",
-                                }
-                            }
-                        },
-                    ),
-                    opts=ResourceOptions.merge(
-                        ResourceOptions(depends_on=[alloy_configmap, grafana_loki]),
-                        child_opts,
+                        ResourceOptions(depends_on=[self.prometheus_operator]),
                     ),
                 )
 
@@ -283,10 +247,45 @@ class Monitoring(ComponentResource):
                     opts=child_opts,
                 )
 
+        alloy_configmap = ConfigFile(
+            "alloy-config",
+            file="k8s/monitoring/alloy_configmap.yaml",
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(depends_on=[prometheus_operator, grafana_loki]),
+            ),
+        )
+
+        self.grafana_alloy = Release(
+            "grafana-alloy",
+            ReleaseArgs(
+                name="grafana-alloy",
+                chart="alloy",
+                version=SoftwareVersion.GRAFANA_ALLOY.value,
+                repository_opts={"repo": "https://grafana.github.io/helm-charts"},
+                namespace=monitoring_ns.metadata.name,
+                create_namespace=False,
+                values={
+                    "alloy": {
+                        "configMap": {
+                            "create": False,
+                            "name": "alloy-config",
+                            "key": "config",
+                        }
+                    }
+                },
+            ),
+            opts=ResourceOptions.merge(
+                ResourceOptions(depends_on=[alloy_configmap, grafana_loki]),
+                child_opts,
+            ),
+        )
+
         self.register_outputs(
             {
                 "namespace": monitoring_ns.metadata.name,
-                "grafana_loki": grafana_loki,
-                "prometheus_operator": prometheus_operator,
+                "grafana_loki": self.grafana_loki,
+                "prometheus_operator": self.prometheus_operator,
+                "grafana_alloy": self.grafana_alloy,
             }
         )
