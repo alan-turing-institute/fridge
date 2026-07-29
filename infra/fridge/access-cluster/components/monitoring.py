@@ -34,6 +34,61 @@ class Monitoring(ComponentResource):
             opts=child_opts,
         )
 
+        self.prometheus_operator = Release(
+            "monitoring-operator",
+            ReleaseArgs(
+                name="kube-prometheus-stack",
+                chart="kube-prometheus-stack",
+                version=SoftwareVersion.KUBE_PROMETHEUS_STACK.value,
+                repository_opts={
+                    "repo": "https://prometheus-community.github.io/helm-charts"
+                },
+                namespace=monitoring_ns.metadata.name,
+                create_namespace=False,
+                values={
+                    "alertmanager": {
+                        "alertmanagerSpec": {
+                            "retention": "168h",  # 7 days
+                            "storage": {
+                                "volumeClaimTemplate": {
+                                    "spec": {
+                                        "accessMode": ["ReadWriteOnce"],
+                                        "resources": {"requests": {"storage": "3Gi"}},
+                                    }
+                                }
+                            },
+                        }
+                    },
+                    "grafana": {
+                        "additionalDataSources": [
+                            {
+                                "name": "Loki",
+                                "type": "loki",
+                                "url": "http://grafana-loki:3100",
+                                "access": "proxy",
+                            }
+                        ]
+                    },
+                    "prometheus": {
+                        # revisit specs for prod
+                        "prometheusSpec": {
+                            "retention": "4d",
+                            "retentionSize": "2GiB",
+                            "storageSpec": {
+                                "volumeClaimTemplate": {
+                                    "spec": {
+                                        "accessModes": ["ReadWriteOnce"],
+                                        "resources": {"requests": {"storage": "3Gi"}},
+                                    }
+                                }
+                            },
+                        }
+                    },
+                },
+            ),
+            opts=child_opts,
+        )
+
         match args.k8s_environment:
             case K8sEnvironment.AKS:
 
@@ -41,63 +96,6 @@ class Monitoring(ComponentResource):
                 # 1. Prometheus Operator (scrapes metrics and serves them to Grafana)
                 # 2. Grafana Loki (stores logs)
                 # 3. Grafana Alloy (collects data/logs to feed to Loki)
-                self.prometheus_operator = Release(
-                    "monitoring-operator",
-                    ReleaseArgs(
-                        name="kube-prometheus-stack",
-                        chart="kube-prometheus-stack",
-                        version=SoftwareVersion.KUBE_PROMETHEUS_STACK.value,
-                        repository_opts={
-                            "repo": "https://prometheus-community.github.io/helm-charts"
-                        },
-                        namespace=monitoring_ns.metadata.name,
-                        create_namespace=False,
-                        values={
-                            "alertmanager": {
-                                "alertmanagerSpec": {
-                                    "retention": "168h",
-                                    "storage": {
-                                        "volumeClaimTemplate": {
-                                            "spec": {
-                                                "accessMode": ["ReadWriteOnce"],
-                                                "resources": {
-                                                    "requests": {"storage": "3Gi"}
-                                                },
-                                            }
-                                        }
-                                    },
-                                }
-                            },
-                            "grafana": {
-                                "additionalDataSources": [
-                                    {
-                                        "name": "Loki",
-                                        "type": "loki",
-                                        "url": "http://grafana-loki:3100",
-                                        "access": "proxy",
-                                    }
-                                ]
-                            },
-                            "prometheus": {
-                                "prometheusSpec": {
-                                    "retention": "4d",
-                                    "retentionSize": "2GiB",
-                                    "storageSpec": {
-                                        "volumeClaimTemplate": {
-                                            "spec": {
-                                                "accessModes": ["ReadWriteOnce"],
-                                                "resources": {
-                                                    "requests": {"storage": "3Gi"}
-                                                },
-                                            }
-                                        }
-                                    },
-                                }
-                            },
-                        },
-                    ),
-                    opts=child_opts,
-                )
 
                 self.grafana_loki = Release(
                     "grafana-loki",
@@ -174,65 +172,11 @@ class Monitoring(ComponentResource):
                 )
 
             case K8sEnvironment.DAWN:
-                # The namespace is already created on Dawn
-                prometheus_operator = Release.get(
-                    "monitoring-operator", "monitoring-system/kube-prometheus-stack"
-                )
                 grafana_loki = Release.get(
                     "grafana-loki", "monitoring-system/loki-stack"
                 )
 
             case K8sEnvironment.K3S:
-
-                # Start by deploying the monitoring stack
-                # 1. Prometheus Operator
-                # 2. Grafana Loki
-                prometheus_operator = Release(
-                    "monitoring-operator",
-                    ReleaseArgs(
-                        chart="kube-prometheus-stack",
-                        version=SoftwareVersion.KUBE_PROMETHEUS_STACK.value,
-                        repository_opts={
-                            "repo": "https://prometheus-community.github.io/helm-charts"
-                        },
-                        namespace=monitoring_ns.metadata.name,  # Compatibility with Dawn
-                        create_namespace=False,
-                        values={
-                            "alertmanager": {
-                                "alertmanagerSpec": {
-                                    "retention": "168h",
-                                    "storage": {
-                                        "volumeClaimTemplate": {
-                                            "spec": {
-                                                "accessMode": ["ReadWriteOnce"],
-                                                "resources": {
-                                                    "requests": {"storage": "3Gi"}
-                                                },
-                                            }
-                                        }
-                                    },
-                                }
-                            },
-                            "prometheus": {
-                                "prometheusSpec": {
-                                    "retention": "4d",
-                                    "retentionSize": "2GiB",
-                                    "storageSpec": {
-                                        "volumeClaimTemplate": {
-                                            "spec": {
-                                                "accessModes": ["ReadWriteOnce"],
-                                                "resources": {
-                                                    "requests": {"storage": "3Gi"}
-                                                },
-                                            }
-                                        }
-                                    },
-                                }
-                            },
-                        },
-                    ),
-                    opts=child_opts,
-                )
                 grafana_loki = Release(
                     "grafana-loki",
                     ReleaseArgs(
