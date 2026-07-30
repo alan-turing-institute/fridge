@@ -4,7 +4,7 @@ from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from .fridge_api_jumpbox import FridgeAPIJumpbox
 
-from enums import K8sEnvironment, PodSecurityStandard
+from enums import K8sEnvironment, PodSecurityStandard, SoftwareVersion
 
 
 class IngressArgs:
@@ -37,7 +37,7 @@ class Ingress(ComponentResource):
                     "ingress-nginx",
                     ReleaseArgs(
                         chart="ingress-nginx",
-                        version="4.13.2",
+                        version=SoftwareVersion.INGRESS_NGINX.value,
                         repository_opts={
                             "repo": "https://kubernetes.github.io/ingress-nginx"
                         },
