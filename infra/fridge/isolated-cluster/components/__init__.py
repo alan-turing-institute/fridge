@@ -5,6 +5,7 @@ from .container_runtime import ContainerRuntimeConfig, ContainerRuntimeConfigArg
 from .dns_configuration import DNSConfig, DNSConfigArgs
 from .gpu_operator import GPUOperator, GPUOperatorArgs
 from .minio_config import MinioConfigJob, MinioConfigArgs
+from .monitoring import Monitoring, MonitoringArgs
 from .network_policies import NetworkPolicies, NetworkPoliciesArgs
 from .object_storage import ObjectStorage, ObjectStorageArgs
 from .storage_classes import StorageClasses, StorageClassesArgs

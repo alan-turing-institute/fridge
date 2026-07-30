@@ -105,6 +105,18 @@ harbor = components.ContainerRegistry(
     ),
 )
 
+# Monitoring stack
+monitoring = components.Monitoring(
+    "monitoring",
+    components.MonitoringArgs(
+        config=config,
+        k8s_environment=k8s_environment,
+    ),
+    opts=ResourceOptions(
+        depends_on=[ingress_nginx, cert_manager],
+    ),
+)
+
 # Network policy (through Cilium)
 # Network policies should be deployed last to ensure that none of them interfere with the deployment process
 resources = [
