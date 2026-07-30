@@ -55,8 +55,10 @@ spec:
           - port: "80"
             protocol: UDP
           - port: "443"
-            endPort: 65535
             protocol: UDP
+          - port: "443"
+            endPort: 65535
+            protocol: TCP
   # Change this later
   - toFQDNs:
     - matchName: "test-netbird-deploy.netbird.io"
