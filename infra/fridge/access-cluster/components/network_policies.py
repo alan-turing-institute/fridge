@@ -306,7 +306,15 @@ class NetworkPolicies(ComponentResource):
                             "toPorts": [
                                 {
                                     "ports": [{"port": "53", "protocol": "ANY"}],
-                                    "rules": {"dns": [{"matchPattern": "*.azmk8s.io"}]},
+                                    "rules": {
+                                        "dns": [
+                                            {
+                                                "matchName": args.config.require(
+                                                    "isolated_cluster_api_endpoint"
+                                                )
+                                            }
+                                        ]
+                                    },
                                 }
                             ],
                         },

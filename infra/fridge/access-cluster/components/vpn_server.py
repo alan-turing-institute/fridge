@@ -164,9 +164,6 @@ class VpnServer(ComponentResource):
                                     ContainerPortArgs(
                                         container_port=6443, protocol="TCP"
                                     ),
-                                    ContainerPortArgs(
-                                        container_port=8001, protocol="TCP"
-                                    ),
                                 ],
                                 volume_mounts=[
                                     VolumeMountArgs(
