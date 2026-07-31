@@ -1,3 +1,5 @@
+from string import Template
+
 import pulumi
 from pulumi import ComponentResource, ResourceOptions
 from pulumi_kubernetes.apps.v1 import (
@@ -55,50 +57,32 @@ class VpnServer(ComponentResource):
             opts=child_opts,
         )
 
+        if k8s_environment == K8sEnvironment.AKS:
+            isolated_k8s_api_endpoint = (
+                f"{args.config.require('isolated_cluster_api_endpoint')}:443"
+            )
+        else:
+            isolated_k8s_api_endpoint_raw = args.config.require(
+                "isolated_cluster_api_endpoint"
+            ).strip()
+            isolated_k8s_api_endpoint = (
+                f"{isolated_k8s_api_endpoint_raw.split('/', 1)[0]}:6443"
+            )
+
+        haproxy_cfg_file = Template(
+            open("./k8s/haproxy/haproxy.cfg", "r").read()
+        ).substitute(
+            isolated_k8s_api_endpoint=isolated_k8s_api_endpoint,
+        )
+
         self.haproxy_config = ConfigMap(
             "haproxy-config",
             metadata=ObjectMetaArgs(
                 namespace=self.vpn_ns.metadata.name,
                 name="vpn-proxy-config",
             ),
-            data={
-                "haproxy.cfg": """
-
-global
-  log stdout format raw local0
-
-defaults
-  mode tcp
-  timeout connect 30s
-  timeout client 300s
-  timeout server 300s
-  log global
-  option tcplog
-  option dontlognull
-  option log-separate-errors
-
-frontend in_fridge_api_in
-    bind *:8000
-    default_backend out_fridge_api
-
-backend out_fridge_api
-    server fridge_api fridge-api-service:8000 check
-
-frontend in_k8s_api
-    bind *:6443
-    default_backend out_k8s_api
-
-backend out_k8s_api
-    server k8s_api isolated-k8s-api-service:443 check
-
-frontend in_home_tre
-    bind *:8001
-    default_backend out_home_tre
-
-backend out_home_tre
-    server home_tre test-netbird-deploy.netbird.cloud:8000 check
-""",
-            },
+            data={"haproxy.cfg": haproxy_cfg_file},
+            opts=child_opts,
         )
 
         netbird_config = args.config.require_object("netbird")
@@ -269,70 +253,3 @@ backend out_home_tre
                 ),
             ),
         )
-
-        # Create an internal service pointing the isolated k8s API endpoint
-        # HAProxy points to this service instead of specific IP addresses etc
-        # On AKS this points to the private FQDN of the isolated cluster API;
-        # on other systems it will point to the IP address
-
-        if k8s_environment == K8sEnvironment.AKS:
-            isolated_k8s_api_service_spec = ServiceSpecArgs(
-                type="ExternalName",
-                external_name=args.config.require("isolated_cluster_api_endpoint"),
-            )
-        else:
-            isolated_cluster_api_endpoint_raw = args.config.require(
-                "isolated_cluster_api_endpoint"
-            ).strip()
-            isolated_cluster_api_endpoint = isolated_cluster_api_endpoint_raw.split(
-                "/", 1
-            )[0]
-            isolated_k8s_api_service_spec = ServiceSpecArgs(
-                type="ClusterIP",
-                ports=[ServicePortArgs(port=443, target_port=443, protocol="TCP")],
-            )
-
-        self.isolated_k8s_api_service = Service(
-            "isolated-k8s-api-service",
-            metadata=ObjectMetaArgs(
-                name="isolated-k8s-api-service",
-                namespace=self.vpn_ns.metadata.name,
-            ),
-            spec=isolated_k8s_api_service_spec,
-            opts=ResourceOptions.merge(
-                child_opts,
-                ResourceOptions(
-                    depends_on=[
-                        self.vpn_ns,
-                    ]
-                ),
-            ),
-        )
-
-        if k8s_environment != K8sEnvironment.AKS:
-            self.isolated_k8s_api_endpoint = EndpointSlice(
-                "isolated-k8s-api-endpoint",
-                metadata=ObjectMetaArgs(
-                    name="isolated-k8s-api-endpoint",
-                    namespace=self.vpn_ns.metadata.name,
-                    labels={
-                        "kubernetes.io/service-name": self.isolated_k8s_api_service.metadata.name
-                    },
-                ),
-                address_type="IPv4",
-                endpoints=[
-                    {
-                        "addresses": [isolated_cluster_api_endpoint],
-                        "conditions": {"ready": True},
-                    }
-                ],
-                ports=[{"name": "", "port": 6443, "protocol": "TCP"}],
-                opts=ResourceOptions.merge(
-                    child_opts,
-                    ResourceOptions(
-                        depends_on=[
-                            self.isolated_k8s_api_service,
-                        ]
-                    ),
-                ),
-            )
