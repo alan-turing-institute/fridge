@@ -66,11 +66,3 @@ spec:
       - ports:
           - port: "8000"
             protocol: TCP
-  - toServices:
-      - k8sService:
-          serviceName: fridge-api-service
-          namespace: vpn-server
-  - toServices:
-      - k8sService:
-          serviceName: isolated-k8s-api-service
-          namespace: vpn-server

@@ -57,11 +57,15 @@ class VpnServer(ComponentResource):
             opts=child_opts,
         )
 
+        fridge_api_ip_raw = args.config.require("fridge_api_ip_address").strip()
+        fridge_api_ip = fridge_api_ip_raw.split("/", 1)[0]
         if k8s_environment == K8sEnvironment.AKS:
+            fridge_api_endpoint = f"{fridge_api_ip}:443"
             isolated_k8s_api_endpoint = (
                 f"{args.config.require('isolated_cluster_api_endpoint')}:443"
             )
-        else:
+        elif k8s_environment == K8sEnvironment.DAWN:
+            fridge_api_endpoint = f"{fridge_api_ip}:30180"
             isolated_k8s_api_endpoint_raw = args.config.require(
                 "isolated_cluster_api_endpoint"
             ).strip()
@@ -72,6 +76,7 @@ class VpnServer(ComponentResource):
         haproxy_cfg_file = Template(
             open("./k8s/haproxy/haproxy.cfg", "r").read()
         ).substitute(
+            fridge_api_endpoint=fridge_api_endpoint,
             isolated_k8s_api_endpoint=isolated_k8s_api_endpoint,
         )
 
@@ -196,59 +201,6 @@ class VpnServer(ComponentResource):
                         self.haproxy_config,
                         self.netbird_data_volume,
                         self.vpn_ns,
-                    ]
-                ),
-            ),
-        )
-
-        # Create an internal service to expose the FRIDGE API to the VPN server
-        # By using this, HAproxy can be pointed to the service instead of the specific IP address of the FRIDGE API
-        # The FRIDGE API may have different IP addresses in different environments
-        self.fridge_api_service = Service(
-            "fridge-api-service",
-            metadata=ObjectMetaArgs(
-                name="fridge-api-service",
-                namespace=self.vpn_ns.metadata.name,
-            ),
-            spec=ServiceSpecArgs(
-                ports=[ServicePortArgs(port=8000, target_port=443, protocol="TCP")]
-            ),
-            opts=ResourceOptions.merge(
-                child_opts,
-                ResourceOptions(
-                    depends_on=[
-                        self.vpn_ns,
-                    ]
-                ),
-            ),
-        )
-
-        # Create an EndpointSlice to point to the FRIDGE API IP address
-        # Since this IP address is external to this K8s cluster, we need to create an EndpointSlice to point to it
-        fridge_api_ip_raw = args.config.require("fridge_api_ip_address").strip()
-        fridge_api_ip = fridge_api_ip_raw.split("/", 1)[0]
-        if k8s_environment == K8sEnvironment.AKS:
-            fridge_api_port = 443
-        else:
-            fridge_api_port = 30180
-
-        self.fridge_api_endpoint = EndpointSlice(
-            "fridge-api-endpoint",
-            metadata=ObjectMetaArgs(
-                name="fridge-api-endpoint",
-                namespace=self.vpn_ns.metadata.name,
-                labels={
-                    "kubernetes.io/service-name": self.fridge_api_service.metadata.name
-                },
-            ),
-            address_type="IPv4",
-            endpoints=[{"addresses": [fridge_api_ip], "conditions": {"ready": True}}],
-            ports=[{"name": "", "port": fridge_api_port, "protocol": "TCP"}],
-            opts=ResourceOptions.merge(
-                child_opts,
-                ResourceOptions(
-                    depends_on=[
-                        self.fridge_api_service,
                     ]
                 ),
             ),
