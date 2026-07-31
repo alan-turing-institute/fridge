@@ -14,6 +14,7 @@ from pulumi_kubernetes.core.v1 import (
     SeccompProfileArgs,
     Secret,
     SecretEnvSourceArgs,
+    SecretVolumeSourceArgs,
     SecurityContextArgs,
     Service,
     ServiceAccount,
@@ -72,7 +73,8 @@ class ApiServer(ComponentResource):
             "api-server-ns",
             metadata=ObjectMetaArgs(
                 name="fridge-api",
-                labels={} | PodSecurityStandard.RESTRICTED.value,
+                labels={"tls-trust-bundle": "enabled"}
+                | PodSecurityStandard.RESTRICTED.value,
             ),
             opts=child_opts,
         )
@@ -249,6 +251,11 @@ class ApiServer(ComponentResource):
                                         mount_path="/minio",
                                         read_only=True,
                                     ),
+                                    VolumeMountArgs(
+                                        name="tls-trust-bundle",
+                                        mount_path="/etc/ssl/certs",
+                                        read_only=True,
+                                    ),
                                 ],
                             )
                         ],
@@ -279,6 +286,12 @@ class ApiServer(ComponentResource):
                                             )
                                         )
                                     ]
+                                ),
+                            ),
+                            VolumeArgs(
+                                name="tls-trust-bundle",
+                                secret=SecretVolumeSourceArgs(
+                                    secret_name="trusted-certificates",
                                 ),
                             ),
                         ],
