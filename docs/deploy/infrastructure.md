@@ -44,3 +44,9 @@ pulumi config set ssh_public_key "<your-ssh-public-key>"
 ```console
 pulumi up
 ```
+
+## Dawn
+
+The Dawn infrastructure in `infra/dawn` requires `sshAllowedCidrs` in the Pulumi stack configuration. Set it to the list of approved source CIDRs that may connect to the load balancer's SSH listener. The deployment intentionally requires this value rather than defaulting SSH access to the public internet.
+
+The HTTP listener on port 80 is restricted to the FRIDGE access and isolated subnets. Port 443 remains unrestricted for the current Harbor access model.
