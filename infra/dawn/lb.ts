@@ -1,10 +1,14 @@
 import * as openstack from "@pulumi/openstack";
 import * as pulumi from "@pulumi/pulumi";
-import { accessSubnetId, isolatedSubnetId } from "./networks";
+import {
+  accessNetworkCidr,
+  accessSubnetId,
+  isolatedNetworkCidr,
+} from "./networks";
 
 const config = new pulumi.Config();
 const sshAllowedCidrs = config.requireObject<string[]>("sshAllowedCidrs");
-const internalAllowedCidrs = ["10.10.0.0/24", "10.20.0.0/24"];
+const internalAllowedCidrs = [accessNetworkCidr, isolatedNetworkCidr];
 
 //Get the External Network Data
 const externalNetwork = openstack.networking.getNetwork({
