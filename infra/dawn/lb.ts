@@ -1,5 +1,10 @@
 import * as openstack from "@pulumi/openstack";
+import * as pulumi from "@pulumi/pulumi";
 import { accessSubnetId, isolatedSubnetId } from "./networks";
+
+const config = new pulumi.Config();
+const sshAllowedCidrs = config.requireObject<string[]>("sshAllowedCidrs");
+const internalAllowedCidrs = ["10.10.0.0/24", "10.20.0.0/24"];
 
 //Get the External Network Data
 const externalNetwork = openstack.networking.getNetwork({
@@ -16,6 +21,7 @@ const httpListner = new openstack.loadbalancer.Listener("http-listener", {
   protocol: "TCP",
   protocolPort: 80,
   loadbalancerId: lb.id,
+  allowedCidrs: internalAllowedCidrs,
 });
 
 const httpPool = new openstack.loadbalancer.Pool("ingress-pool", {
@@ -65,6 +71,7 @@ const sshListener = new openstack.loadbalancer.Listener("ssh-listener", {
   protocol: "TCP",
   protocolPort: 2222,
   loadbalancerId: lb.id,
+  allowedCidrs: sshAllowedCidrs,
 });
 
 //  Create Pool
