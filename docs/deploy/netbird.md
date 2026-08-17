@@ -9,6 +9,7 @@ However, for production, we recommend using [self-hosted Netbird](https://docs.n
 Once you have access to a Netbird management server, you are ready to begin setting up your mesh VPN network.
 
 FRIDGE will deploy with a Netbird agent present in the access cluster.
+You need to make the agent become a `peer` on the mesh network.
 You will need to provide a [setup key](https://docs.netbird.io/manage/peers/register-machines-using-setup-keys) at the time of deployment to automatically connect the agent to your mesh network.
 Before creating the setup key, we recommend first setting up the configuration of your mesh network.
 
@@ -40,6 +41,5 @@ Thus, two access policies should be created.
 2. An access policy that allows traffic to flow from the `tre-user` group to `api-access` on port 8000
 
 ## Enabling user access to the FRIDGE API
-
 
 ## Enabling admin access to the Kubernetes API
