@@ -1,8 +1,12 @@
+import logging
 import requests
 from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 from minio import S3Error
 from urllib3.exceptions import HTTPError
 from .config import ARGO_SERVER, argo_token, minio_client, VERIFY_TLS
+
+logger = logging.getLogger("fridge.health")
 
 router = APIRouter(tags=["Health"])
 
@@ -24,7 +28,12 @@ async def readiness() -> dict:
     """
     checks = {"argo": _check_argo(), "minio": _check_minio()}
     healthy = all(checks[service]["status"] == "ok" for service in checks)
-    return {"status": "ready"}
+    if not healthy:
+        logger.warning("Readiness check failed: %s", checks)
+    return JSONResponse(
+        content={"status": "ready" if healthy else "not ready", "checks": checks},
+        status_code=200 if healthy else 503,
+    )
 
 
 def _check_argo() -> dict:
