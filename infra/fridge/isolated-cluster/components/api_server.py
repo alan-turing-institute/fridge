@@ -7,9 +7,11 @@ from pulumi_kubernetes.core.v1 import (
     ContainerArgs,
     ContainerPortArgs,
     EnvFromSourceArgs,
+    HTTPGetActionArgs,
     Namespace,
     PodSpecArgs,
     PodTemplateSpecArgs,
+    ProbeArgs,
     ProjectedVolumeSourceArgs,
     SeccompProfileArgs,
     Secret,
@@ -227,6 +229,12 @@ class ApiServer(ComponentResource):
                                 ],
                                 image=API_SERVER_IMAGE,
                                 image_pull_policy="Always",
+                                liveness_probe=ProbeArgs(
+                                    http_get=HTTPGetActionArgs(
+                                        path="/healthz", port=8000
+                                    ),
+                                    period_seconds=10,
+                                ),
                                 ports=[ContainerPortArgs(container_port=8000)],
                                 security_context=SecurityContextArgs(
                                     allow_privilege_escalation=False,
