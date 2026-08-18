@@ -229,19 +229,25 @@ class ApiServer(ComponentResource):
                                 ],
                                 image=API_SERVER_IMAGE,
                                 image_pull_policy="Always",
+                                # for liveness and readiness probes, use an initial delay to allow the other services to start up
+                                # use a higher failure threshold for readiness probe to allow for temporary unavailability of Argo or MinIO
                                 liveness_probe=ProbeArgs(
                                     http_get=HTTPGetActionArgs(
                                         path="/healthz", port=8000
                                     ),
-                                    period_seconds=10,
+                                    initial_delay_seconds=5,
+                                    period_seconds=20,
+                                    failure_threshold=3,
                                 ),
                                 ports=[ContainerPortArgs(container_port=8000)],
                                 readiness_probe=ProbeArgs(
                                     http_get=HTTPGetActionArgs(
                                         path="/readyz", port=8000
                                     ),
-                                    period_seconds=10,
+                                    initial_delay_seconds=10,
+                                    period_seconds=30,
                                     timeout_seconds=5,
+                                    failure_threshold=5,
                                 ),
                                 security_context=SecurityContextArgs(
                                     allow_privilege_escalation=False,
@@ -254,6 +260,14 @@ class ApiServer(ComponentResource):
                                     seccomp_profile=SeccompProfileArgs(
                                         type="RuntimeDefault"
                                     ),
+                                ),
+                                startup_probe=ProbeArgs(
+                                    http_get=HTTPGetActionArgs(
+                                        path="/healthz", port=8000
+                                    ),
+                                    initial_delay_seconds=5,
+                                    period_seconds=10,
+                                    failure_threshold=30,
                                 ),
                                 volume_mounts=[
                                     VolumeMountArgs(
