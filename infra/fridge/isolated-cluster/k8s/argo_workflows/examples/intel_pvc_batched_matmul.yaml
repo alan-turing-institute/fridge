@@ -1,0 +1,53 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: intel-batched-matmul
+  namespace: argo-workflows
+spec:
+  entrypoint: intel-batched-matmul
+  securityContext:
+    supplementalGroups:
+      - 110
+  templates:
+    - name: intel-batched-matmul
+      container:
+        resources:
+          limits:
+            gpu.intel.com/i915: 1
+        image: intel/intel-extension-for-pytorch:2.8.10-xpu
+        command: ["bash", "-c"]
+        args:
+          - |
+            echo "Checking GPU devices"
+            ls -l /dev/dri || true
+
+            echo "Running PyTorch GPU test"
+            python3 -c "
+            import time
+            import torch
+            print('XPU available:', torch.xpu.is_available())
+            print('XPU count:', torch.xpu.device_count())
+
+            device = torch.device('xpu')
+            print('Running batched GEMM benchmark on', device)
+
+            batch = 64
+            size = 2048
+
+            a = torch.randn((batch, size, size), device=device)
+            b = torch.randn((batch, size, size), device=device)
+
+            torch.xpu.synchronize()
+            # Warmup run to trigger JIT compilation
+            c = torch.bmm(a, b)
+            torch.xpu.synchronize()
+
+            start = time.time()
+            for _ in range(20):
+                c = torch.bmm(a, b)
+            torch.xpu.synchronize()
+            end = time.time()
+
+            print('20 batched matmuls took:', end - start, 'seconds')
+            print('Average per batch:', (end - start) / 20, 'seconds')"
+  serviceAccountName: argo-workflow
