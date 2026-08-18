@@ -1,0 +1,136 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: intel-cifar10-ddp
+  namespace: argo-workflows
+spec:
+  entrypoint: intel-cifar10-ddp
+  securityContext:
+    supplementalGroups:
+      - 110
+  templates:
+    - name: intel-cifar10-ddp
+      container:
+        volumeMounts:
+        - name: block-storage
+          mountPath: /mnt/block-storage/
+        resources:
+          limits:
+            gpu.intel.com/i915: 1
+        image: intel/intel-extension-for-pytorch:2.8.10-xpu
+        command: ["bash", "-c"]
+        args:
+          - |
+            echo "Extracting CIFAR-10 to /tmp/cifar10"
+            mkdir -p /tmp/cifar10
+            tar -xzf /mnt/block-storage/cifar-10-python.tar.gz -C /tmp/cifar10
+
+            cat << 'EOF' > /tmp/cifar10_ddp.py
+            import os
+            import time
+            import torch
+            import torch.nn as nn
+            import torch.optim as optim
+            import torch.distributed as dist
+            import torchvision
+            import torchvision.transforms as transforms
+            import oneccl_bindings_for_pytorch
+            from torch.nn.parallel import DistributedDataParallel as DDP
+            from torch.utils.data import DataLoader, DistributedSampler
+            print('XPU available:', torch.xpu.is_available())
+            print('XPU count:', torch.xpu.device_count())
+
+            class SmallCNN(nn.Module):
+                def __init__(self):
+                    super().__init__()
+                    self.conv1 = nn.Conv2d(3, 32, 3, padding=1)
+                    self.conv2 = nn.Conv2d(32, 64, 3, padding=1)
+                    self.pool = nn.MaxPool2d(2, 2)
+                    self.fc1 = nn.Linear(64 * 8 * 8, 256)
+                    self.fc2 = nn.Linear(256, 10)
+
+                def forward(self, x):
+                    x = self.pool(torch.relu(self.conv1(x)))
+                    x = self.pool(torch.relu(self.conv2(x)))
+                    x = x.view(-1, 64 * 8 * 8)
+                    x = torch.relu(self.fc1(x))
+                    return self.fc2(x)
+
+            def main():
+                rank = int(os.environ["LOCAL_RANK"])
+                world_size = int(os.environ["WORLD_SIZE"])
+
+                dist.init_process_group(backend="ccl", init_method="env://", world_size=world_size, rank=rank)
+
+                device = torch.device(f"xpu:{rank}")
+                torch.xpu.set_device(device)
+
+                transform = transforms.Compose([
+                    transforms.ToTensor(),
+                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                ])
+
+                trainset = torchvision.datasets.CIFAR10(
+                    root='/tmp/cifar10', train=True, download=False, transform=transform
+                )
+                sampler = DistributedSampler(trainset, num_replicas=world_size, rank=rank, shuffle=True)
+                trainloader = DataLoader(trainset, batch_size=256, sampler=sampler, num_workers=4, pin_memory=True)
+
+                model = SmallCNN().to(device)
+                model = DDP(model, device_ids=[rank], output_device=rank)
+                criterion = nn.CrossEntropyLoss()
+                optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+                if rank == 0:
+                    print('Warming up JIT...')
+                warmup_inputs, warmup_labels = next(iter(trainloader))
+                warmup_inputs, warmup_labels = warmup_inputs.to(device), warmup_labels.to(device)
+                for _ in range(3):
+                    optimizer.zero_grad()
+                    outputs = model(warmup_inputs)
+                    loss = criterion(outputs, warmup_labels)
+                    loss.backward()
+                    optimizer.step()
+                torch.xpu.synchronize()
+
+                if rank == 0:
+                    print('Beginning benchmark training epoch...')
+                dist.barrier()
+                start = time.time()
+
+                for i, (inputs, labels) in enumerate(trainloader):
+                    inputs, labels = inputs.to(device), labels.to(device)
+
+                    optimizer.zero_grad()
+                    outputs = model(inputs)
+                    loss = criterion(outputs, labels)
+                    loss.backward()
+                    optimizer.step()
+
+                    if rank == 0 and i % 100 == 0:
+                        _, predicted = outputs.max(1)
+                        acc = predicted.eq(labels).sum().item() / labels.size(0)
+                        print(f'Batch {i}, Loss {loss.item():.4f}, Batch Acc {acc:.2%}')
+
+                torch.xpu.synchronize()
+                end = time.time()
+
+                if rank == 0:
+                    elapsed = end - start
+                    print(f'Training epoch time: {elapsed:.3f} seconds')
+                    print(f'Images/sec: {len(trainset) / elapsed:.1f}')
+                    print(f'Final batch loss: {loss.item():.4f}')
+
+                dist.destroy_process_group()
+
+            if __name__ == '__main__':
+                main()
+            EOF
+
+            echo "Running DDP CIFAR-10 training across 2 XPU tiles"
+            torchrun --nproc_per_node=2 --master_addr=127.0.0.1 --master_port=29500 /tmp/cifar10_ddp.py
+  volumes:
+    - name: block-storage
+      persistentVolumeClaim:
+        claimName: block-storage-pvc
+  serviceAccountName: argo-workflow
