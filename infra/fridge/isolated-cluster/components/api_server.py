@@ -236,6 +236,13 @@ class ApiServer(ComponentResource):
                                     period_seconds=10,
                                 ),
                                 ports=[ContainerPortArgs(container_port=8000)],
+                                readiness_probe=ProbeArgs(
+                                    http_get=HTTPGetActionArgs(
+                                        path="/readyz", port=8000
+                                    ),
+                                    period_seconds=10,
+                                    timeout_seconds=5,
+                                ),
                                 security_context=SecurityContextArgs(
                                     allow_privilege_escalation=False,
                                     capabilities=CapabilitiesArgs(
