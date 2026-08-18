@@ -43,7 +43,7 @@ def _check_argo() -> dict:
     """
     try:
         response = requests.get(
-            f"{ARGO_SERVER}/api/v1/workflows/argo-workflows/submit",
+            f"{ARGO_SERVER}/api/v1/version",
             verify=VERIFY_TLS,
             headers={"Authorization": f"Bearer {argo_token()}"},
             timeout=3,
