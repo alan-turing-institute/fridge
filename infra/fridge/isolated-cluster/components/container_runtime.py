@@ -20,10 +20,12 @@ class ContainerRuntimeConfigArgs:
         self,
         config: pulumi.config.Config,
         harbor_fqdn: Output[str],
+        harbor_ca_cert: Output[str] | Output[None],
         k8s_environment: K8sEnvironment,
     ) -> None:
         self.config = config
         self.harbor_fqdn = harbor_fqdn
+        self.harbor_ca_cert = harbor_ca_cert
         self.k8s_environment = k8s_environment
 
 
@@ -52,8 +54,9 @@ class ContainerRuntimeConfig(ComponentResource):
             case K8sEnvironment.DAWN:
                 yaml_template = open("k8s/containerd/dawn_registries.yaml", "r").read()
 
-        # Warning: this means the machine running pulumi up must be able to resolve the harbor FQDN and connect to it on port 443 to retrieve the certificate.
-        ca_cert = args.harbor_fqdn.apply(lambda fqdn: get_harbor_cert(fqdn))
+        # Fix case later when this is None
+        # this is also only really necessary on Dawn
+        ca_cert = args.harbor_ca_cert
 
         self.harbor_cert = ConfigMap(
             "harbor-ca-cert",
