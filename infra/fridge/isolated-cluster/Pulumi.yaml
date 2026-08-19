@@ -48,7 +48,7 @@ config:
     description: Size of the MinIO storage pool (e.g., 20Gi)
   organization_name:
     type: string
-    description: The Pulumi organization name
+    description: The Pulumi organization name. This is `organization`
   project_name:
     type: string
     description: The Pulumi project name for the access cluster deployment
