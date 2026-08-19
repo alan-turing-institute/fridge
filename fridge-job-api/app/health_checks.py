@@ -1,4 +1,5 @@
 import logging
+import os
 import requests
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
@@ -63,6 +64,8 @@ def _check_minio() -> dict:
     Returns a JSON indicating the status of the MinIO service.
     """
     try:
+        if os.path.exists(minio_client.SA_TOKEN_FILE):
+            minio_client._ensure_valid_token()
         minio_client.client.list_buckets()
         return {"status": "ok"}
     except (S3Error, HTTPError, OSError) as e:
