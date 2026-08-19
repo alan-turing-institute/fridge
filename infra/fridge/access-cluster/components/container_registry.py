@@ -1,7 +1,8 @@
+import base64
 from string import Template
 
 import pulumi
-from pulumi import ComponentResource, ResourceOptions
+from pulumi import ComponentResource, Output, ResourceOptions
 
 from pulumi_kubernetes.batch.v1 import (
     Job,
@@ -187,6 +188,38 @@ class ContainerRegistry(ComponentResource):
             ),
         )
 
+        if args.tls_environment != TlsEnvironment.PRODUCTION:
+
+            def _extract_ca_bundle(tls_crt_b64: str) -> str:
+                tls_crt = base64.b64decode(tls_crt_b64).decode("utf-8")
+                certs = tls_crt.split("-----BEGIN CERTIFICATE-----")
+                # certs[0] is empty, certs[1] is the leaf; everything after is the issuing chain
+                chain = certs[2:]
+                if not chain:
+                    # Self-signed / CA issuers only have one cert - it *is* the CA
+                    return tls_crt
+                return (
+                    "-----BEGIN CERTIFICATE-----"
+                    + "-----BEGIN CERTIFICATE-----".join(chain)
+                )
+
+            self.harbor_tls_secret = Secret.get(
+                "harbor-ingress-tls-secret",
+                Output.concat(self.harbor_ns.metadata.name, "/harbor-ingress-tls"),
+                opts=ResourceOptions.merge(
+                    child_opts,
+                    ResourceOptions(
+                        depends_on=[
+                            self.harbor_ingress,
+                        ]
+                    ),
+                ),
+            )
+
+            self.harbor_ca_cert = self.harbor_tls_secret.data.apply(
+                lambda data: _extract_ca_bundle(data["tls.crt"])
+            )
+
         if k8s_environment == K8sEnvironment.AKS:
             self.harbor_internal_loadbalancer = Service(
                 "harbor-internal-lb",
@@ -362,12 +395,15 @@ class ContainerRegistry(ComponentResource):
             ),
         )
 
-        self.register_outputs(
-            {
-                "configure_containerd_daemonset": self.configure_containerd_daemonset,
-                "containerd_config_ns": self.containerd_config_ns,
-                "harbor": self.harbor,
-                "harbor_ingress": self.harbor_ingress,
-                "harbor_ns": self.harbor_ns,
-            }
-        )
+        outputs = {
+            "configure_containerd_daemonset": self.configure_containerd_daemonset,
+            "containerd_config_ns": self.containerd_config_ns,
+            "harbor": self.harbor,
+            "harbor_ingress": self.harbor_ingress,
+            "harbor_ns": self.harbor_ns,
+        }
+        if args.tls_environment != TlsEnvironment.PRODUCTION:
+            outputs["harbor_ca_cert"] = self.harbor_ca_cert
+            outputs["harbor_tls_secret"] = self.harbor_tls_secret
+
+        self.register_outputs(outputs)
