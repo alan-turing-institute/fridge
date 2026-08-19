@@ -1,6 +1,3 @@
-import ssl
-
-
 import pulumi
 from pulumi import ComponentResource, Output, ResourceOptions
 from string import Template
@@ -8,11 +5,6 @@ from enums import K8sEnvironment, PodSecurityStandard
 from pulumi_kubernetes.core.v1 import ConfigMap, Namespace
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.yaml import ConfigGroup
-
-
-def get_harbor_cert(harbor_fqdn: str) -> str:
-    cert = ssl.get_server_certificate((harbor_fqdn, 443))
-    return cert
 
 
 class ContainerRuntimeConfigArgs:
