@@ -234,6 +234,7 @@ container_runtime_config = components.ContainerRuntimeConfig(
     "container-runtime-config",
     args=components.ContainerRuntimeConfigArgs(
         config=config,
+        harbor_ca_cert=access_stack.get_output("harbor_ca_cert"),
         harbor_fqdn=access_stack.get_output("harbor_fqdn"),
         k8s_environment=k8s_environment,
     ),
