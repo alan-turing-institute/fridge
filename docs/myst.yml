@@ -22,6 +22,7 @@ project:
     - title: Deploy
       children:
         - file: deploy/prerequisites.md
+        - file: deploy/onboarding.md
         - file: deploy/infrastructure.md
         - file: deploy/services.md
     - title: Develop
