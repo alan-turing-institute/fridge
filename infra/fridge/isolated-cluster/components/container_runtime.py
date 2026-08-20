@@ -80,9 +80,13 @@ class ContainerRuntimeConfig(ComponentResource):
             uses_custom_ca=args.harbor_uses_custom_ca,
         ).apply(
             lambda args: Template(
-                dawn_custom_ca_template
-                if args["uses_custom_ca"]
-                else dawn_production_template
+                (
+                    dawn_custom_ca_template
+                    if args["uses_custom_ca"]
+                    else dawn_production_template
+                )
+                if args.k8s_environment == K8sEnvironment.DAWN
+                else yaml_template
             ).substitute(
                 namespace=args["namespace"],
                 harbor_fqdn=args["harbor_fqdn"],
