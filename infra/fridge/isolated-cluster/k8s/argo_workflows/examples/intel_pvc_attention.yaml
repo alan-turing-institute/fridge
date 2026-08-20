@@ -1,0 +1,60 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: intel-attention
+  namespace: argo-workflows
+spec:
+  entrypoint: intel-attention
+  securityContext:
+    supplementalGroups:
+      - 110
+  templates:
+    - name: intel-attention
+      container:
+        resources:
+          limits:
+            gpu.intel.com/i915: 1
+        image: intel/intel-extension-for-pytorch:2.8.10-xpu
+        command: ["bash", "-c"]
+        args:
+          - |
+            echo "Checking GPU devices"
+            ls -l /dev/dri || true
+
+            echo "Running PyTorch GPU test: attention benchmark"
+            python3 -c "
+            import math
+            import time
+            import torch
+            print('XPU available:', torch.xpu.is_available())
+            print('XPU count:', torch.xpu.device_count())
+
+            device = torch.device('xpu')
+            seq = 512
+            heads = 8
+            dim = 64
+            embed = heads * dim
+
+            q = torch.randn(1, heads, seq, dim, device=device)
+            k = torch.randn(1, heads, seq, dim, device=device)
+            v = torch.randn(1, heads, seq, dim, device=device)
+
+            def attention(q, k, v):
+                scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(dim)
+                weights = torch.softmax(scores, dim=-1)
+                return torch.matmul(weights, v)
+
+            # Warmup
+            for _ in range(5):
+                y = attention(q, k, v)
+            torch.xpu.synchronize()
+
+            start = time.time()
+            for _ in range(20):
+                y = attention(q, k, v)
+            torch.xpu.synchronize()
+            end = time.time()
+
+            print('20 attention ops took:', end - start, 'seconds')
+            print('Average per attention:', (end - start) / 20, 'seconds')"
+  serviceAccountName: argo-workflow
