@@ -47,7 +47,7 @@ class ContainerRuntimeConfig(ComponentResource):
                 yaml_template = open("k8s/containerd/dawn_registries.yaml", "r").read()
 
         # Fix case later when this is None
-        # this is also only really necessary on Dawn
+        # this is also only really necessary on Dawn, and shouldn't be necessary in production
         ca_cert = args.harbor_ca_cert
 
         self.harbor_cert = ConfigMap(
