@@ -44,12 +44,31 @@ class ContainerRuntimeConfig(ComponentResource):
 
         match args.k8s_environment:
             case K8sEnvironment.AKS:
-                yaml_template = open("k8s/containerd/registry_mirrors.yaml", "r").read()
+                with open("k8s/containerd/registry_mirrors.yaml", "r") as file:
+                    yaml_template = file.read()
+
+                def render_template(values: dict[str, str | bool]) -> str:
+                    return Template(yaml_template).substitute(
+                        namespace=values["namespace"],
+                        harbor_fqdn=values["harbor_fqdn"],
+                    )
+
             case K8sEnvironment.DAWN:
-                with open("k8s/containerd/dawn_registries.yaml", "r") as f:
-                    dawn_production_template = f.read()
-                with open("k8s/containerd/dawn_registries_custom_ca.yaml", "r") as f:
-                    dawn_custom_ca_template = f.read()
+                with open("k8s/containerd/dawn_registries.yaml", "r") as file:
+                    dawn_production_template = file.read()
+                with open("k8s/containerd/dawn_registries_custom_ca.yaml", "r") as file:
+                    dawn_custom_ca_template = file.read()
+
+                def render_template(values: dict[str, str | bool]) -> str:
+                    template = (
+                        dawn_custom_ca_template
+                        if values["uses_custom_ca"]
+                        else dawn_production_template
+                    )
+                    return Template(template).substitute(
+                        namespace=values["namespace"],
+                        harbor_fqdn=values["harbor_fqdn"],
+                    )
 
         # Fix case later when this is None
         # this is also only really necessary on Dawn, and shouldn't be necessary in production
@@ -78,20 +97,7 @@ class ContainerRuntimeConfig(ComponentResource):
             namespace=self.config_ns.metadata.name,
             harbor_fqdn=args.harbor_fqdn,
             uses_custom_ca=args.harbor_uses_custom_ca,
-        ).apply(
-            lambda args: Template(
-                (
-                    dawn_custom_ca_template
-                    if args["uses_custom_ca"]
-                    else dawn_production_template
-                )
-                if args.k8s_environment == K8sEnvironment.DAWN
-                else yaml_template
-            ).substitute(
-                namespace=args["namespace"],
-                harbor_fqdn=args["harbor_fqdn"],
-            )
-        )
+        ).apply(render_template)
 
         self.configure_runtime = registry_mirror_config.apply(
             lambda yaml_content: ConfigGroup(
