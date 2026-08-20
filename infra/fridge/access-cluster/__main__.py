@@ -136,3 +136,4 @@ if k8s_environment == K8sEnvironment.AKS:
     pulumi.export("ingress_ports", ingress_nginx.ingress_ports)
 if tls_environment != TlsEnvironment.PRODUCTION:
     pulumi.export("harbor_ca_cert", harbor.harbor_ca_cert)
+pulumi.export("harbor_uses_custom_ca", harbor.harbor_uses_custom_ca)

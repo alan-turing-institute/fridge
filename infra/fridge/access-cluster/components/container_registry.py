@@ -220,6 +220,10 @@ class ContainerRegistry(ComponentResource):
                 lambda data: _extract_ca_bundle(data["tls.crt"])
             )
 
+            self.harbor_uses_custom_ca = Output.from_input(True)
+        else:
+            self.harbor_uses_custom_ca = Output.from_input(False)
+
         if k8s_environment == K8sEnvironment.AKS:
             self.harbor_internal_loadbalancer = Service(
                 "harbor-internal-lb",
@@ -405,5 +409,8 @@ class ContainerRegistry(ComponentResource):
         if args.tls_environment != TlsEnvironment.PRODUCTION:
             outputs["harbor_ca_cert"] = self.harbor_ca_cert
             outputs["harbor_tls_secret"] = self.harbor_tls_secret
+            outputs["harbor_uses_custom_ca"] = self.harbor_uses_custom_ca
+        else:
+            outputs["harbor_uses_custom_ca"] = self.harbor_uses_custom_ca
 
         self.register_outputs(outputs)
