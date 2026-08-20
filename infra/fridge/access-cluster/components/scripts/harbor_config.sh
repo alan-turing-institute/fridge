@@ -21,7 +21,7 @@ function main() {
     # Retrieve internal IDs of above remote registries
     registries=$( \
         curl -s \
-            -u $HARBOR_ADMIN_USER:$HARBOR_ADMIN_PASSWORD \
+            -u "$HARBOR_ADMIN_USER:$HARBOR_ADMIN_PASSWORD" \
             -H 'Content-Type: application/json' \
             http://$HARBOR_URL/api/v2.0/registries \
     )
@@ -52,7 +52,7 @@ function make_remote_registry() {
     }' \
     $1 $2 $3)
     curl -s -X POST \
-        -u $HARBOR_ADMIN_USER:$HARBOR_ADMIN_PASSWORD \
+        -u "$HARBOR_ADMIN_USER:$HARBOR_ADMIN_PASSWORD" \
         -H 'Accept: application/json' \
         -H 'Content-Type: application/json' \
         -d "$body" \
@@ -70,7 +70,7 @@ function make_proxy_project() {
     }' \
     $1 $2)
     curl -s -X POST \
-        -u $HARBOR_ADMIN_USER:$HARBOR_ADMIN_PASSWORD \
+        -u "$HARBOR_ADMIN_USER:$HARBOR_ADMIN_PASSWORD" \
         -H 'Accept: application/json' \
         -H 'Content-Type: application/json' \
         -d "$body" \
@@ -101,7 +101,7 @@ function make_robot_account() {
     }' \
     $1)
     resp=$(curl -s -X POST \
-    -u $HARBOR_ADMIN_USER:$HARBOR_ADMIN_PASSWORD \
+    -u "$HARBOR_ADMIN_USER:$HARBOR_ADMIN_PASSWORD" \
     -H 'Accept: application/json' \
     -H 'Content-Type: application/json' \
     -d "$body" \
