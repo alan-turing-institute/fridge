@@ -26,3 +26,15 @@ You will need the following tools installed to deploy FRIDGE:
 Additionally, if deploying to Azure, you will need the following:
 
 - [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
+
+### Pulumi Backend
+
+Pulumi stores state in a backend.
+The [Pulumi documentation](https://www.pulumi.com/docs/iac/concepts/state-and-backends/) details how to set up an appropriate backend.
+For local development and testing, you can use the local backend:
+
+```console
+pulumi login --local
+```
+
+For production, another backend, such as Azure Blob Storage, will likely be more appropriate.
