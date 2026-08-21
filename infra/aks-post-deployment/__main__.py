@@ -18,15 +18,16 @@ dns_zone = components.PrivateDNSZone(
     ),
 )
 
-firewall = components.Firewall(
-    "firewall",
-    args=components.FirewallArgs(
-        config=config,
-        location=azure_config.require("location"),
-        resource_group_name=config.require("azure_resource_group"),
-        stack_outputs=stack_outputs,
-    ),
-)
+if config.get_bool("prod"):
+    firewall = components.Firewall(
+        "firewall",
+        args=components.FirewallArgs(
+            config=config,
+            location=azure_config.require("location"),
+            resource_group_name=config.require("azure_resource_group"),
+            stack_outputs=stack_outputs,
+        ),
+    )
 
 nsg_rules = components.NetworkSecurityRules(
     "network-security-rules",
