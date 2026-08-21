@@ -1,6 +1,3 @@
-import ssl
-
-
 import pulumi
 from pulumi import ComponentResource, Output, ResourceOptions
 from string import Template
@@ -10,20 +7,19 @@ from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.yaml import ConfigGroup
 
 
-def get_harbor_cert(harbor_fqdn: str) -> str:
-    cert = ssl.get_server_certificate((harbor_fqdn, 443))
-    return cert
-
-
 class ContainerRuntimeConfigArgs:
     def __init__(
         self,
         config: pulumi.config.Config,
         harbor_fqdn: Output[str],
+        harbor_ca_cert: Output[str] | Output[None],
+        harbor_uses_custom_ca: Output[bool],
         k8s_environment: K8sEnvironment,
     ) -> None:
         self.config = config
+        self.harbor_ca_cert = harbor_ca_cert
         self.harbor_fqdn = harbor_fqdn
+        self.harbor_uses_custom_ca = harbor_uses_custom_ca
         self.k8s_environment = k8s_environment
 
 
@@ -48,12 +44,39 @@ class ContainerRuntimeConfig(ComponentResource):
 
         match args.k8s_environment:
             case K8sEnvironment.AKS:
-                yaml_template = open("k8s/containerd/registry_mirrors.yaml", "r").read()
-            case K8sEnvironment.DAWN:
-                yaml_template = open("k8s/containerd/dawn_registries.yaml", "r").read()
+                with open("k8s/containerd/registry_mirrors.yaml", "r") as file:
+                    yaml_template = file.read()
 
-        # Warning: this means the machine running pulumi up must be able to resolve the harbor FQDN and connect to it on port 443 to retrieve the certificate.
-        ca_cert = args.harbor_fqdn.apply(lambda fqdn: get_harbor_cert(fqdn))
+                def render_template(values: dict[str, str | bool]) -> str:
+                    return Template(yaml_template).substitute(
+                        namespace=values["namespace"],
+                        harbor_fqdn=values["harbor_fqdn"],
+                    )
+
+            case K8sEnvironment.DAWN:
+                with open("k8s/containerd/dawn_registries.yaml", "r") as file:
+                    dawn_production_template = file.read()
+                with open("k8s/containerd/dawn_registries_custom_ca.yaml", "r") as file:
+                    dawn_custom_ca_template = file.read()
+
+                def render_template(values: dict[str, str | bool]) -> str:
+                    template = (
+                        dawn_custom_ca_template
+                        if values["uses_custom_ca"]
+                        else dawn_production_template
+                    )
+                    return Template(template).substitute(
+                        namespace=values["namespace"],
+                        harbor_fqdn=values["harbor_fqdn"],
+                    )
+
+        # Fix case later when this is None
+        # this is also only really necessary on Dawn, and shouldn't be necessary in production
+
+        custom_ca = args.harbor_uses_custom_ca
+        ca_cert = custom_ca.apply(
+            lambda uses_custom_ca: args.harbor_ca_cert if uses_custom_ca else ""
+        )
 
         self.harbor_cert = ConfigMap(
             "harbor-ca-cert",
@@ -73,12 +96,8 @@ class ContainerRuntimeConfig(ComponentResource):
         registry_mirror_config = Output.all(
             namespace=self.config_ns.metadata.name,
             harbor_fqdn=args.harbor_fqdn,
-        ).apply(
-            lambda args: Template(yaml_template).substitute(
-                namespace=args["namespace"],
-                harbor_fqdn=args["harbor_fqdn"],
-            )
-        )
+            uses_custom_ca=args.harbor_uses_custom_ca,
+        ).apply(render_template)
 
         self.configure_runtime = registry_mirror_config.apply(
             lambda yaml_content: ConfigGroup(

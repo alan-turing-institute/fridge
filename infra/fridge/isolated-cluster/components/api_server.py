@@ -7,13 +7,16 @@ from pulumi_kubernetes.core.v1 import (
     ContainerArgs,
     ContainerPortArgs,
     EnvFromSourceArgs,
+    HTTPGetActionArgs,
     Namespace,
     PodSpecArgs,
     PodTemplateSpecArgs,
+    ProbeArgs,
     ProjectedVolumeSourceArgs,
     SeccompProfileArgs,
     Secret,
     SecretEnvSourceArgs,
+    SecretVolumeSourceArgs,
     SecurityContextArgs,
     Service,
     ServiceAccount,
@@ -72,7 +75,8 @@ class ApiServer(ComponentResource):
             "api-server-ns",
             metadata=ObjectMetaArgs(
                 name="fridge-api",
-                labels={} | PodSecurityStandard.RESTRICTED.value,
+                labels={"tls-trust-bundle": "enabled"}
+                | PodSecurityStandard.RESTRICTED.value,
             ),
             opts=child_opts,
         )
@@ -225,7 +229,26 @@ class ApiServer(ComponentResource):
                                 ],
                                 image=API_SERVER_IMAGE,
                                 image_pull_policy="Always",
+                                # for liveness and readiness probes, use an initial delay to allow the other services to start up
+                                # use a higher failure threshold for readiness probe to allow for temporary unavailability of Argo or MinIO
+                                liveness_probe=ProbeArgs(
+                                    http_get=HTTPGetActionArgs(
+                                        path="/healthz", port=8000
+                                    ),
+                                    initial_delay_seconds=5,
+                                    period_seconds=20,
+                                    failure_threshold=3,
+                                ),
                                 ports=[ContainerPortArgs(container_port=8000)],
+                                readiness_probe=ProbeArgs(
+                                    http_get=HTTPGetActionArgs(
+                                        path="/readyz", port=8000
+                                    ),
+                                    initial_delay_seconds=10,
+                                    period_seconds=30,
+                                    timeout_seconds=5,
+                                    failure_threshold=5,
+                                ),
                                 security_context=SecurityContextArgs(
                                     allow_privilege_escalation=False,
                                     capabilities=CapabilitiesArgs(
@@ -238,6 +261,14 @@ class ApiServer(ComponentResource):
                                         type="RuntimeDefault"
                                     ),
                                 ),
+                                startup_probe=ProbeArgs(
+                                    http_get=HTTPGetActionArgs(
+                                        path="/healthz", port=8000
+                                    ),
+                                    initial_delay_seconds=5,
+                                    period_seconds=10,
+                                    failure_threshold=30,
+                                ),
                                 volume_mounts=[
                                     VolumeMountArgs(
                                         name="token-vol",
@@ -247,6 +278,11 @@ class ApiServer(ComponentResource):
                                     VolumeMountArgs(
                                         name="minio-sa",
                                         mount_path="/minio",
+                                        read_only=True,
+                                    ),
+                                    VolumeMountArgs(
+                                        name="tls-trust-bundle",
+                                        mount_path="/etc/ssl/certs",
                                         read_only=True,
                                     ),
                                 ],
@@ -279,6 +315,12 @@ class ApiServer(ComponentResource):
                                             )
                                         )
                                     ]
+                                ),
+                            ),
+                            VolumeArgs(
+                                name="tls-trust-bundle",
+                                secret=SecretVolumeSourceArgs(
+                                    secret_name="trusted-certificates",
                                 ),
                             ),
                         ],
