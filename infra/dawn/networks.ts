@@ -5,6 +5,8 @@ const publicNetwork = openstack.networking.getNetworkOutput({
 });
 
 export const publicNetworkId = publicNetwork.id;
+export const accessNetworkCidr = "10.10.0.0/24";
+export const isolatedNetworkCidr = "10.20.0.0/24";
 
 function createNetwork(name: string, cidr: string, useGateway: boolean = true) {
   const network = new openstack.networking.Network(`${name}-net`, {
@@ -24,7 +26,7 @@ function createNetwork(name: string, cidr: string, useGateway: boolean = true) {
         name === "isolated"
           ? [
               {
-                destinationCidr: "10.10.0.0/24",
+                destinationCidr: accessNetworkCidr,
                 nextHop: "10.20.0.25",
               },
             ]
@@ -35,22 +37,22 @@ function createNetwork(name: string, cidr: string, useGateway: boolean = true) {
   return { network, subnet, networkId: network.id, subnetId: subnet.id };
 }
 
-const accessNet = createNetwork("access", "10.10.0.0/24", true);
-// const isolatedNet = createNetwork("isolated", "10.20.0.0/24", false); // when no internet is required
-const isolatedNet = createNetwork("isolated", "10.20.0.0/24", true); // when internet is required
+const accessNet = createNetwork("access", accessNetworkCidr, true);
+// const isolatedNet = createNetwork("isolated", isolatedNetworkCidr, false); // when no internet is required
+const isolatedNet = createNetwork("isolated", isolatedNetworkCidr, true); // when internet is required
 
 // DIRECT ROUTE: Access -> Isolated
 
 new openstack.networking.SubnetRoute("access-to-isolated-route", {
   subnetId: accessNet.subnetId,
-  destinationCidr: "10.20.0.0/24",
+  destinationCidr: isolatedNetworkCidr,
   nextHop: "10.10.0.25",
 });
 
 // DIRECT ROUTE: Isolated -> Access
 new openstack.networking.SubnetRoute("isolated-to-access-route", {
   subnetId: isolatedNet.subnetId,
-  destinationCidr: "10.10.0.0/24",
+  destinationCidr: accessNetworkCidr,
   nextHop: "10.20.0.25",
 });
 
