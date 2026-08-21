@@ -21,7 +21,7 @@ project:
         - file: architecture/lifecycle.md
     - title: Deploy
       children:
-        - file: deploy/prerequisites.md
+        - file: deploy/overview.md
         - file: deploy/infrastructure.md
         - file: deploy/services.md
     - title: Develop
