@@ -1,6 +1,6 @@
 import pulumi
 from pulumi import ComponentResource, ResourceOptions
-from pulumi_kubernetes.yaml import ConfigFile
+from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
 
 from enums import K8sEnvironment
 
@@ -40,8 +40,6 @@ class NetworkPolicies(ComponentResource):
                     file="./k8s/cilium/dawn.yaml",
                     opts=child_opts,
                 )
-                # Add network policy to allow Prometheus monitoring for resources already deployed on Dawn
-                # On Dawn, Prometheus is also already deployed
                 ConfigFile(
                     "network_policy_prometheus",
                     file="./k8s/cilium/prometheus.yaml",
@@ -62,62 +60,18 @@ class NetworkPolicies(ComponentResource):
                     opts=child_opts,
                 )
 
-        ConfigFile(
-            "network_policy_argo_workflows",
-            file="./k8s/cilium/argo_workflows.yaml",
-            opts=child_opts,
-        )
-
-        ConfigFile(
-            "network_policy_argo_server",
-            file="./k8s/cilium/argo_server.yaml",
-            opts=child_opts,
-        )
-
-        ConfigFile(
-            "network_policy_cert_manager",
-            file="./k8s/cilium/cert_manager.yaml",
-            opts=child_opts,
-        )
-
-        ConfigFile(
-            "network_policy_hubble",
-            file="./k8s/cilium/hubble.yaml",
-            opts=child_opts,
-        )
-
-        ConfigFile(
-            "network_policy_kube_node_lease",
-            file="./k8s/cilium/kube-node-lease.yaml",
-            opts=child_opts,
-        )
-
-        ConfigFile(
-            "network_policy_kube_public",
-            file="./k8s/cilium/kube-public.yaml",
-            opts=child_opts,
-        )
-
-        ConfigFile(
-            "network_policy_kubernetes_system",
-            file="./k8s/cilium/kube-system.yaml",
-            opts=child_opts,
-        )
-
-        ConfigFile(
-            "network_policy_minio_tenant",
-            file="./k8s/cilium/minio-tenant.yaml",
-            opts=child_opts,
-        )
-
-        ConfigFile(
-            "network_policy_minio_operator",
-            file="./k8s/cilium/minio-operator.yaml",
-            opts=child_opts,
-        )
-
-        ConfigFile(
-            "network_policy_fridge_api",
-            file="./k8s/cilium/fridge-api.yaml",
-            opts=child_opts,
+        self.isolated_general_cnp = ConfigGroup(
+            "network_policies",
+            files=[
+                "./k8s/cilium/argo_server.yaml",
+                "./k8s/cilium/argo_workflows.yaml",
+                "./k8s/cilium/cert_manager.yaml",
+                "./k8s/cilium/fridge_api.yaml",
+                "./k8s/cilium/hubble.yaml",
+                "./k8s/cilium/kube-node-lease.yaml",
+                "./k8s/cilium/kube-public.yaml",
+                "./k8s/cilium/kube-system.yaml",
+                "./k8s/cilium/minio-tenant.yaml",
+                "./k8s/cilium/minio-operator.yaml",
+            ],
         )

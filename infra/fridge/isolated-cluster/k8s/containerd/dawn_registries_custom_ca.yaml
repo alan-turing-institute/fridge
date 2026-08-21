@@ -54,6 +54,8 @@ spec:
             mkdir -p /host/etc/rancher/k3s
             echo "Copying k3s registry mirror configurations..."
             cp /config/registries.yaml /host/etc/rancher/k3s/registries.yaml
+            echo "Adding harbor CA certificate to host trust store..."
+            cp /certs/harbor_cert.pem /usr/local/share/ca-certificates/harbor_cert.pem
             echo "k3s containerd registry mirrors configured, now restart k3s manually to apply the new configuration. You can do this by running 'sudo systemctl restart k3s' or k3s-agent on each node in the cluster."
             echo "Done."
         securityContext:
@@ -65,6 +67,9 @@ spec:
             mountPath: /usr/local/share/ca-certificates
           - name: config
             mountPath: /config
+            readOnly: true
+          - name: harbor-ca-cert
+            mountPath: /certs
             readOnly: true
       containers:
         - name: wait
@@ -96,3 +101,6 @@ spec:
         - name: config
           configMap:
             name: containerd-registry-mirrors
+        - name: harbor-ca-cert
+          configMap:
+            name: harbor-ca-cert

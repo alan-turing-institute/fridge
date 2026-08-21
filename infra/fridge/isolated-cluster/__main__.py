@@ -6,7 +6,7 @@ from pulumi_kubernetes.meta.v1 import ObjectMetaPatchArgs
 from pulumi_kubernetes.yaml import ConfigFile
 
 import components
-from enums import K8sEnvironment, PodSecurityStandard, TlsEnvironment
+from enums import K8sEnvironment, PodSecurityStandard
 
 
 def patch_namespace(name: str, pss: PodSecurityStandard) -> NamespacePatch:
@@ -20,12 +20,10 @@ def patch_namespace(name: str, pss: PodSecurityStandard) -> NamespacePatch:
 
 
 config = pulumi.Config()
-tls_environment = TlsEnvironment(config.require("tls_environment"))
 stack_name = pulumi.get_stack()
 organization = config.require("organization_name")
 project_name = config.require("project_name")
 access_stack_name = config.require("access_cluster_stack")
-
 access_stack = pulumi.StackReference(
     f"{organization}/{project_name}/{access_stack_name}"
 )
@@ -125,7 +123,6 @@ argo_workflows = components.WorkflowServer(
     "argo-workflows",
     args=components.WorkflowServerArgs(
         config=config,
-        tls_environment=tls_environment,
     ),
     opts=ResourceOptions(
         depends_on=[
@@ -178,7 +175,7 @@ api_server = components.ApiServer(
         config=config,
         minio_url=minio.minio_cluster_url,
         minio_tenant_name=minio.minio_tenant_name,
-        verify_tls=tls_environment is TlsEnvironment.PRODUCTION,
+        verify_tls=False,  # This is only relevant for Argo Workflows, which uses a self-signed certificate in the isolated cluster. The API server will use the MinIO trust bundle to verify MinIO's certificate.
     ),
     opts=ResourceOptions(
         depends_on=[argo_workflows],
@@ -237,7 +234,9 @@ container_runtime_config = components.ContainerRuntimeConfig(
     "container-runtime-config",
     args=components.ContainerRuntimeConfigArgs(
         config=config,
+        harbor_ca_cert=access_stack.get_output("harbor_ca_cert"),
         harbor_fqdn=access_stack.get_output("harbor_fqdn"),
+        harbor_uses_custom_ca=access_stack.get_output("harbor_uses_custom_ca"),
         k8s_environment=k8s_environment,
     ),
     opts=ResourceOptions(
