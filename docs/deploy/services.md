@@ -145,4 +145,7 @@ The <isolated-cluster-api-server> address is either an FDQN (AKS) or an IP addre
 You may have to use different ports locally if the port suggested above (6443) is in use.
 :::
 
-Once these steps are completed, you can deploy the isolated cluster stack using the same `pulumi up`.
+Once thee stack is configured and the SSH tunnel set up, you can deploy the isolated cluster stack using `pulumi up`.
+
+Note that `pulumi up` can safely be repeated if any errors arise.
+Sometimes errors during deployment are due to race conditions that Pulumi cannot mitigate, and a repeated attempt will be successful.
