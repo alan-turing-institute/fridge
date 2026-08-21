@@ -17,7 +17,7 @@ The deploying account must therefore be able to create these role assignments, i
 
 This project deploys two AKS clusters: an `access` cluster and an `isolated` cluster.
 
-The `access` cluster will host the Harbor container registry and an SSH server for accessing the `isolated` cluster
+The `access` cluster will host the Harbor container registry and an SSH server for accessing the `isolated` cluster.
 
 The `isolated` cluster will host the main FRIDGE services.
 
@@ -32,12 +32,14 @@ Basic Network Security Groups (NSGs) will also be set up for the VNets.
 Note that when the `TRE Administrators` deploy FRIDGE services to the access cluster, the services will include an SSH server listening on port 2222.
 
 The `TRE Administrators` must supply a range of IP addresses from which the server should accept connections.
-These must be provided as CIDRs using the `admin_ip_allowlist` filed of the Pulumi configuration file
+These must be provided as CIDRs using the `admin_ip_allowlist` field of the Pulumi configuration file.
 
 The initial Network Security Group setup will restrict incoming traffic on port 2222 to the IP addresses they provide.
 :::
 
 ### Deploying the AKS infrastructure with Pulumi
+
+All commands should be run from the working directory `infra/aks/`
 
 To deploy the infrastructure, follow these steps:
 
@@ -73,11 +75,14 @@ When the infrastructure has finished deploying, you should provide the `TRE Admi
 
 ## AIRR
 
+FRIDGE is intended to be deployed to the AI Research Resource supercomputers, Dawn and Isambard-AI.
+Deployment of the infrastructure will be performed by the `Hosting Administrators`.
+
 ### Dawn
 
 On Dawn, [K3s](https://k3s.io/) is the Kubernetes distribution of choice.
 
-The `infra/dawn/` directory contains Pulumi code for the deployment of the initial networking setup and nodes for use by Kubernetes, and for the configuration of the Kubernets clusters.
+The `infra/dawn/` directory contains Pulumi code for the deployment of the initial networking setup and nodes for use by Kubernetes, and for the configuration of the Kubernetes clusters.
 
 The deployment of two K3s clusters onto the associated nodes should be completed by the `Hosting Administrators`.
 
@@ -87,7 +92,7 @@ Once setup is complete, the `Hosting Administrators` should provide the `TRE Adm
 - Kubernetes credentials for the access and isolated clusters
 - internal and external IP addresses of the load balancer on the access cluster
 
-The `TRE Adminstrators` responsible for deploying the FRIDGE services will require this information.
+The `TRE Administrators` responsible for deploying the FRIDGE services will require this information.
 
 ### Isambard-AI
 
