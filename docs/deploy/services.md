@@ -9,7 +9,7 @@ To read about deploying the required Kubernetes clusters and tenancy see [Deploy
 :::
 
 :::{warning}
-Container-based Kubernetes environments such as K3d or Kind are not supported, as Longhorn is not compatible with those environments.
+Container-based Kubernetes environments such as k3d or Kind are not supported, as Longhorn is not compatible with those environments.
 :::
 
 ## Deployment
@@ -28,19 +28,8 @@ The FRIDGE hosting organisation should provide you with the required Kubernetes 
 
 :::{note}
 The following instructions assume you already have access to Kubernetes clusters deployed in accordance with the instructions in [Deploy Infrastructure](./infrastructure.md).
+It also assumes that you have set up an appropriate [Pulumi backend](./overview.md#pulumi-backend)
 :::
-
-### Pulumi Backend
-
-Pulumi stores state in a backend.
-The [Pulumi documentation](https://www.pulumi.com/docs/iac/concepts/state-and-backends/) details how to use set up an appropriate backend.
-For local development and testing, you can use the local backend:
-
-```console
-pulumi login --local
-```
-
-For production, another backend, such as Azure Blob Storage, will likely be more appropriate.
 
 ### Access cluster
 
@@ -73,22 +62,23 @@ pulumi config set <key> <value>
 ```
 
 Some of the configuration keys must be set as secrets, such as the `MinIO` access key and secret key.
-Those *must* be set using the Pulumi CLI using the `--secret` flag:
+Those *must* be set using the Pulumi CLI using the `--secret` flag.
+For example, the following command sets the `minio_root_password`:
 
 ```console
 pulumi config set --secret minio_root_password <your-minio-secret-key>
 ```
 
 It is critical that you set all required configuration keys before deploying the stack.
-In particular, you will need to supply public SSH keys that will be added to the SSH servers in the access cluster.
+In particular, you will need to supply a public SSH key that will be added to the SSH server in the access cluster.
 If you do not do this, you will not be able to access the isolated cluster later.
 
 For a complete list of configuration keys, see the `Pulumi.yaml` file.
 
 :::{important}
-You will need to provide *two* public SSH keys.
-One will be copied to the FRIDGE API proxy, and can be used to set up the SSH tunnel to the FRIDGE API.
-The other will be copied to the K8s API proxy, and can be used to set up the SSH tunnel to the Kubernetes API of the isolated cluster.
+You will need to provide a public SSH key.
+Your public SSH key will be copied to the SSH server in the access cluster.
+The SSH server can then be used to set up SSH tunnels to the Kubernetes API and the FRIDGE API in the isolated cluster.
 :::
 
 #### Kubernetes context
@@ -110,7 +100,9 @@ pulumi config set kubernetes:context dawn
 #### Deploying with Pulumi
 
 Ensure that you are able to connect to the Kubernetes API of the access cluster.
-On AKS, the Kubernetes API is currently publicly accessible, so no changes to your local kubeconfig are required.
+
+On AKS, the Kubernetes API is publicly accessible during development/testing, so no changes to your local kubeconfig are required.
+
 On Dawn, you will need to set up an SSH connection to the bastion host on the access cluster's local network.
 
 Once you have set up the stack and its configuration, you can deploy the stack using the following command:
@@ -124,7 +116,7 @@ pulumi up
 You will deploy the isolated cluster next, as it hosts the FRIDGE services.
 Navigate to the `infra/fridge/isolated-cluster/` folder.
 
-However, two additional steps are required before deploying FRIDGE to the isolated cluster.
+Two additional steps are required before deploying FRIDGE to the isolated cluster.
 
 1. **SSH port forwarding**: You must set up SSH port forwarding from your deployment machine to the isolated cluster via the SSH server in the access cluster.
    The isolated cluster has a private API server endpoint, which is not directly accessible from outside the access cluster.
@@ -136,15 +128,21 @@ However, two additional steps are required before deploying FRIDGE to the isolat
 
    Replace `<path-to-your-private-ssh-key>`, `<isolated-cluster-api-server>`, and `<access-cluster-ssh-server-ip>` with the appropriate values for your setup.
 2. **Kubernetes context**: You must set the Kubernetes context for the isolated cluster stack to use the local port forwarded to the isolated cluster's API server.
-   Edit the `kubeconfig` file for the isolated cluster to point to `https://localhost:6443` for the API server endpoint.
+   We recommend that you make a dedicated copy of the `kubeconfig` file for the isolated cluster, and edit it to point to `https://localhost:6443` for the API server endpoint.
    Then, set the Kubernetes context for the stack using the Pulumi CLI:
 
    ```console
    pulumi config set kubernetes:context <isolated-cluster-context>
    ```
 
+:::{important}
+The SSH tunnel must be running in order to interact with the isolated cluster.
+
+The <isolated-cluster-api-server> address is either an FDQN (AKS) or an IP address (AIRR) and should have been provided to you by the `Hosting Administrators`.
+:::
+
 :::{note}
 You may have to use different ports locally if the port suggested above (6443) is in use.
 :::
 
-Once these steps are completed, you can deploy the isolated cluster stack using the same `pulumi up` command as before, after creating the stack, and setting the required configuration keys.
+Once these steps are completed, you can deploy the isolated cluster stack using the same `pulumi up`.
