@@ -71,7 +71,9 @@ The `isolated` cluster has a private API server endpoint, which will be made acc
 
 When the infrastructure has finished deploying, you should provide the `TRE Administrators` responsible for deploying FRIDGE with the necessary connection details, including the public IP address of the Kubernetes cluster, and credentials for the two clusters.
 
-## Dawn
+## AIRR
+
+### Dawn
 
 On Dawn, [K3s](https://k3s.io/) is the Kubernetes distribution of choice.
 
@@ -86,6 +88,11 @@ Once setup is complete, the `Hosting Administrators` should provide the `TRE Adm
 - internal and external IP addresses of the load balancer on the access cluster
 
 The `TRE Adminstrators` responsible for deploying the FRIDGE services will require this information.
+
+### Isambard-AI
+
+Deployment on Isambard-AI is currently undergoing development.
+Details will be provided here in due course.
 
 ## Network lockdown
 
