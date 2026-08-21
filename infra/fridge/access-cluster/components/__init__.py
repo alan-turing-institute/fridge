@@ -4,3 +4,4 @@ from .fridge_api_jumpbox import FridgeAPIJumpbox, FridgeAPIJumpboxArgs
 from .ingress import Ingress, IngressArgs
 from .network_policies import NetworkPolicies, NetworkPoliciesArgs
 from .storage_classes import StorageClasses, StorageClassesArgs
+from .vpn_server import VpnServer, VpnServerArgs

@@ -1,6 +1,7 @@
 import pulumi
 from pulumi import ComponentResource, ResourceOptions
 from pulumi_kubernetes.apiextensions import CustomResource
+from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
 
 from enums import K8sEnvironment
@@ -102,7 +103,7 @@ class NetworkPolicies(ComponentResource):
             "network_policy_api_jumpbox",
             api_version="cilium.io/v2",
             kind="CiliumNetworkPolicy",
-            metadata={"name": "api-jumpbox-access", "namespace": "api-jumpbox"},
+            metadata=ObjectMetaArgs(name="api-jumpbox-access", namespace="api-jumpbox"),
             spec={
                 "endpointSelector": {"matchLabels": {"app": "api-jumpbox"}},
                 "ingress": [
@@ -159,7 +160,9 @@ class NetworkPolicies(ComponentResource):
             "network_policy_cert_manager_to_harbor",
             api_version="cilium.io/v2",
             kind="CiliumNetworkPolicy",
-            metadata={"name": "cert-manager-to-harbor", "namespace": "cert-manager"},
+            metadata=ObjectMetaArgs(
+                name="cert-manager-to-harbor", namespace="cert-manager"
+            ),
             spec={
                 "endpointSelector": {"matchLabels": {"app": "cert-manager"}},
                 "egress": [
@@ -191,11 +194,14 @@ class NetworkPolicies(ComponentResource):
             opts=child_opts,
         )
 
+        # This CNP is to allow SSH to come through ingress nginx to the api-jumpbox pod
         self.api_ssh_ingress_cnp = CustomResource(
             "network_policy_api_ssh_ingress",
             api_version="cilium.io/v2",
             kind="CiliumNetworkPolicy",
-            metadata={"name": "enable-ssh-access", "namespace": "ingress-nginx"},
+            metadata=ObjectMetaArgs(
+                name="enable-ssh-access", namespace="ingress-nginx"
+            ),
             spec={
                 "endpointSelector": {
                     "matchLabels": {
@@ -238,3 +244,68 @@ class NetworkPolicies(ComponentResource):
                 "./k8s/cilium/kube-system.yaml",
             ],
         )
+
+        ConfigFile(
+            "network_policy_vpn_server",
+            file="./k8s/cilium/vpn-server.yaml",
+            opts=child_opts,
+        )
+
+        if args.k8s_environment == K8sEnvironment.AKS:
+            self.vpn_server_cnp_custom = CustomResource(
+                "network_policy_vpn_server_custom",
+                api_version="cilium.io/v2",
+                kind="CiliumNetworkPolicy",
+                metadata=ObjectMetaArgs(
+                    name="vpn-server-custom", namespace="vpn-server"
+                ),
+                spec={
+                    "endpointSelector": {"matchLabels": {"app": "netbird-proxy"}},
+                    "egress": [
+                        {
+                            "toEndpoints": [
+                                {
+                                    "matchLabels": {
+                                        "io.kubernetes.pod.namespace": "kube-system",
+                                        "k8s-app": "kube-dns",
+                                    }
+                                }
+                            ],
+                            "toPorts": [
+                                {
+                                    "ports": [{"port": "53", "protocol": "ANY"}],
+                                    "rules": {
+                                        "dns": [
+                                            {
+                                                "matchName": args.config.require(
+                                                    "isolated_cluster_api_endpoint"
+                                                )
+                                            }
+                                        ]
+                                    },
+                                }
+                            ],
+                        },
+                        fridge_api_ip_rule,
+                        k8s_api_endpoint_rule,
+                    ],
+                },
+                opts=child_opts,
+            )
+        else:
+            self.vpn_server_cnp_custom = CustomResource(
+                "network_policy_vpn_server_custom",
+                api_version="cilium.io/v2",
+                kind="CiliumNetworkPolicy",
+                metadata=ObjectMetaArgs(
+                    name="vpn-server-custom", namespace="vpn-server"
+                ),
+                spec={
+                    "endpointSelector": {"matchLabels": {"app": "netbird-proxy"}},
+                    "egress": [
+                        fridge_api_ip_rule,
+                        k8s_api_endpoint_rule,
+                    ],
+                },
+                opts=child_opts,
+            )
