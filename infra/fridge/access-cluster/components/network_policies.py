@@ -2,7 +2,7 @@ import pulumi
 from pulumi import ComponentResource, ResourceOptions
 from pulumi_kubernetes.apiextensions import CustomResource
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
-from pulumi_kubernetes.yaml import ConfigFile
+from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
 
 from enums import K8sEnvironment
 
@@ -87,6 +87,8 @@ class NetworkPolicies(ComponentResource):
                     ],  # [args.config.require("fridge_api_ip_address")],
                     "toPorts": [{"ports": [{"port": "30180", "protocol": "TCP"}]}],
                 }
+                # Note that the traffic to the SSH server comes from within the Dawn access subnet, even though it originates externally
+                # on Dawn, external traffic comes through a load balancer with CIDR restrictions, so filtering is done there
                 ssh_ip_allowlist = ["10.10.0.0/16"]
             case K8sEnvironment.K3S:
                 # K3S policies applicable for a local dev environment
@@ -229,52 +231,18 @@ class NetworkPolicies(ComponentResource):
             opts=child_opts,
         )
 
-        ConfigFile(
-            "network_policy_cert_manager",
-            file="./k8s/cilium/cert_manager.yaml",
-            opts=child_opts,
-        )
-
-        ConfigFile(
-            "network_policy_containerd_config",
-            file="./k8s/cilium/containerd_config.yaml",
-            opts=child_opts,
-        )
-
-        ConfigFile(
-            "network_policy_harbor",
-            file="./k8s/cilium/harbor.yaml",
-            opts=child_opts,
-        )
-
-        ConfigFile(
-            "network_policy_hubble",
-            file="./k8s/cilium/hubble.yaml",
-            opts=child_opts,
-        )
-
-        ConfigFile(
-            "network_policy_ingress_nginx",
-            file="./k8s/cilium/ingress-nginx.yaml",
-            opts=child_opts,
-        )
-
-        ConfigFile(
-            "network_policy_kube_node_lease",
-            file="./k8s/cilium/kube-node-lease.yaml",
-            opts=child_opts,
-        )
-
-        ConfigFile(
-            "network_policy_kube_public",
-            file="./k8s/cilium/kube-public.yaml",
-            opts=child_opts,
-        )
-
-        ConfigFile(
-            "network_policy_kubernetes_system",
-            file="./k8s/cilium/kube-system.yaml",
-            opts=child_opts,
+        self.access_general_cnp = ConfigGroup(
+            "network_policies",
+            files=[
+                "./k8s/cilium/cert_manager.yaml",
+                "./k8s/cilium/containerd_config.yaml",
+                "./k8s/cilium/harbor.yaml",
+                "./k8s/cilium/hubble.yaml",
+                "./k8s/cilium/ingress-nginx.yaml",
+                "./k8s/cilium/kube-node-lease.yaml",
+                "./k8s/cilium/kube-public.yaml",
+                "./k8s/cilium/kube-system.yaml",
+            ],
         )
 
         ConfigFile(
