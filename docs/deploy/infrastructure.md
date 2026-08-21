@@ -6,6 +6,10 @@ To read about deploying the services on top of the Kubernetes clusters see [Depl
 
 This page explains how to deploy the Kubernetes clusters for FRIDGE using Pulumi, and how to lock them down after deployment of the FRIDGE services.
 
+:::{note}
+This guide assumes that you have all [prerequistes](./overview.md#prerequisites) installed, and have set up and appropriate [Pulumi backend](./overview.md#pulumi-backend)
+:::
+
 ## Azure Kubernetes Service (AKS)
 
 The FRIDGE infrastructure can be deployed to Azure using the Azure Kubernetes Service (AKS).
