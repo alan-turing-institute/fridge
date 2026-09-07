@@ -1,0 +1,29 @@
+metadata:
+  name: input-and-output-artifact-custom-image
+  namespace: argo-workflows
+spec:
+  templates:
+    - name: s3-input-and-output-custom-image-example
+      inputs:
+        artifacts:
+          - name: rscript
+            path: /tmp/test/generate_plots.R
+            s3:
+              key: generate_plots.R
+      outputs:
+        artifacts:
+          - name: routput
+            path: /tmp/routput
+            s3:
+              key: /plot_gen.tgz
+      container:
+        image: 10.0.50.50/library/rimg:latest
+        command:
+          - sh
+          - -c
+        args:
+          - mkdir /tmp/routput; Rscript /tmp/test/generate_plots.R
+  entrypoint: s3-input-and-output-custom-image-example
+  serviceAccountName: argo-workflow
+  imagePullSecrets:
+    - name: regcred
