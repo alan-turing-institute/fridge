@@ -19,6 +19,10 @@ Trusted Research Environment
   FRIDGE assumes an existing TRE, with its own security controls and governance.
   FRIDGE places few requirements on that TRE other than establishing a connection to a FRIDGE instance.
 
+Information Governance
+: The policies, responsibilities, and processes used to ensure sensitive information is handled in accordance with legislation, external standards, data-owner requirements, and the conditions approved for a research project.
+  In FRIDGE, information governance expertise and compliance responsibility sit within the {term}`TRE Operator Organisation` and inform risk management and governance across the federation.
+
 Satellite TRE
 : An adjunct to an existing TRE that provides extra functionality or computational resources.
   A satellite TRE is not a full TRE itself, and requires a home TRE to operate.
