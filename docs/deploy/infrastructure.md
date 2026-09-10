@@ -84,6 +84,10 @@ Deployment of the infrastructure will be performed by the `Hosting Administrator
 
 ### Dawn
 
+The Dawn infrastructure in `infra/dawn` requires `sshAllowedCidrs` in the Pulumi stack configuration. Set it to the list of approved source CIDRs that may connect to the load balancer's SSH listener. The deployment requires this value rather than defaulting SSH access to the public internet.
+
+The HTTP listener on port 80 is restricted to the FRIDGE access and isolated subnets. Port 443 remains unrestricted for the current Harbor access model.
+
 On Dawn, [K3s](https://k3s.io/) is the Kubernetes distribution of choice.
 
 The `infra/dawn/` directory contains Pulumi code for the deployment of the initial networking setup and nodes for use by Kubernetes, and for the configuration of the Kubernetes clusters.
