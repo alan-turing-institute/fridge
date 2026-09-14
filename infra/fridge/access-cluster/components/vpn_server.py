@@ -216,6 +216,7 @@ class VpnServer(ComponentResource):
                     depends_on=[
                         self.haproxy_config,
                         self.netbird_data_volume,
+                        setup_key_secret,
                         self.vpn_ns,
                     ]
                 ),
