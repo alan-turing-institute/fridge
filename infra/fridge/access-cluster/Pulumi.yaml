@@ -46,6 +46,35 @@ config:
     type: string
     description: Harbor admin password
     secret: true
+  netbird:
+    value:
+      hostname:
+        type: string
+        description: Netbird hostname for the access cluster. Will be used as the peer name
+      management_url:
+        default: "https://api.netbird.io"
+        type: string
+        description: Netbird management URL for the access cluster. Defaults to NetBird Cloud
+      endpoint_overrides:
+        type: object
+        description: Optional hosts for non-standard NetBird deployments
+        properties:
+          signal:
+            type: string
+            description: Netbird signal server for the access cluster
+          stun:
+            type: string
+            description: Netbird STUN server for the access cluster
+          relay:
+            type: string
+            description: Netbird relay server for the access cluster
+          turn:
+            type: string
+            description: Netbird TURN server for the access cluster
+      setup_key:
+        type: string
+        description: Netbird setup key for the access cluster
+        secret: true
   kubernetes:context:
     value: ""
     description: Kubernetes context for the FRIDGE deployment
