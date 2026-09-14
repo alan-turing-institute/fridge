@@ -104,9 +104,9 @@ All must point to the {term}`Access Cluster` where a [K8s Ingress Controller](ht
 
 #### Proxies
 
-For {term}`Job Submitter`s, the local API interface and FRIDGE proxy provide transparent access to the FRIDGE API.
+For {term}`Job Submitters <Job Submitter>`, the local API interface and FRIDGE proxy provide transparent access to the FRIDGE API.
 It will appear to them as a service in the network of their TRE workspace with endpoints for submitting and managing jobs dispatched to the FRIDGE instance.
-Similarly, {term}`TRE Administrator`s are able to manage the K8s components of their FRIDGE instance through their own API interface.
+Similarly, {term}`TRE Administrators <TRE Administrator>` are able to manage the K8s components of their FRIDGE instance through their own API interface.
 
 The proxies and {term}`Access Cluster's <Access Cluster>` Kube API are distinct pods.
 Proxy pods run an SSH daemon and are used to pass requests through to the {term}`Isolated Cluster's <Isolated Cluster>` Kube API or FRIDGE API via an SSH tunnel.
@@ -146,7 +146,7 @@ For example, the [container repository](#arch-arch-internal-harbor).
 ### FRIDGE API
 
 The FRIDGE API provides users with endpoints to manage data, and submit and monitor jobs.
-Writing a custom API separates {term}`Job Submitter`s from the underlying implementation, so that they may use a single FRIDGE interface irrespective.
+Writing a custom API separates {term}`Job Submitters <Job Submitter>` from the underlying implementation, so that they may use a single FRIDGE interface irrespective.
 This API will then be resilient to changes to the FRIDGE [](#arch-arch-internal-workflow) and storage.
 It will also enable the creation of user-focused FRIDGE tools such as CLIs or web interfaces for job submission and management.
 
@@ -159,15 +159,15 @@ The workflow manager is an instance of [Argo Workflows](https://argoproj.github.
 (arch-arch-internal-jobns)=
 #### Job Namespace
 
-To isolate {term}`Job Submitter`s' processes from the rest of the {term}`Isolated Cluster`, including components which enforce security, jobs may only be run in a dedicated namespace.
+To isolate {term}`Job Submitters' <Job Submitter>` processes from the rest of the {term}`Isolated Cluster`, including components which enforce security, jobs may only be run in a dedicated namespace.
 This namespace has no access to external resources, other than research data and container images, and jobs are restricted to run without privileges.
 
 (arch-arch-internal-harbor)=
 ### Container Repository
 
 An instance of the [Harbor](https://goharbor.io/) container registry provides access to container images for the isolated cluster.
-It acts both as a read-through cache for allowed public registries (such as Docker Hub, Quay and GitHub Container Registry) and as a repository for {term}`Job Submitter`s' own container images.
-This allows {term}`Job Submitter`s to easily use custom software, by building a container image and pushing to the repository.
+It acts both as a read-through cache for allowed public registries (such as Docker Hub, Quay and GitHub Container Registry) and as a repository for {term}`Job Submitters' <Job Submitter>` own container images.
+This allows {term}`Job Submitters <Job Submitter>` to easily use custom software, by building a container image and pushing to the repository.
 
 ### Storage
 

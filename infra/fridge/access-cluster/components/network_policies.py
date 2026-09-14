@@ -1,6 +1,9 @@
+from urllib.parse import urlparse
+
 import pulumi
 from pulumi import ComponentResource, ResourceOptions
 from pulumi_kubernetes.apiextensions import CustomResource
+from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
 
 from enums import K8sEnvironment
@@ -51,10 +54,6 @@ class NetworkPolicies(ComponentResource):
                     "toCIDR": [args.config.require("fridge_api_ip_address")],
                     "toPorts": [{"ports": [{"port": "443", "protocol": "TCP"}]}],
                 }
-                ssh_ip_allowlist = [
-                    admin_ip
-                    for admin_ip in args.config.require_object("admin_ip_allowlist")
-                ]
             case K8sEnvironment.DAWN:
                 # Dawn uses a different external DNS server to AKS, and also runs regular jobs that do not run on AKS
                 ConfigFile(
@@ -86,9 +85,6 @@ class NetworkPolicies(ComponentResource):
                     ],  # [args.config.require("fridge_api_ip_address")],
                     "toPorts": [{"ports": [{"port": "30180", "protocol": "TCP"}]}],
                 }
-                # Note that the traffic to the SSH server comes from within the Dawn access subnet, even though it originates externally
-                # on Dawn, external traffic comes through a load balancer with CIDR restrictions, so filtering is done there
-                ssh_ip_allowlist = ["10.10.0.0/16"]
             case K8sEnvironment.K3S:
                 # K3S policies applicable for a local dev environment
                 # These could be used in any vanilla k8s + Cilium local cluster
@@ -98,68 +94,13 @@ class NetworkPolicies(ComponentResource):
                     opts=child_opts,
                 )
 
-        self.api_jumpbox_cnp = CustomResource(
-            "network_policy_api_jumpbox",
-            api_version="cilium.io/v2",
-            kind="CiliumNetworkPolicy",
-            metadata={"name": "api-jumpbox-access", "namespace": "api-jumpbox"},
-            spec={
-                "endpointSelector": {"matchLabels": {"app": "api-jumpbox"}},
-                "ingress": [
-                    {
-                        "fromEndpoints": [
-                            {
-                                "matchLabels": {
-                                    "k8s:app.kubernetes.io/name": "ingress-nginx",
-                                    "k8s:app.kubernetes.io/component": "controller",
-                                    "k8s:io.kubernetes.pod.namespace": "ingress-nginx",
-                                }
-                            }
-                        ],
-                        "toPorts": [{"ports": [{"port": "2222", "protocol": "ANY"}]}],
-                    }
-                ],
-                "egress": [
-                    {
-                        "toEndpoints": [
-                            {
-                                "matchLabels": {
-                                    "k8s:io.kubernetes.pod.namespace": "kube-system",
-                                    "k8s-app": "kube-dns",
-                                }
-                            }
-                        ],
-                        "toPorts": [
-                            {
-                                "ports": [{"port": "53", "protocol": "ANY"}],
-                                "rules": {"dns": [{"matchPattern": "*"}]},
-                            }
-                        ],
-                    },
-                    {
-                        "toEndpoints": [
-                            {
-                                "matchLabels": {
-                                    "k8s:app.kubernetes.io/name": "ingress-nginx",
-                                    "k8s:app.kubernetes.io/component": "controller",
-                                    "k8s:io.kubernetes.pod.namespace": "ingress-nginx",
-                                }
-                            }
-                        ],
-                        "toPorts": [{"ports": [{"port": "2222", "protocol": "TCP"}]}],
-                    },
-                    fridge_api_ip_rule,
-                    k8s_api_endpoint_rule,
-                ],
-            },
-            opts=child_opts,
-        )
-
         self.cert_manager_to_harbor = CustomResource(
             "network_policy_cert_manager_to_harbor",
             api_version="cilium.io/v2",
             kind="CiliumNetworkPolicy",
-            metadata={"name": "cert-manager-to-harbor", "namespace": "cert-manager"},
+            metadata=ObjectMetaArgs(
+                name="cert-manager-to-harbor", namespace="cert-manager"
+            ),
             spec={
                 "endpointSelector": {"matchLabels": {"app": "cert-manager"}},
                 "egress": [
@@ -191,40 +132,6 @@ class NetworkPolicies(ComponentResource):
             opts=child_opts,
         )
 
-        self.api_ssh_ingress_cnp = CustomResource(
-            "network_policy_api_ssh_ingress",
-            api_version="cilium.io/v2",
-            kind="CiliumNetworkPolicy",
-            metadata={"name": "enable-ssh-access", "namespace": "ingress-nginx"},
-            spec={
-                "endpointSelector": {
-                    "matchLabels": {
-                        "k8s:app.kubernetes.io/name": "ingress-nginx",
-                        "k8s:app.kubernetes.io/component": "controller",
-                    }
-                },
-                "ingress": [
-                    {
-                        "fromCIDR": ssh_ip_allowlist,
-                        "toPorts": [{"ports": [{"port": "2222", "protocol": "TCP"}]}],
-                    }
-                ],
-                "egress": [
-                    {
-                        "toServices": [
-                            {
-                                "k8sService": {
-                                    "serviceName": "api-jumpbox-service",
-                                    "namespace": "api-jumpbox",
-                                }
-                            }
-                        ]
-                    }
-                ],
-            },
-            opts=child_opts,
-        )
-
         self.access_general_cnp = ConfigGroup(
             "network_policies",
             files=[
@@ -236,13 +143,121 @@ class NetworkPolicies(ComponentResource):
                 "./k8s/cilium/kube-node-lease.yaml",
                 "./k8s/cilium/kube-public.yaml",
                 "./k8s/cilium/kube-system.yaml",
+                "./k8s/cilium/prometheus.yaml",
             ],
         )
 
-        # Add network policy to allow Prometheus monitoring for resources already deployed on Dawn
-        # On Dawn, Prometheus is also already deployed
-        ConfigFile(
-            "network_policy_prometheus",
-            file="./k8s/cilium/prometheus.yaml",
+        # Configure NetBird network policies
+        netbird_config = args.config.require_object("netbird")
+        management_url = urlparse(netbird_config.get("management_url")).hostname
+        if not management_url:
+            raise ValueError(
+                "Invalid management_url in Netbird configuration: must be a valid URL"
+            )
+
+        is_cloud_netbird = management_url == "api.netbird.io"
+
+        default_hosts = (
+            {
+                "signal": "signal.netbird.io",
+                "stun": "stun.netbird.io",
+                "relay": "relay.netbird.io",
+                "turn": "turn.netbird.io",
+            }
+            if is_cloud_netbird
+            else {
+                "signal": management_url,
+                "stun": management_url,
+                "relay": management_url,
+                "turn": management_url,
+            }
+        )
+
+        overrides = netbird_config.get("endpoint_overrides", {})
+        netbird_hosts = (
+            default_hosts | overrides
+        )  # Merge default hosts with any overrides provided in the config
+
+        netbird_dns_rules = [
+            {"matchName": management_url},
+            {"matchName": netbird_hosts["signal"]},
+            {"matchName": netbird_hosts["stun"]},
+            {"matchName": netbird_hosts["relay"]},
+            {"matchName": netbird_hosts["turn"]},
+            {"matchPattern": f"*.{netbird_hosts['relay']}"},
+            {"matchPattern": "*.vpn-server.svc.cluster.local"},
+        ]
+
+        netbird_egress_rules = [
+            {
+                "toEndpoints": [
+                    {
+                        "matchLabels": {
+                            "k8s:io.kubernetes.pod.namespace": "kube-system",
+                            "k8s-app": "kube-dns",
+                        }
+                    }
+                ],
+                "toPorts": [
+                    {
+                        "ports": [{"port": "53", "protocol": "ANY"}],
+                        "rules": {"dns": netbird_dns_rules},
+                    }
+                ],
+            },
+            {
+                "toFQDNs": [
+                    {"matchName": management_url},
+                    {"matchName": netbird_hosts["signal"]},
+                    {"matchName": netbird_hosts["relay"]},
+                    {"matchPattern": f"*.{netbird_hosts['relay']}"},
+                ],
+                "toPorts": [{"ports": [{"port": "443", "protocol": "TCP"}]}],
+            },
+            {
+                "toFQDNs": [{"matchName": netbird_hosts["stun"]}],
+                "toPorts": [
+                    {
+                        "ports": [
+                            {"port": "80", "protocol": "UDP"},
+                            {"port": "443", "protocol": "UDP"},
+                            {"port": "3478", "protocol": "UDP"},
+                            {"port": "5555", "protocol": "UDP"},
+                        ]
+                    }
+                ],
+            },
+            {
+                "toFQDNs": [{"matchName": netbird_hosts["turn"]}],
+                "toPorts": [
+                    {
+                        "ports": [
+                            {"port": "80", "protocol": "UDP"},
+                            {"port": "443", "protocol": "UDP"},
+                            {"port": "443", "endPort": 65535, "protocol": "TCP"},
+                        ]
+                    }
+                ],
+            },
+        ]
+
+        if args.k8s_environment == K8sEnvironment.AKS:
+            netbird_dns_rules.append(
+                {"matchName": args.config.require("isolated_cluster_api_endpoint")}
+            )
+
+        self.vpn_server_cnp_custom = CustomResource(
+            "network_policy_vpn_server_custom",
+            api_version="cilium.io/v2",
+            kind="CiliumNetworkPolicy",
+            metadata=ObjectMetaArgs(name="vpn-server-custom", namespace="vpn-server"),
+            spec={
+                "endpointSelector": {"matchLabels": {"app": "netbird-proxy"}},
+                "egress": netbird_egress_rules
+                + [
+                    fridge_api_ip_rule,
+                    k8s_api_endpoint_rule,
+                ],
+            },
             opts=child_opts,
         )

@@ -2,15 +2,13 @@ from pulumi import ComponentResource, Output, ResourceOptions
 from pulumi_kubernetes.core.v1 import Namespace, Service
 from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
-from .fridge_api_jumpbox import FridgeAPIJumpbox
 
 from enums import K8sEnvironment, PodSecurityStandard, SoftwareVersion
 
 
 class IngressArgs:
-    def __init__(self, api_jumpbox: FridgeAPIJumpbox, k8s_environment: K8sEnvironment):
+    def __init__(self, k8s_environment: K8sEnvironment):
         self.k8s_environment = k8s_environment
-        self.api_jumpbox = api_jumpbox
 
 
 class Ingress(ComponentResource):
@@ -49,16 +47,7 @@ class Ingress(ComponentResource):
                                 "service": {
                                     "externalTrafficPolicy": "Local",
                                 },
-                            },
-                            "tcp": {
-                                "2222": Output.concat(
-                                    args.api_jumpbox.api_jumpbox_ns.metadata.name,
-                                    "/",
-                                    args.api_jumpbox.api_jumpbox_service.metadata.name,
-                                    ":",
-                                    "2222",
-                                ),
-                            },
+                            }
                         },
                     ),
                     opts=ResourceOptions.merge(

@@ -23,6 +23,7 @@ project:
       children:
         - file: deploy/overview.md
         - file: deploy/infrastructure.md
+        - file: deploy/netbird.md
         - file: deploy/services.md
     - title: Develop
       children:
