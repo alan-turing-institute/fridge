@@ -38,9 +38,9 @@ async def get_object(
     return minio_client.get_object(bucket, file_name, target_file, version)
 
 
-@router.get("/object/{bucket}/list", tags=["s3"])
+@router.get("/object/list", tags=["s3"])
 async def list_objects(
-    bucket: str,
+    bucket: Literal["ingress", "egress"] = "ingress",
     prefix: str | None = None,
     recursive: bool = False,
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
