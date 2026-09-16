@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.6.0]
+
+- Allows users to list files in the ingress and egress buckets
+
 ## [0.5.1]
 
 - Fix issue where MinIO auth token expired after one hour, so readiness check would fail
