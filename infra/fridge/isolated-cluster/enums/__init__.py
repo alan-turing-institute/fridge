@@ -32,6 +32,7 @@ class SoftwareVersion(Enum):
     ARGO_WORKFLOWS = "0.45.20"  # Corresponds to Argo Workflows v3.6.10
     CERT_MANAGER = "1.17.1"
     FRIDGE_API = "0.6.0"
+    HAPROXY = "3.3.7"
     INTEL_GPU_OPERATOR = "0.35.0"
     LONGHORN = "1.9.0"
     MINIO_MC = "RELEASE.2025-08-13T08-35-41Z"
