@@ -29,7 +29,7 @@ tls_issuer_names = {
 
 
 class SoftwareVersion(Enum):
-    ARGO_WORKFLOWS = "0.45.20"  # Corresponds to Argo Workflows v3.6.10
+    ARGO_WORKFLOWS = "0.47.5"  # Corresponds to Argo Workflows v3.7.11
     CERT_MANAGER = "1.17.1"
     FRIDGE_API = "0.5.1"
     INTEL_GPU_OPERATOR = "0.35.0"
