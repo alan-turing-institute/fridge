@@ -38,6 +38,18 @@ async def get_object(
     return minio_client.get_object(bucket, file_name, target_file, version)
 
 
+@router.get("/object/{bucket}/list", tags=["s3"])
+async def list_objects(
+    bucket: str,
+    prefix: str | None = None,
+    recursive: bool = False,
+    verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
+        verify_request
+    ),
+):
+    return minio_client.list_objects(bucket, prefix, recursive)
+
+
 # Trigger Argo workflow
 @router.post("/object/move", tags=["s3"])
 async def move_object(
