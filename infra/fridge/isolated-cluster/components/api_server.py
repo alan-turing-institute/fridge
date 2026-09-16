@@ -389,7 +389,7 @@ class ApiServer(ComponentResource):
                     ServicePortArgs(
                         protocol="TCP",
                         port=443,
-                        target_port=8000,
+                        target_port=8443,
                     )
                 ],
             )
@@ -402,7 +402,7 @@ class ApiServer(ComponentResource):
                         protocol="TCP",
                         node_port=30180,
                         port=80,
-                        target_port=8000,
+                        target_port=8443,
                     )
                 ],
             )
