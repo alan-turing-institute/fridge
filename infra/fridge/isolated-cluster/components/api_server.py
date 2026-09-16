@@ -286,7 +286,26 @@ class ApiServer(ComponentResource):
                                         read_only=True,
                                     ),
                                 ],
-                            )
+                            ),
+                            ContainerArgs(
+                                name="haproxy",
+                                image=f"haproxy:{SoftwareVersion.HAPROXY.value}",
+                                ports=[
+                                    ContainerPortArgs(
+                                        container_port=8000, protocol="TCP"
+                                    ),
+                                    ContainerPortArgs(
+                                        container_port=6443, protocol="TCP"
+                                    ),
+                                ],
+                                volume_mounts=[
+                                    VolumeMountArgs(
+                                        name="haproxy-config",
+                                        mount_path="/usr/local/etc/haproxy/haproxy.cfg",
+                                        sub_path="haproxy.cfg",
+                                    ),
+                                ],
+                            ),
                         ],
                         service_account_name=fridge_api_sa.metadata.name,
                         volumes=[
