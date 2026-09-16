@@ -4,6 +4,8 @@ from pulumi_kubernetes.apiextensions import CustomResource
 from pulumi_kubernetes.apps.v1 import Deployment, DeploymentSpecArgs
 from pulumi_kubernetes.core.v1 import (
     CapabilitiesArgs,
+    ConfigMap,
+    ConfigMapVolumeSourceArgs,
     ContainerArgs,
     ContainerPortArgs,
     EnvFromSourceArgs,
@@ -205,6 +207,21 @@ class ApiServer(ComponentResource):
             ),
         )
 
+        with open("./k8s/haproxy/haproxy.cfg", "r") as f:
+            haproxy_cfg_file = f.read()
+
+        haproxy_config = ConfigMap(
+            "haproxy-config",
+            metadata=ObjectMetaArgs(
+                namespace=api_server_ns.metadata.name,
+                name="fridge-api-haproxy-config",
+            ),
+            data={
+                "haproxy.cfg": haproxy_cfg_file,
+            },
+            opts=child_opts,
+        )
+
         fridge_api_server = Deployment(
             "fridge-api-server",
             metadata=ObjectMetaArgs(
@@ -292,10 +309,7 @@ class ApiServer(ComponentResource):
                                 image=f"haproxy:{SoftwareVersion.HAPROXY.value}",
                                 ports=[
                                     ContainerPortArgs(
-                                        container_port=8000, protocol="TCP"
-                                    ),
-                                    ContainerPortArgs(
-                                        container_port=6443, protocol="TCP"
+                                        container_port=8443, protocol="TCP"
                                     ),
                                 ],
                                 volume_mounts=[
@@ -340,6 +354,12 @@ class ApiServer(ComponentResource):
                                 name="tls-trust-bundle",
                                 secret=SecretVolumeSourceArgs(
                                     secret_name="trusted-certificates",
+                                ),
+                            ),
+                            VolumeArgs(
+                                name="haproxy-config",
+                                config_map=ConfigMapVolumeSourceArgs(
+                                    name=haproxy_config.metadata.name
                                 ),
                             ),
                         ],
