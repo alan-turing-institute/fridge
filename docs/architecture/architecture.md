@@ -92,7 +92,7 @@ In the event of container breakout, or otherwise compromising the K8s nodes, the
 
 #### Bastion
 
-To avoid publicly exposing the Kube API of the {term}`Access Cluster`, some sort of bastion (for example a virtual machine running an SSH server, or Wireguard) should be used.
+To avoid publicly exposing the Kube API of the {term}`Access Cluster`, some sort of bastion (for example a virtual machine running an SSH server, or WireGuard) should be used.
 The nature of this bastion may vary between implementations.
 
 #### Router and Ingress
@@ -113,14 +113,13 @@ The {term}`Access Cluster` provides a controlled VPN connection to the FRIDGE te
 Traffic from authorised peers is received by the {term}`Access Cluster` and forwarded by a reverse proxy to the permitted services in the {term}`Isolated Cluster`.
 This provides access to the FRIDGE API for {term}`Job Submitters <Job Submitter>`, and the to {term}`Isolated Cluster` Kubernetes API for {term}`TRE Administrators`.
 
-
-
 NetBird Groups and policies control which users and administrators may access the FRIDGE services.
+The VPN route does not provide general access to either network.
 
-For {term}`Job Submitters <Job Submitter>`, the local API interface is linked to a VPN Agent accessible from the home TRE.
+For {term}`Job Submitters <Job Submitter>`, the FRIDGE API is made available through a local API interface in the {term}`Home TRE`, connected to the FRIDGE through the VPN.
 It presents to them as a service in the network of their TRE workspace with endpoints for submitting and managing jobs dispatched to the FRIDGE instance.
 
-Similarly, {term}`TRE Administrators <TRE Administrator>` are able to manage the K8s components of their FRIDGE instance through their own API interface, again, presented via a VPN agent.
+Similarly, {term}`TRE Administrators <TRE Administrator>` are able to manage the K8s components of their FRIDGE instance through their own API interface.
 
 (arch-arch-internal)=
 ## FRIDGE internal
