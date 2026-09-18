@@ -67,11 +67,11 @@ A high-level overview of a FRIDGE instance, showing the home TRE and {term}`TRE 
 However, there are some requirements which must be met by all implementations,
 
 - No traffic is allowed between the {term}`Access Network` and {term}`Isolated Network` except for,
-  - Kube Proxy to Kube API,
-  - FRIDGE Proxy to FRIDGE API,
+  - traffic to Kube API from the VPN Agent,
+  - traffic to FRIDGE API from the VPN Agent,
   - Container Runtime to Container Repository.
 - No outbound traffic is allowed from the {term}`Isolated Network`, except for that described above.
-- No outbound traffic is allowed from the {term}`Access Network`, except to select container repositories.
+- No outbound traffic is allowed from the {term}`Access Network`, except to select container repositories and the management server of the VPN.
 - Both the {term}`Access Network` and {term}`Isolated Network` must be isolated from other networks on the {term}`FRIDGE Hosting Organisation's <FRIDGE Hosting Organisation>` infrastructure.
 - On a cloud-like system, the {term}`TRE Tenancy` must be isolated from any other tenancies.
   For example, it must not be possible to share resources from the {term}`TRE Tenancy` with other tenants.
