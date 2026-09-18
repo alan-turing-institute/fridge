@@ -106,21 +106,24 @@ At present, the only service exposed using this route is the Harbor container re
 
 Access to the {term}`Access Cluster` Kubernetes API is through the bastion route, and onward access to the {term}`Isolated Cluster` Kubernetes API and FRIDGE API is managed using the NetBird VPN route.
 
-#### NetBird VPN route
+#### NetBird VPN
 
-For {term}`Job Submitters <Job Submitter>`, the local API interface, VPN Agent, and HAProxy provide transparent access to the FRIDGE API.
+The {term}`Access Cluster` contains a pod with two containers:
+
+- a NetBird agent, which provides the FRIDGE peer on the VPN mesh
+- an HAProxy instance, which forwards permitted TCP connections to services in the {term}`Isolated Cluster`
+
+HAProxy exposes two ports over the NetBird peer:
+
+- port `8000` forwards to the FRIDGE API
+- port `6443` forwards to the {term}`Isolated Cluster` Kubernetes API
+
+Access control for the VPN is managed through NetBird. NetBird Groups distinguish between {term}`TRE Administrators` NetBird policies allow {term}`Job Submitters <Job Submitter>`
+
+For {term}`Job Submitters <Job Submitter>`, the local API interface is linked to a VPN Agent accessible from the home TRE.
+
 It will appear to them as a service in the network of their TRE workspace with endpoints for submitting and managing jobs dispatched to the FRIDGE instance.
 Similarly, {term}`TRE Administrators <TRE Administrator>` are able to manage the K8s components of their FRIDGE instance through their own API interface.
-
-The proxies and {term}`Access Cluster's <Access Cluster>` Kube API are distinct pods.
-The proxy pod runs a NetBird agent and a reverse proxy/load balancer to distribute traffic received over the VPN mesh overlay.
-
-The traffic allowed over the mesh overlay network is controlled using the NetBird Management console.
-
-Proxy pods run an SSH daemon and are used to pass requests through to the {term}`Isolated Cluster's <Isolated Cluster>` Kube API or FRIDGE API via an SSH tunnel.
-Each API Interface at the {term}`Home TRE` is required to generate an SSH key pair.
-Hence by installing the correct public key on each proxy, the {term}`TRE Operator Organisation` can control who has access to the APIs in the {term}`Isolated Cluster`.
-It would also be possible to further restrict traffic through network controls such as IP allowlists or exposing the {term}`Access Cluster` only through a VPN.
 
 (arch-arch-internal)=
 ## FRIDGE internal
@@ -148,7 +151,6 @@ This is in addition to the network isolation enforced by the [networks](#arch-ar
 [cert-manager](https://cert-manager.io/) will automatically provision and renew TLS certificates for services which can be reached over HTTPS.
 For example, the [container repository](#arch-arch-internal-harbor).
 
-### Proxies
 
 (arch-arch-internal-api)=
 ### FRIDGE API
