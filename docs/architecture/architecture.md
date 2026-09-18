@@ -108,22 +108,19 @@ Access to the {term}`Access Cluster` Kubernetes API is through the bastion route
 
 #### NetBird VPN
 
-The {term}`Access Cluster` contains a pod with two containers:
+The {term}`Access Cluster` provides a controlled VPN connection to the FRIDGE tenancy using [NetBird](https://netbird.io)
 
-- a NetBird agent, which provides the FRIDGE peer on the VPN mesh
-- an HAProxy instance, which forwards permitted TCP connections to services in the {term}`Isolated Cluster`
+Traffic from authorised peers is received by the {term}`Access Cluster` and forwarded by a reverse proxy to the permitted services in the {term}`Isolated Cluster`.
+This provides access to the FRIDGE API for {term}`Job Submitters <Job Submitter>`, and the to {term}`Isolated Cluster` Kubernetes API for {term}`TRE Administrators`.
 
-HAProxy exposes two ports over the NetBird peer:
 
-- port `8000` forwards to the FRIDGE API
-- port `6443` forwards to the {term}`Isolated Cluster` Kubernetes API
 
-Access control for the VPN is managed through NetBird. NetBird Groups distinguish between {term}`TRE Administrators` NetBird policies allow {term}`Job Submitters <Job Submitter>`
+NetBird Groups and policies control which users and administrators may access the FRIDGE services.
 
 For {term}`Job Submitters <Job Submitter>`, the local API interface is linked to a VPN Agent accessible from the home TRE.
+It presents to them as a service in the network of their TRE workspace with endpoints for submitting and managing jobs dispatched to the FRIDGE instance.
 
-It will appear to them as a service in the network of their TRE workspace with endpoints for submitting and managing jobs dispatched to the FRIDGE instance.
-Similarly, {term}`TRE Administrators <TRE Administrator>` are able to manage the K8s components of their FRIDGE instance through their own API interface.
+Similarly, {term}`TRE Administrators <TRE Administrator>` are able to manage the K8s components of their FRIDGE instance through their own API interface, again, presented via a VPN agent.
 
 (arch-arch-internal)=
 ## FRIDGE internal
