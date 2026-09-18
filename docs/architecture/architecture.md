@@ -92,7 +92,7 @@ In the event of container breakout, or otherwise compromising the K8s nodes, the
 
 #### Bastion
 
-To avoid publicly exposing the Kube API of the {term}`Access Cluster`, some sort of bastion (for example a virtual machine running an SSH server, or wireguard) should be used.
+To avoid publicly exposing the Kube API of the {term}`Access Cluster`, some sort of bastion (for example a virtual machine running an SSH server, or Wireguard) should be used.
 The nature of this bastion may vary between implementations.
 
 #### Router and Ingress
@@ -100,15 +100,23 @@ The nature of this bastion may vary between implementations.
 To correctly route traffic intended for the {term}`Access Cluster`, a router or reverse proxy is used.
 This may route traffic based on port, hostname, prefix or some combination.
 The nature of this may vary between implementations.
+
 All must point to the {term}`Access Cluster` where a [K8s Ingress Controller](https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/) will direct traffic to the correct service.
+At present, the only service exposed using this route is the Harbor container registry hosted in the {term}`Access Cluster`.
 
-#### Proxies
+Access to the {term}`Access Cluster` Kubernetes API is through the bastion route, and onward access to the {term}`Isolated Cluster` Kubernetes API and FRIDGE API is managed using the NetBird VPN route.
 
-For {term}`Job Submitters <Job Submitter>`, the local API interface and FRIDGE proxy provide transparent access to the FRIDGE API.
+#### NetBird VPN route
+
+For {term}`Job Submitters <Job Submitter>`, the local API interface, VPN Agent, and HAProxy provide transparent access to the FRIDGE API.
 It will appear to them as a service in the network of their TRE workspace with endpoints for submitting and managing jobs dispatched to the FRIDGE instance.
 Similarly, {term}`TRE Administrators <TRE Administrator>` are able to manage the K8s components of their FRIDGE instance through their own API interface.
 
 The proxies and {term}`Access Cluster's <Access Cluster>` Kube API are distinct pods.
+The proxy pod runs a NetBird agent and a reverse proxy/load balancer to distribute traffic received over the VPN mesh overlay.
+
+The traffic allowed over the mesh overlay network is controlled using the NetBird Management console.
+
 Proxy pods run an SSH daemon and are used to pass requests through to the {term}`Isolated Cluster's <Isolated Cluster>` Kube API or FRIDGE API via an SSH tunnel.
 Each API Interface at the {term}`Home TRE` is required to generate an SSH key pair.
 Hence by installing the correct public key on each proxy, the {term}`TRE Operator Organisation` can control who has access to the APIs in the {term}`Isolated Cluster`.
