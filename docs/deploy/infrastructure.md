@@ -21,7 +21,7 @@ The deploying account must therefore be able to create these role assignments, i
 
 This project deploys two AKS clusters: an `access` cluster and an `isolated` cluster.
 
-The `access` cluster will host the Harbor container registry and an SSH server for accessing the `isolated` cluster.
+The `access` cluster will host the Harbor container registry, and a VPN agent and reverse proxy for accessing the `isolated` cluster.
 
 The `isolated` cluster will host the main FRIDGE services.
 
@@ -31,15 +31,6 @@ Each cluster is deployed to its own VNet.
 You will need to supply the desired CIDR for each VNet in the Pulumi configuration, and desired subnet within those VNets for the AKS nodes to be deployed to.
 
 Basic Network Security Groups (NSGs) will also be set up for the VNets.
-
-:::{important}
-Note that when the `TRE Administrators` deploy FRIDGE services to the access cluster, the services will include an SSH server listening on port 2222.
-
-The `TRE Administrators` must supply a range of IP addresses from which the server should accept connections.
-These must be provided as CIDRs using the `admin_ip_allowlist` field of the Pulumi configuration file.
-
-The initial Network Security Group setup will restrict incoming traffic on port 2222 to the IP addresses they provide.
-:::
 
 ### Deploying the AKS infrastructure with Pulumi
 
