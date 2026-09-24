@@ -114,7 +114,8 @@ Traffic from authorised peers is received by the {term}`Access Cluster` and forw
 This provides access to the FRIDGE API for {term}`Job Submitters <Job Submitter>`, and the to {term}`Isolated Cluster` Kubernetes API for {term}`TRE Administrators`.
 
 NetBird Groups and policies control which users and administrators may access the FRIDGE services.
-The VPN route does not provide general access to either network.
+The VPN route does not provide general access to either the access or isolated virtual networks.
+Traffic is only to permitted to specific endpoints.
 
 For {term}`Job Submitters <Job Submitter>`, the FRIDGE API is made available through a local API interface in the {term}`Home TRE`, connected to the FRIDGE through the VPN.
 It presents to them as a service in their {term}`Home TRE` network with endpoints for submitting and managing FRIDGE jobs.
