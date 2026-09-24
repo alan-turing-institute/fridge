@@ -117,7 +117,7 @@ NetBird Groups and policies control which users and administrators may access th
 The VPN route does not provide general access to either network.
 
 For {term}`Job Submitters <Job Submitter>`, the FRIDGE API is made available through a local API interface in the {term}`Home TRE`, connected to the FRIDGE through the VPN.
-It presents to them as a service in the network of their TRE workspace with endpoints for submitting and managing jobs dispatched to the FRIDGE instance.
+It presents to them as a service in their {term}`Home TRE` network with endpoints for submitting and managing FRIDGE jobs.
 
 Similarly, {term}`TRE Administrators <TRE Administrator>` are able to manage the K8s components of their FRIDGE instance through their own API interface.
 
