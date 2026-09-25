@@ -338,6 +338,18 @@ class ApiServer(ComponentResource):
                                         container_port=8443, protocol="TCP"
                                     ),
                                 ],
+                                security_context=SecurityContextArgs(
+                                    allow_privilege_escalation=False,
+                                    capabilities=CapabilitiesArgs(
+                                        drop=["ALL"],
+                                    ),
+                                    run_as_user=1001,
+                                    run_as_group=3000,
+                                    run_as_non_root=True,
+                                    seccomp_profile=SeccompProfileArgs(
+                                        type="RuntimeDefault"
+                                    ),
+                                ),
                                 volume_mounts=[
                                     VolumeMountArgs(
                                         name="haproxy-config",
@@ -386,6 +398,12 @@ class ApiServer(ComponentResource):
                                 name="haproxy-config",
                                 config_map=ConfigMapVolumeSourceArgs(
                                     name=haproxy_config.metadata.name
+                                ),
+                            ),
+                            VolumeArgs(
+                                name="fridge-api-tls",
+                                secret=SecretVolumeSourceArgs(
+                                    secret_name=fridge_api_tls_cert.spec["secretName"],
                                 ),
                             ),
                         ],
