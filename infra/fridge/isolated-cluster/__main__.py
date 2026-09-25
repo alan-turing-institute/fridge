@@ -172,6 +172,7 @@ api_server = components.ApiServer(
     args=components.ApiServerArgs(
         argo_server_ns=argo_workflows.argo_server_ns,
         argo_workflows_ns=argo_workflows.argo_workflows_ns,
+        cluster_issuer=cert_manager.cert_manager_dev_issuer,
         config=config,
         minio_url=minio.minio_cluster_url,
         minio_tenant_name=minio.minio_tenant_name,
