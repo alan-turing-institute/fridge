@@ -8,6 +8,7 @@ from pulumi_kubernetes.core.v1 import (
     ConfigMapVolumeSourceArgs,
     ContainerArgs,
     ContainerPortArgs,
+    EmptyDirVolumeSourceArgs,
     EnvFromSourceArgs,
     HTTPGetActionArgs,
     Namespace,
@@ -225,12 +226,12 @@ class ApiServer(ComponentResource):
         )
 
         fridge_api_tls_cert = CustomResource(
-            "minio-tenant-certificate",
+            "fridge-api-certificate",
             api_version="cert-manager.io/v1",
             kind="Certificate",
             metadata=ObjectMetaArgs(
                 name="fridge-api-tls",
-                namespace=self.api_server_ns.metadata.name,
+                namespace=api_server_ns.metadata.name,
             ),
             spec={
                 "secretName": "fridge-api-tls",
@@ -238,13 +239,13 @@ class ApiServer(ComponentResource):
                     "name": args.cluster_issuer.metadata["name"],
                     "kind": "ClusterIssuer",
                 },
-                "dnsNames": [
-                    args.config.require("fridge_api"),
+                "ipAddresses": [
+                    args.config.require("fridge_api_ip"),
                 ],
             },
             opts=ResourceOptions.merge(
                 child_opts,
-                ResourceOptions(depends_on=[self.api_server_ns]),
+                ResourceOptions(depends_on=[api_server_ns]),
             ),
         )
 
@@ -260,6 +261,40 @@ class ApiServer(ComponentResource):
                 template=PodTemplateSpecArgs(
                     metadata=ObjectMetaArgs(labels={"app": "fridge-api-server"}),
                     spec=PodSpecArgs(
+                        init_containers=[
+                            ContainerArgs(
+                                name="haproxy-cert-init",
+                                image="alpine:3.20",
+                                command=[
+                                    "/bin/sh",
+                                    "-c",
+                                    "cat /tls/tls,crt /tls/tls.key > /haproxy/certs/fridge_api.pem",
+                                ],
+                                security_context=SecurityContextArgs(
+                                    allow_privilege_escalation=False,
+                                    capabilities=CapabilitiesArgs(
+                                        drop=["ALL"],
+                                    ),
+                                    run_as_user=1001,
+                                    run_as_group=3000,
+                                    run_as_non_root=True,
+                                    seccomp_profile=SeccompProfileArgs(
+                                        type="RuntimeDefault"
+                                    ),
+                                ),
+                                volume_mounts=[
+                                    VolumeMountArgs(
+                                        name="fridge-api-tls",
+                                        mount_path="/tls",
+                                        read_only=True,
+                                    ),
+                                    VolumeMountArgs(
+                                        name="haproxy-certs",
+                                        mount_path="/haproxy/certs",
+                                    ),
+                                ],
+                            ),
+                        ],
                         containers=[
                             ContainerArgs(
                                 name="fridge-api-server",
@@ -356,6 +391,11 @@ class ApiServer(ComponentResource):
                                         mount_path="/usr/local/etc/haproxy/haproxy.cfg",
                                         sub_path="haproxy.cfg",
                                     ),
+                                    VolumeMountArgs(
+                                        name="fridge-api-tls",
+                                        mount_path="/usr/local/etc/haproxy/certs",
+                                        read_only=True,
+                                    ),
                                 ],
                             ),
                         ],
@@ -399,6 +439,10 @@ class ApiServer(ComponentResource):
                                 config_map=ConfigMapVolumeSourceArgs(
                                     name=haproxy_config.metadata.name
                                 ),
+                            ),
+                            VolumeArgs(
+                                name="haproxy-certs",
+                                empty_dir=EmptyDirVolumeSourceArgs(),
                             ),
                             VolumeArgs(
                                 name="fridge-api-tls",
