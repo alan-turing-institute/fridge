@@ -53,6 +53,7 @@ class ApiServerArgs:
         argo_workflows_ns: str,
         cluster_issuer: CustomResource,
         config: pulumi.Config,
+        fridge_api_ip: Output[str],
         minio_tenant_name: str,
         minio_url: Output[str],
         verify_tls: bool = True,
@@ -60,6 +61,7 @@ class ApiServerArgs:
         self.argo_server_ns = argo_server_ns
         self.argo_workflows_ns = argo_workflows_ns
         self.config = config
+        self.fridge_api_ip = fridge_api_ip
         self.minio_tenant_name = minio_tenant_name
         self.minio_url = minio_url
         self.cluster_issuer = cluster_issuer
@@ -225,6 +227,10 @@ class ApiServer(ComponentResource):
             opts=child_opts,
         )
 
+        fridge_api_ip_raw = args.fridge_api_ip.apply(
+            lambda ip: ip.split("/")[0] if "/" in ip else ip
+        )
+
         fridge_api_tls_cert = CustomResource(
             "fridge-api-certificate",
             api_version="cert-manager.io/v1",
@@ -240,7 +246,7 @@ class ApiServer(ComponentResource):
                     "kind": "ClusterIssuer",
                 },
                 "ipAddresses": [
-                    args.config.require("fridge_api_ip"),
+                    fridge_api_ip_raw,
                 ],
             },
             opts=ResourceOptions.merge(
@@ -268,7 +274,7 @@ class ApiServer(ComponentResource):
                                 command=[
                                     "/bin/sh",
                                     "-c",
-                                    "cat /tls/tls,crt /tls/tls.key > /haproxy/certs/fridge_api.pem",
+                                    "cat /tls/tls.crt /tls/tls.key > /haproxy/certs/fridge_api.pem",
                                 ],
                                 security_context=SecurityContextArgs(
                                     allow_privilege_escalation=False,
@@ -392,7 +398,7 @@ class ApiServer(ComponentResource):
                                         sub_path="haproxy.cfg",
                                     ),
                                     VolumeMountArgs(
-                                        name="fridge-api-tls",
+                                        name="haproxy-certs",
                                         mount_path="/usr/local/etc/haproxy/certs",
                                         read_only=True,
                                     ),
