@@ -50,6 +50,7 @@ class ApiServerArgs:
         self,
         argo_server_ns: str,
         argo_workflows_ns: str,
+        cluster_issuer: CustomResource,
         config: pulumi.Config,
         minio_tenant_name: str,
         minio_url: Output[str],
@@ -60,6 +61,7 @@ class ApiServerArgs:
         self.config = config
         self.minio_tenant_name = minio_tenant_name
         self.minio_url = minio_url
+        self.cluster_issuer = cluster_issuer
         self.verify_tls = verify_tls
 
 
@@ -220,6 +222,30 @@ class ApiServer(ComponentResource):
                 "haproxy.cfg": haproxy_cfg_file,
             },
             opts=child_opts,
+        )
+
+        fridge_api_tls_cert = CustomResource(
+            "minio-tenant-certificate",
+            api_version="cert-manager.io/v1",
+            kind="Certificate",
+            metadata=ObjectMetaArgs(
+                name="fridge-api-tls",
+                namespace=self.api_server_ns.metadata.name,
+            ),
+            spec={
+                "secretName": "fridge-api-tls",
+                "issuerRef": {
+                    "name": args.cluster_issuer.metadata["name"],
+                    "kind": "ClusterIssuer",
+                },
+                "dnsNames": [
+                    args.config.require("fridge_api"),
+                ],
+            },
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(depends_on=[self.api_server_ns]),
+            ),
         )
 
         fridge_api_server = Deployment(
