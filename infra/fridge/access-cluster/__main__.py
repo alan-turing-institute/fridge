@@ -94,6 +94,19 @@ harbor = components.ContainerRegistry(
     ),
 )
 
+# Monitoring stack
+monitoring = components.Monitoring(
+    "monitoring",
+    components.MonitoringArgs(
+        config=config,
+        k8s_environment=k8s_environment,
+    ),
+    opts=ResourceOptions(
+        depends_on=[ingress_nginx, cert_manager],
+    ),
+)
+
+# Vpn server
 vpn_server = components.VpnServer(
     "vpn-server",
     components.VpnServerArgs(
