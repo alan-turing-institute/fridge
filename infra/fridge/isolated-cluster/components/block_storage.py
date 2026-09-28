@@ -1,5 +1,5 @@
 import pulumi
-from pulumi import ComponentResource, Output, ResourceOptions
+from pulumi import ComponentResource, ResourceOptions
 from pulumi_kubernetes.core.v1 import (
     PersistentVolumeClaim,
     PersistentVolumeClaimSpecArgs,
