@@ -326,7 +326,7 @@ class ApiServer(ComponentResource):
                                 ports=[ContainerPortArgs(container_port=8000)],
                                 readiness_probe=ProbeArgs(
                                     http_get=HTTPGetActionArgs(
-                                        path="/readyz", port=8000
+                                        path="/readyz", port=8443, scheme="HTTPS"
                                     ),
                                     initial_delay_seconds=10,
                                     period_seconds=30,
