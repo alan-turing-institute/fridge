@@ -1,6 +1,6 @@
 import pulumi
 from pulumi import ComponentResource, ResourceOptions
-from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
+from pulumi_kubernetes.yaml.v2 import ConfigFile, ConfigGroup
 
 from enums import K8sEnvironment
 
@@ -66,7 +66,7 @@ class NetworkPolicies(ComponentResource):
                 "./k8s/cilium/argo_server.yaml",
                 "./k8s/cilium/argo_workflows.yaml",
                 "./k8s/cilium/cert_manager.yaml",
-                "./k8s/cilium/fridge_api.yaml",
+                "./k8s/cilium/fridge-api.yaml",
                 "./k8s/cilium/hubble.yaml",
                 "./k8s/cilium/kube-node-lease.yaml",
                 "./k8s/cilium/kube-public.yaml",

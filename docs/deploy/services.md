@@ -9,22 +9,22 @@ To read about deploying the required Kubernetes clusters and tenancy see [Deploy
 :::
 
 :::{warning}
-Container-based Kubernetes environments such as k3d or Kind are not supported, as Longhorn is not compatible with those environments.
+Container-based Kubernetes environments such as `k3d` or `Kind` are not supported, as `Longhorn` is not compatible with those environments.
 :::
 
 ## Deployment
 
-A FRIDGE consists of two Kubernetes clusters: an access cluster and an isolated cluster.
-The access cluster hosts the Harbor container registry and an SSH server for accessing the isolated cluster.
+A FRIDGE consists of two Kubernetes clusters: an `access cluster` and an `isolated cluster`.
+The access cluster hosts the `Harbor` container registry and the VPN agent ([NetBird](https://netbird.io)) by which connections to the FRIDGE can be made.
 The isolated cluster hosts the FRIDGE services.
 
 The deployment process uses Pulumi to manage the infrastructure as code.
 
 Currently, FRIDGE is configured to support deployment on Azure Kubernetes Service (AKS) and on DAWN.
-The isolated cluster can also be deployed to a local k3s instance.
+The isolated cluster can also be deployed to a local [k3s](https://k3s.io/) instance.
 
-You will require appropriate Kubernetes contexts set up for both clusters.
-The FRIDGE hosting organisation should provide you with the required Kubernetes credentials.
+You will require appropriate Kubernetes contexts for both clusters.
+The `Hosting Organisation` should provide you with the required credentials.
 
 :::{note}
 The following instructions assume you already have access to Kubernetes clusters deployed in accordance with the instructions in [Deploy Infrastructure](./infrastructure.md).
@@ -33,7 +33,7 @@ It also assumes that you have set up an appropriate [Pulumi backend](./overview.
 
 ### Access cluster
 
-You will deploy the access cluster first, as it hosts the Harbor container registry and SSH server required to access the isolated cluster.
+You will deploy the access cluster first, as it hosts the Harbor container registry and VPN agent required to access and subsequently deploy services into the isolated cluster.
 Navigate to the `infra/fridge/access-cluster/` folder.
 
 #### Create a stack
@@ -70,16 +70,11 @@ pulumi config set --secret minio_root_password <your-minio-secret-key>
 ```
 
 It is critical that you set all required configuration keys before deploying the stack.
-In particular, you will need to supply a public SSH key that will be added to the SSH server in the access cluster.
-If you do not do this, you will not be able to access the isolated cluster later.
+In particular, you will need to supply a setup up key for NetBird.
+The setup key will be used to register the NetBird agent in the cluster with the VPN mesh overlay network.
+For a guide to configuring NetBird, see the [Configuring NetBird](./netbird.md) documentation.
 
 For a complete list of configuration keys, see the `Pulumi.yaml` file.
-
-:::{important}
-You will need to provide a public SSH key.
-Your public SSH key will be copied to the SSH server in the access cluster.
-The SSH server can then be used to set up SSH tunnels to the Kubernetes API and the FRIDGE API in the isolated cluster.
-:::
 
 #### Kubernetes context
 
@@ -101,7 +96,7 @@ pulumi config set kubernetes:context dawn
 
 Ensure that you are able to connect to the Kubernetes API of the access cluster.
 
-On AKS, the Kubernetes API is publicly accessible during development/testing, so no changes to your local kubeconfig are required.
+On AKS, the Kubernetes API is publicly accessible during development/testing, so no changes to your local `kubeconfig` are required.
 
 On Dawn, you will need to set up an SSH connection to the bastion host on the access cluster's local network.
 
@@ -118,17 +113,10 @@ Navigate to the `infra/fridge/isolated-cluster/` folder.
 
 Two additional steps are required before deploying FRIDGE to the isolated cluster.
 
-1. **SSH port forwarding**: You must set up SSH port forwarding from your deployment machine to the isolated cluster via the SSH server in the access cluster.
-   The isolated cluster has a private API server endpoint, which is not directly accessible from outside the access cluster.
-   You can use the following command to set up SSH port forwarding:
-
-   ```console
-   ssh -i <path-to-your-private-ssh-key> -L 6443:<isolated-cluster-api-server>:443 fridgeoperator@<access-cluster-ssh-server-ip> -p 2222 -N
-   ```
-
-   Replace `<path-to-your-private-ssh-key>`, `<isolated-cluster-api-server>`, and `<access-cluster-ssh-server-ip>` with the appropriate values for your setup.
-2. **Kubernetes context**: You must set the Kubernetes context for the isolated cluster stack to use the local port forwarded to the isolated cluster's API server.
-   We recommend that you make a dedicated copy of the `kubeconfig` file for the isolated cluster, and edit it to point to `https://localhost:6443` for the API server endpoint.
+1. **VPN access**: You must run the deployment steps from a machine connected to the VPN mesh overlay network.
+   The connecting machine must be part of a NetBird Group that has permission to communicate with the NetBird agent in the access cluster on TCP port 6443
+2. **Kubernetes context**: You must modify the Kubernetes context for the isolated cluster stack to use the local port forwarded to the isolated cluster's API server.
+   We recommend that you make a dedicated copy of the `kubeconfig` file for the isolated cluster. Edit it to point to `https://<netbird-fqdn-or-ip>:6443`, as per the [NetBird instructions](./netbird.md#connecting-over-the-vpn)
    Then, set the Kubernetes context for the stack using the Pulumi CLI:
 
    ```console
@@ -136,16 +124,10 @@ Two additional steps are required before deploying FRIDGE to the isolated cluste
    ```
 
 :::{important}
-The SSH tunnel must be running in order to interact with the isolated cluster.
-
-The <isolated-cluster-api-server> address is either an FDQN (AKS) or an IP address (AIRR) and should have been provided to you by the `Hosting Administrators`.
+You must be connected to the VPN mesh overlay network to communicate with the Kubernetes API of the isolated cluster
 :::
 
-:::{note}
-You may have to use different ports locally if the port suggested above (6443) is in use.
-:::
-
-Once thee stack is configured and the SSH tunnel set up, you can deploy the isolated cluster stack using `pulumi up`.
+Once the stack is configured and you have verified that you can connect to the isolated cluster's Kubernetes API, you can deploy the isolated cluster stack using `pulumi up`.
 
 Note that `pulumi up` can safely be repeated if any errors arise.
 Sometimes errors during deployment are due to race conditions that Pulumi cannot mitigate, and a repeated attempt will be successful.
