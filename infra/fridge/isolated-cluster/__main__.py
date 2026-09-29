@@ -86,42 +86,9 @@ for namespace in standard_namespaces:
     patch_namespace(namespace, PodSecurityStandard.RESTRICTED)
 
 # Minio
-minio = components.ObjectStorage(
-    "minio",
-    args=components.ObjectStorageArgs(
-        config=config,
-        cluster_issuer=cert_manager.cert_manager_dev_issuer,
-        storage_classes=storage_classes,
-    ),
-    opts=ResourceOptions(
-        depends_on=[
-            cert_manager,
-            storage_classes,
-        ]
-    ),
-)
-
-minio_config = components.MinioConfigJob(
-    "minio-config-job",
-    args=components.MinioConfigArgs(
-        minio_cluster_url=minio.minio_cluster_url,
-        minio_credentials={
-            "minio_root_user": config.require_secret("minio_root_user"),
-            "minio_root_password": config.require_secret("minio_root_password"),
-        },
-        minio_tenant_ns=minio.minio_tenant_ns,
-        minio_tenant=minio.minio_tenant,
-    ),
-    opts=ResourceOptions(
-        depends_on=[minio],
-    ),
-)
-
-# SeaweedFS
-
-seaweed_fs = components.SeaweedFs(
+seaweedfs = components.ObjectStorage(
     "seaweedfs",
-    args=components.SeaweedFsArgs(
+    args=components.ObjectStorageArgs(
         config=config,
         cluster_issuer=cert_manager.cert_manager_dev_issuer,
         storage_classes=storage_classes,
@@ -192,8 +159,7 @@ api_server = components.ApiServer(
         cluster_issuer=cert_manager.cert_manager_dev_issuer,
         config=config,
         fridge_api_ip=access_stack.get_output("fridge_api_ip_address"),
-        minio_url=minio.minio_cluster_url,
-        minio_tenant_name=minio.minio_tenant_name,
+        s3_url=seaweedfs.seaweedfs_s3_url,
         verify_tls=False,  # This is only relevant for Argo Workflows, which uses a self-signed certificate in the isolated cluster. The API server will use the MinIO trust bundle to verify MinIO's certificate.
     ),
     opts=ResourceOptions(
@@ -232,8 +198,6 @@ resources = [
     api_server,
     argo_workflows,
     block_storage,
-    minio,
-    minio_config,
     storage_classes,
 ]
 
