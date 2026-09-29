@@ -48,3 +48,10 @@ class S3Client:
 
         except ClientError as e:
             self.handle_s3_error(e)
+
+    def list_buckets(self):
+        try:
+            response = self.client.list_buckets()
+            return [bucket["Name"] for bucket in response.get("Buckets", [])]
+        except ClientError as e:
+            self.handle_s3_error(e)
