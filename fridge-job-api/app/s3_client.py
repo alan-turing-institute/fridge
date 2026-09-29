@@ -71,7 +71,9 @@ class S3Client:
 
     def list_buckets(self):
         try:
-            response = self.client.list_buckets()
+            response = self.client.list_buckets(
+                MaxBuckets=200,
+            )
             return [bucket["Name"] for bucket in response.get("Buckets", [])]
         except ClientError as e:
             self.handle_s3_error(e)
