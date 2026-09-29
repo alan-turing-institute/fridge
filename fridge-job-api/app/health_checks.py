@@ -1,9 +1,7 @@
 import logging
-import os
 import requests
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
-from minio import S3Error
 from urllib3.exceptions import HTTPError
 from .config import ARGO_SERVER, argo_token, s3_client, VERIFY_TLS
 
