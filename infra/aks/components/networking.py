@@ -114,20 +114,6 @@ class Networking(ComponentResource):
                     destination_address_prefix="*",
                     description="Allow HTTP traffic for ACME challenges",
                 ),
-                network.SecurityRuleArgs(
-                    name="AllowSSHServerInbound",
-                    priority=200,
-                    direction=network.SecurityRuleDirection.INBOUND,
-                    access=network.SecurityRuleAccess.ALLOW,
-                    protocol=network.SecurityRuleProtocol.TCP,
-                    source_port_range="*",
-                    destination_port_range="2222",
-                    source_address_prefixes=args.config.require_object(
-                        "admin_ip_allowlist"
-                    ),
-                    destination_address_prefix="*",
-                    description="Allow SSH traffic to API Proxy SSH server",
-                ),
                 # Allow Azure Load Balancer health probes
                 network.SecurityRuleArgs(
                     name="AllowAzureLoadBalancerInbound",
