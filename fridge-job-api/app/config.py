@@ -46,7 +46,7 @@ if os.getenv("KUBERNETES_SERVICE_HOST"):
     ARGO_SERVER = (
         f"https://argo-workflows-server.{ARGO_SERVER_NS}.svc.cluster.local:2746"
     )
-    MINIO_CA_BUNDLE = "/etc/ssl/certs/tls-trust-bundle.crt"
+    S3_CA_BUNDLE = "/etc/ssl/certs/tls-trust-bundle.crt"
 else:
     # Load environment variables from .env file
     load_dotenv()
