@@ -1,5 +1,6 @@
 import logging
 import requests
+from botocore.exceptions import ClientError
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from urllib3.exceptions import HTTPError
@@ -64,5 +65,5 @@ def _check_s3() -> dict:
     try:
         s3_client.client.list_buckets()
         return {"status": "ok"}
-    except (S3Error, HTTPError, OSError) as e:
+    except (ClientError, HTTPError, OSError) as e:
         return {"status": "unreachable", "error": str(e)}
