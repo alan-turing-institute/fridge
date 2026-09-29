@@ -61,6 +61,13 @@ spec:
             protocol: TCP
     - toEndpoints:
       - matchLabels:
+          k8s:io.kubernetes.pod.namespace: seaweedfs
+      toPorts:
+        - ports:
+          - port: "8333"
+            protocol: TCP
+    - toEndpoints:
+      - matchLabels:
           k8s:io.kubernetes.pod.namespace: minio-operator
       toPorts:
         - ports:
