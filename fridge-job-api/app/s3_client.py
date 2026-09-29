@@ -39,6 +39,7 @@ class S3Client:
                 signature_version="s3v4",
                 s3={"addressing_style": "path"},
             ),
+            verify=self.S3_CA_CRT if os.path.exists(self.S3_CA_CRT) else True,
         )
         print("Successfully configured S3 client")
 
