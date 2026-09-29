@@ -42,7 +42,8 @@ from pulumi_kubernetes.rbac.v1 import (
 from enums import K8sEnvironment, PodSecurityStandard, SoftwareVersion
 
 API_SERVER_IMAGE = (
-    f"ghcr.io/alan-turing-institute/fridge:{SoftwareVersion.FRIDGE_API.value}"
+    # f"ghcr.io/alan-turing-institute/fridge:{SoftwareVersion.FRIDGE_API.value}"
+    f"ghcr.io/craddm/fridge:api-drop-minio"
 )
 
 
@@ -54,16 +55,14 @@ class ApiServerArgs:
         cluster_issuer: CustomResource,
         config: pulumi.Config,
         fridge_api_ip: Output[str],
-        minio_tenant_name: str,
-        minio_url: Output[str],
+        s3_url: Output[str],
         verify_tls: bool = True,
     ) -> None:
         self.argo_server_ns = argo_server_ns
         self.argo_workflows_ns = argo_workflows_ns
         self.config = config
         self.fridge_api_ip = fridge_api_ip
-        self.minio_tenant_name = minio_tenant_name
-        self.minio_url = minio_url
+        self.s3_url = s3_url
         self.cluster_issuer = cluster_issuer
         self.verify_tls = verify_tls
 
@@ -147,28 +146,6 @@ class ApiServer(ComponentResource):
             opts=child_opts,
         )
 
-        self.minio_policy = CustomResource(
-            resource_name="minio-policy-readwrite",
-            api_version="sts.min.io/v1alpha1",
-            kind="PolicyBinding",
-            metadata=ObjectMetaArgs(
-                name="fridge-api-minio-readwrite",
-                namespace=args.minio_tenant_name,
-            ),
-            spec={
-                "application": {
-                    # The namespace that contains the service account for the application
-                    "namespace": fridge_api_sa.metadata.namespace,
-                    # The service account to use for the application
-                    "serviceaccount": fridge_api_sa.metadata.name,
-                },
-                "policies": ["readwrite"],
-            },
-            opts=ResourceOptions.merge(
-                child_opts, ResourceOptions(depends_on=[fridge_api_sa])
-            ),
-        )
-
         fridge_api_config = Secret(
             "fridge-api-config",
             metadata=ObjectMetaArgs(
@@ -181,8 +158,9 @@ class ApiServer(ComponentResource):
                 "FRIDGE_API_PASSWORD": args.config.require_secret(
                     "fridge_api_password"
                 ),
-                "MINIO_URL": args.minio_url,
-                "MINIO_TENANT_NAME": args.minio_tenant_name,
+                "S3_ACCESS_KEY": args.config.require_secret("s3_access_key"),
+                "S3_SECRET_KEY": args.config.require_secret("s3_secret_key"),
+                "S3_URL": args.s3_url,
                 "VERIFY_TLS": str(args.verify_tls),
             },
             opts=child_opts,
@@ -324,15 +302,15 @@ class ApiServer(ComponentResource):
                                     failure_threshold=3,
                                 ),
                                 ports=[ContainerPortArgs(container_port=8000)],
-                                readiness_probe=ProbeArgs(
-                                    http_get=HTTPGetActionArgs(
-                                        path="/readyz", port=8443, scheme="HTTPS"
-                                    ),
-                                    initial_delay_seconds=10,
-                                    period_seconds=30,
-                                    timeout_seconds=5,
-                                    failure_threshold=5,
-                                ),
+                                # readiness_probe=ProbeArgs(
+                                #     http_get=HTTPGetActionArgs(
+                                #         path="/readyz", port=8443, scheme="HTTPS"
+                                #     ),
+                                #     initial_delay_seconds=10,
+                                #     period_seconds=30,
+                                #     timeout_seconds=5,
+                                #     failure_threshold=5,
+                                # ),
                                 security_context=SecurityContextArgs(
                                     allow_privilege_escalation=False,
                                     capabilities=CapabilitiesArgs(
@@ -357,11 +335,6 @@ class ApiServer(ComponentResource):
                                     VolumeMountArgs(
                                         name="token-vol",
                                         mount_path="/service-account",
-                                        read_only=True,
-                                    ),
-                                    VolumeMountArgs(
-                                        name="minio-sa",
-                                        mount_path="/minio",
                                         read_only=True,
                                     ),
                                     VolumeMountArgs(
@@ -413,20 +386,6 @@ class ApiServer(ComponentResource):
                                     sources=[
                                         VolumeProjectionArgs(
                                             service_account_token=ServiceAccountTokenProjectionArgs(
-                                                expiration_seconds=3600,
-                                                path="token",
-                                            )
-                                        )
-                                    ]
-                                ),
-                            ),
-                            VolumeArgs(
-                                name="minio-sa",
-                                projected=ProjectedVolumeSourceArgs(
-                                    sources=[
-                                        VolumeProjectionArgs(
-                                            service_account_token=ServiceAccountTokenProjectionArgs(
-                                                audience="sts.min.io",
                                                 expiration_seconds=3600,
                                                 path="token",
                                             )
