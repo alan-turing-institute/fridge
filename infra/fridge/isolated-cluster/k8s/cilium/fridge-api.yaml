@@ -84,9 +84,7 @@ spec:
           rules:
             dns:
               - matchPattern: "argo-workflows-server.argo-server.svc.cluster.local"
-              - matchPattern: "minio.argo-artifacts.svc.cluster.local"
-              - matchPattern: "sts.minio-operator.svc.cluster.local"
+              - matchPattern: "seaweedfs-s3.seaweedfs.svc.cluster.local"
     - toFQDNs:
       - matchPattern: "argo-workflows-server.argo-server.svc.cluster.local"
-      - matchPattern: "minio.argo-artifacts.svc.cluster.local"
-      - matchPattern: "sts.minio-operator.svc.cluster.local"
+      - matchPattern: "seaweedfs-s3.seaweedfs.svc.cluster.local"
