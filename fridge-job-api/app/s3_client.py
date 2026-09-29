@@ -1,11 +1,10 @@
 import boto3
 import os
 import sys
-import urllib3
 from botocore.client import Config
 from botocore.exceptions import ClientError
 from boto3.s3.transfer import TransferConfig
-from fastapi import File, UploadFile, HTTPException
+from fastapi import UploadFile, HTTPException
 from io import BytesIO
 from starlette.concurrency import run_in_threadpool
 
