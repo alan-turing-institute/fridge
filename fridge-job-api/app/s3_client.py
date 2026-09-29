@@ -1,6 +1,7 @@
 import boto3
 import os
 import sys
+import urllib3
 from botocore.client import Config
 from botocore.exceptions import ClientError
 from fastapi import HTTPException
@@ -13,7 +14,7 @@ class S3Client:
     def __init__(self, endpoint, access_key, secret_key, secure=True):
         scheme = "https" if secure else "http"
 
-        # Exit if minio client keys are not available
+        # Exit if s3 client keys are not available
         if access_key is None or secret_key is None:
             print("Failed to initialise S3 client")
             sys.exit(1)
@@ -36,3 +37,14 @@ class S3Client:
         raise HTTPException(
             status_code=status, detail=error.response["Error"]["Message"]
         )
+
+    def create_bucket(self, name, region="us-east-1"):
+        bucket_config = {}
+        if region != "us-east-1":
+            bucket_config["CreateBucketConfiguration"] = {"LocationConstraint": region}
+        self.client.create_bucket(Bucket=name, **bucket_config)
+        try:
+            self.client.create_bucket(Bucket=name)
+
+        except ClientError as e:
+            self.handle_s3_error(e)
