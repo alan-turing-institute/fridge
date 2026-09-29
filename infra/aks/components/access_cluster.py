@@ -8,6 +8,8 @@ from pulumi_azure_native import (
 from pulumi_azure_native.containerservice import (
     AdvancedNetworkingArgs,
     AdvancedNetworkingObservabilityArgs,
+    AdvancedNetworkingSecurityArgs,
+    AdvancedNetworkPolicies,
     ContainerServiceLinuxProfileArgs,
     ContainerServiceSshConfigurationArgs,
     ContainerServiceSshPublicKeyArgs,
@@ -49,7 +51,7 @@ class AccessCluster(ComponentResource):
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
         access_cluster = ManagedCluster(
-            args.cluster_name,
+            resource_name_=args.cluster_name,
             resource_group_name=args.resource_group_name,
             agent_pool_profiles=[
                 ManagedClusterAgentPoolProfileArgs(
@@ -57,7 +59,7 @@ class AccessCluster(ComponentResource):
                     max_count=5,
                     max_pods=100,
                     min_count=2,
-                    mode="System",
+                    mode="User",
                     name="gppool",
                     node_labels={
                         "context": "fridge",
@@ -101,7 +103,7 @@ class AccessCluster(ComponentResource):
                 type=ResourceIdentityType.USER_ASSIGNED,
                 user_assigned_identities=[args.identity.id],
             ),
-            kubernetes_version="1.33",
+            kubernetes_version="1.36",
             linux_profile=ContainerServiceLinuxProfileArgs(
                 admin_username="fridgeadmin",
                 ssh=ContainerServiceSshConfigurationArgs(
@@ -116,6 +118,10 @@ class AccessCluster(ComponentResource):
                 advanced_networking=AdvancedNetworkingArgs(
                     enabled=True,
                     observability=AdvancedNetworkingObservabilityArgs(
+                        enabled=True,
+                    ),
+                    security=AdvancedNetworkingSecurityArgs(
+                        advanced_network_policies=AdvancedNetworkPolicies.L7,
                         enabled=True,
                     ),
                 ),
