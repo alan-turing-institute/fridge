@@ -84,7 +84,7 @@ def argo_token() -> str:
 
 # Init s3 client. Will fallback to STS if access/secret key are not set
 s3_client = S3Client(
-    endpoint=os.getenv("S3_URL"),
+    endpoint=os.getenv("S3_URL").strip(),
     access_key=os.getenv("S3_ACCESS_KEY", None),
     secret_key=os.getenv("S3_SECRET_KEY", None),
     secure=os.getenv("S3_SECURE", True),
