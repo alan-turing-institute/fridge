@@ -4,8 +4,18 @@ import sys
 import urllib3
 from botocore.client import Config
 from botocore.exceptions import ClientError
+from boto3.s3.transfer import TransferConfig
 from fastapi import File, UploadFile, HTTPException
 from io import BytesIO
+from starlette.concurrency import run_in_threadpool
+
+
+_TRANSFER_CONFIG = TransferConfig(
+    multipart_threshold=8 * 1024 * 1024,  # start multipart above 8MB
+    multipart_chunksize=64 * 1024 * 1024,  # 64MB parts keeps part count sane for 100GB+
+    max_concurrency=10,
+    use_threads=True,
+)
 
 
 class S3Client:
@@ -40,6 +50,12 @@ class S3Client:
         )
 
     def create_bucket(self, name, region="us-east-1"):
+        """
+        Creates a new S3 bucket.
+
+        :param name: Name of the bucket to create
+        :param region: This is a required parameter, but is a placeholder.
+        """
         bucket_config = {}
         if region != "us-east-1":
             bucket_config["CreateBucketConfiguration"] = {"LocationConstraint": region}
@@ -57,15 +73,21 @@ class S3Client:
         except ClientError as e:
             self.handle_s3_error(e)
 
-    async def put_object(self, bucket, file: UploadFile = File(...)):
+    async def put_object(self, bucket, file: UploadFile):
+        """
+        Streams a file to the specified S3 bucket via multipart upload, without buffering in memory
+
+        :param file: File to upload
+        :param bucket: S3 bucket to upload to
+        """
         try:
-            content = await file.read()
-            result = self.client.put_object(
-                bucket,
-                file.filename,
-                data=BytesIO(content),
-                length=len(content),
-                content_type=file.content_type,
+            await run_in_threadpool(
+                self.client.upload_fileobj,
+                Fileobj=file.file,
+                Bucket=bucket,
+                Key=file.filename,
+                ExtraArgs={"ContentType": file.content_type},
+                Config=_TRANSFER_CONFIG,
             )
         except ClientError as error:
             self.handle_s3_error(error)
@@ -74,9 +96,13 @@ class S3Client:
                 status_code=500, detail=f"Unable to upload object: {error}"
             )
 
+        try:
+            head = self.client.head_object(Bucket=bucket, Key=file.filename)
+        except ClientError:
+            head = {}
+
         return {
             "status": 201,
-            "response": getattr(result, "location", "None")
-            or getattr(result, "_location", "None"),
-            "version": getattr(result, "version_id", "None"),
+            "response": file.filename,
+            "version": head.get("VersionId", "None"),
         }
