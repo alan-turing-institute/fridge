@@ -67,11 +67,11 @@ A high-level overview of a FRIDGE instance, showing the home TRE and {term}`TRE 
 However, there are some requirements which must be met by all implementations,
 
 - No traffic is allowed between the {term}`Access Network` and {term}`Isolated Network` except for,
-  - Kube Proxy to Kube API,
-  - FRIDGE Proxy to FRIDGE API,
+  - traffic to Kube API from the VPN Agent,
+  - traffic to FRIDGE API from the VPN Agent,
   - Container Runtime to Container Repository.
 - No outbound traffic is allowed from the {term}`Isolated Network`, except for that described above.
-- No outbound traffic is allowed from the {term}`Access Network`, except to select container repositories.
+- No outbound traffic is allowed from the {term}`Access Network`, except to select container repositories and the management server of the VPN.
 - Both the {term}`Access Network` and {term}`Isolated Network` must be isolated from other networks on the {term}`FRIDGE Hosting Organisation's <FRIDGE Hosting Organisation>` infrastructure.
 - On a cloud-like system, the {term}`TRE Tenancy` must be isolated from any other tenancies.
   For example, it must not be possible to share resources from the {term}`TRE Tenancy` with other tenants.
@@ -92,7 +92,7 @@ In the event of container breakout, or otherwise compromising the K8s nodes, the
 
 #### Bastion
 
-To avoid publicly exposing the Kube API of the {term}`Access Cluster`, some sort of bastion (for example a virtual machine running an SSH server, or wireguard) should be used.
+To avoid publicly exposing the Kube API of the {term}`Access Cluster`, some sort of bastion (for example a virtual machine running an SSH server, or WireGuard) should be used.
 The nature of this bastion may vary between implementations.
 
 #### Router and Ingress
@@ -100,19 +100,27 @@ The nature of this bastion may vary between implementations.
 To correctly route traffic intended for the {term}`Access Cluster`, a router or reverse proxy is used.
 This may route traffic based on port, hostname, prefix or some combination.
 The nature of this may vary between implementations.
+
 All must point to the {term}`Access Cluster` where a [K8s Ingress Controller](https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/) will direct traffic to the correct service.
+At present, the only service exposed using this route is the Harbor container registry hosted in the {term}`Access Cluster`.
 
-#### Proxies
+Access to the {term}`Access Cluster` Kubernetes API is through the bastion route, and onward access to the {term}`Isolated Cluster` Kubernetes API and FRIDGE API is managed using the NetBird VPN route.
 
-For {term}`Job Submitter`s, the local API interface and FRIDGE proxy provide transparent access to the FRIDGE API.
-It will appear to them as a service in the network of their TRE workspace with endpoints for submitting and managing jobs dispatched to the FRIDGE instance.
-Similarly, {term}`TRE Administrator`s are able to manage the K8s components of their FRIDGE instance through their own API interface.
+#### NetBird VPN
 
-The proxies and {term}`Access Cluster's <Access Cluster>` Kube API are distinct pods.
-Proxy pods run an SSH daemon and are used to pass requests through to the {term}`Isolated Cluster's <Isolated Cluster>` Kube API or FRIDGE API via an SSH tunnel.
-Each API Interface at the {term}`Home TRE` is required to generate an SSH key pair.
-Hence by installing the correct public key on each proxy, the {term}`TRE Operator Organisation` can control who has access to the APIs in the {term}`Isolated Cluster`.
-It would also be possible to further restrict traffic through network controls such as IP allowlists or exposing the {term}`Access Cluster` only through a VPN.
+The {term}`Access Cluster` provides a controlled VPN connection to the FRIDGE tenancy using [NetBird](https://netbird.io)
+
+Traffic from authorised peers is received by the {term}`Access Cluster` and forwarded by a reverse proxy to the permitted services in the {term}`Isolated Cluster`.
+This provides access to the FRIDGE API for {term}`Job Submitters <Job Submitter>`, and the to {term}`Isolated Cluster` Kubernetes API for {term}`TRE Administrators`.
+
+NetBird Groups and policies control which users and administrators may access the FRIDGE services.
+The VPN route does not provide general access to either the access or isolated virtual networks.
+Traffic is only to permitted to specific endpoints.
+
+For {term}`Job Submitters <Job Submitter>`, the FRIDGE API is made available through a local API interface in the {term}`Home TRE`, connected to the FRIDGE through the VPN.
+It presents to them as a service in their {term}`Home TRE` network with endpoints for submitting and managing FRIDGE jobs.
+
+Similarly, {term}`TRE Administrators <TRE Administrator>` are able to manage the K8s components of their FRIDGE instance through their own API interface.
 
 (arch-arch-internal)=
 ## FRIDGE internal
@@ -140,13 +148,12 @@ This is in addition to the network isolation enforced by the [networks](#arch-ar
 [cert-manager](https://cert-manager.io/) will automatically provision and renew TLS certificates for services which can be reached over HTTPS.
 For example, the [container repository](#arch-arch-internal-harbor).
 
-### Proxies
 
 (arch-arch-internal-api)=
 ### FRIDGE API
 
 The FRIDGE API provides users with endpoints to manage data, and submit and monitor jobs.
-Writing a custom API separates {term}`Job Submitter`s from the underlying implementation, so that they may use a single FRIDGE interface irrespective.
+Writing a custom API separates {term}`Job Submitters <Job Submitter>` from the underlying implementation, so that they may use a single FRIDGE interface irrespective.
 This API will then be resilient to changes to the FRIDGE [](#arch-arch-internal-workflow) and storage.
 It will also enable the creation of user-focused FRIDGE tools such as CLIs or web interfaces for job submission and management.
 
@@ -159,15 +166,15 @@ The workflow manager is an instance of [Argo Workflows](https://argoproj.github.
 (arch-arch-internal-jobns)=
 #### Job Namespace
 
-To isolate {term}`Job Submitter`s' processes from the rest of the {term}`Isolated Cluster`, including components which enforce security, jobs may only be run in a dedicated namespace.
+To isolate {term}`Job Submitters' <Job Submitter>` processes from the rest of the {term}`Isolated Cluster`, including components which enforce security, jobs may only be run in a dedicated namespace.
 This namespace has no access to external resources, other than research data and container images, and jobs are restricted to run without privileges.
 
 (arch-arch-internal-harbor)=
 ### Container Repository
 
 An instance of the [Harbor](https://goharbor.io/) container registry provides access to container images for the isolated cluster.
-It acts both as a read-through cache for allowed public registries (such as Docker Hub, Quay and GitHub Container Registry) and as a repository for {term}`Job Submitter`s' own container images.
-This allows {term}`Job Submitter`s to easily use custom software, by building a container image and pushing to the repository.
+It acts both as a read-through cache for allowed public registries (such as Docker Hub, Quay and GitHub Container Registry) and as a repository for {term}`Job Submitters' <Job Submitter>` own container images.
+This allows {term}`Job Submitters <Job Submitter>` to easily use custom software, by building a container image and pushing to the repository.
 
 ### Storage
 

@@ -21,8 +21,9 @@ project:
         - file: architecture/lifecycle.md
     - title: Deploy
       children:
-        - file: deploy/prerequisites.md
+        - file: deploy/overview.md
         - file: deploy/infrastructure.md
+        - file: deploy/netbird.md
         - file: deploy/services.md
     - title: Develop
       children:
@@ -31,5 +32,5 @@ site:
   template: book-theme
   options:
     style: ./style.css
-  #   favicon: favicon.ico
-  #   logo: site_logo.png
+    logo: static/logo_light.png
+    logo_dark: static/logo_dark.png

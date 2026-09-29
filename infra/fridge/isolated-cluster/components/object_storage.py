@@ -137,18 +137,20 @@ class ObjectStorage(ComponentResource):
             opts=child_opts,
         )
 
+        self.minio_tenant_name = "argo-artifacts"
+
         self.minio_tenant = Chart(
             "minio-tenant",
             namespace=self.minio_tenant_ns.metadata.name,
             chart="tenant",
-            name="argo-artifacts",
+            name=self.minio_tenant_name,
             version=SoftwareVersion.MINIO_TENANT.value,
             repository_opts=RepositoryOptsArgs(
                 repo="https://operator.min.io",
             ),
             values={
                 "tenant": {
-                    "name": "argo-artifacts",
+                    "name": self.minio_tenant_name,
                     "buckets": [
                         {"name": "ingress"},
                         {"name": "egress"},
@@ -157,16 +159,16 @@ class ObjectStorage(ComponentResource):
                         "requestAutoCert": False,
                         "externalCertSecret": [
                             {
-                                "name": "argo-artifacts-tls",
+                                "name": f"{self.minio_tenant_name}-tls",
                                 "type": "kubernetes.io/tls",
                             }
                         ],
                     },
                     "configuration": {
-                        "name": "argo-artifacts-env-configuration",
+                        "name": f"{self.minio_tenant_name}-env-configuration",
                     },
                     "configSecret": {
-                        "name": "argo-artifacts-env-configuration",
+                        "name": f"{self.minio_tenant_name}-env-configuration",
                         "accessKey": None,
                         "secretKey": None,
                         "existingSecret": "true",
@@ -181,7 +183,7 @@ class ObjectStorage(ComponentResource):
                     "pools": [
                         {
                             "servers": 1,
-                            "name": "argo-artifacts-pool-0",
+                            "name": f"{self.minio_tenant_name}-pool-0",
                             "size": args.config.require("minio_pool_size"),
                             "volumesPerServer": 1,
                             "storageClassName": args.storage_classes.encrypted_storage_class.metadata.name,
@@ -211,7 +213,6 @@ class ObjectStorage(ComponentResource):
             ),
         )
 
-        self.minio_tenant_name = self.minio_tenant.name
         self.register_outputs(
             {
                 "minio_tenant": self.minio_tenant,

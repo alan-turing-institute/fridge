@@ -103,6 +103,18 @@ class Networking(ComponentResource):
                     description="Allow HTTPS traffic for Harbor",
                 ),
                 network.SecurityRuleArgs(
+                    name="AllowHTTPInbound",
+                    priority=110,
+                    direction=network.SecurityRuleDirection.INBOUND,
+                    access=network.SecurityRuleAccess.ALLOW,
+                    protocol=network.SecurityRuleProtocol.ASTERISK,
+                    source_port_range="*",
+                    destination_port_range="80",
+                    source_address_prefix="Internet",
+                    destination_address_prefix="*",
+                    description="Allow HTTP traffic for ACME challenges",
+                ),
+                network.SecurityRuleArgs(
                     name="AllowSSHServerInbound",
                     priority=200,
                     direction=network.SecurityRuleDirection.INBOUND,

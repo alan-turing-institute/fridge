@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: intel-gpu-simulate-cnn
+  namespace: argo-workflows
+spec:
+  entrypoint: intel-gpu-cnn
+  securityContext:
+    supplementalGroups:
+      - 110
+  templates:
+    - name: intel-gpu-cnn
+      container:
+        volumeMounts:
+          - name: block-storage
+            mountPath: /tmp
+        resources:
+          limits:
+            gpu.intel.com/i915: 1
+        image: intel/intel-extension-for-pytorch:2.8.10-xpu
+        command: ["python3"]
+        args: ["/tmp/single_xpu_example.py"]
+  serviceAccountName: argo-workflow
+  volumes:
+    - name: block-storage
+      persistentVolumeClaim:
+        claimName: block-storage-pvc

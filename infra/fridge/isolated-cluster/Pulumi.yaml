@@ -6,12 +6,9 @@ runtime:
     toolchain: pip
     virtualenv: venv
 config:
-  k8s_env:
+  access_cluster_load_balancer_ip:
     type: string
-    description: The Kubernetes environment type (e.g. AKS, Dawn)
-  access_cluster_node_cidr:
-    type: string
-    description: The node CIDR of the access cluster to allow access from
+    description: The load balancer IP address of the access cluster deployment. Not required on AKS
   access_cluster_stack:
     type: string
     description: The Pulumi stack name of the access cluster deployment
@@ -24,17 +21,20 @@ config:
   azure_disk_encryption_set:
     type: string
     description: Azure Disk Encryption Set resource name for the access cluster - use a dummy value when not deploying to AKS
-  lets_encrypt_email:
-    type: string
-    description: Email for Let's Encrypt registration
   fridge_api_admin:
     type: string
     description: Admin username for the FRIDGE API
     secret: true
+  fridge_api_ip:
+    type: string
+    description: IP address for the FRIDGE API service. Not required on Dawn.
   fridge_api_password:
     type: string
     description: Admin password for the FRIDGE API
     secret: true
+  k8s_env:
+    type: string
+    description: The Kubernetes environment type (e.g. AKS, Dawn)
   minio_root_user:
     type: string
     description: MinIO root user
@@ -48,7 +48,10 @@ config:
     description: Size of the MinIO storage pool (e.g., 20Gi)
   organization_name:
     type: string
-    description: The Pulumi organization name
+    description: The Pulumi organization name. This is `organization`
+  project_name:
+    type: string
+    description: The Pulumi project name for the access cluster deployment
   kubernetes:context:
     value: ""
     description: Kubernetes context for the FRIDGE deployment

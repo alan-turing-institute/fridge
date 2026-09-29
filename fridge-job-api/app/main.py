@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from .config import get_version
+from .health_checks import router as health_router
 from .storage import router as storage_router
 from .workflows import router as workflows_router
 
@@ -21,3 +22,4 @@ app = FastAPI(title="FRIDGE API", description=description, version=APP_VERSION)
 
 app.include_router(workflows_router)
 app.include_router(storage_router)
+app.include_router(health_router)

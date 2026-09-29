@@ -11,17 +11,15 @@ from pulumi_kubernetes.rbac.v1 import (
     SubjectArgs,
 )
 
-from enums import PodSecurityStandard, SoftwareVersion, TlsEnvironment
+from enums import PodSecurityStandard, SoftwareVersion
 
 
 class WorkflowServerArgs:
     def __init__(
         self,
         config: pulumi.config.Config,
-        tls_environment: TlsEnvironment,
     ):
         self.config = config
-        self.tls_environment = tls_environment
 
 
 class WorkflowServer(ComponentResource):
