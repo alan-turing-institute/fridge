@@ -106,3 +106,15 @@ class S3Client:
             "response": file.filename,
             "version": head.get("VersionId", "None"),
         }
+
+    def get_object(self, bucket, file_name, target_file=None, version=None):
+        pass
+
+    def list_objects(self, bucket, prefix=None, recursive=False):
+        pass
+
+    def delete_object(self, bucket, file_name, version=None):
+        pass
+
+    def check_object_exists(self, bucket, file_name, version=None):
+        pass
