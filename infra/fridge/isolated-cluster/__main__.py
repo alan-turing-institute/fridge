@@ -85,7 +85,7 @@ standard_namespaces = ["default", "kube-node-lease", "kube-public"]
 for namespace in standard_namespaces:
     patch_namespace(namespace, PodSecurityStandard.RESTRICTED)
 
-# Minio
+# SeaweedFS object storage
 seaweedfs = components.ObjectStorage(
     "seaweedfs",
     args=components.ObjectStorageArgs(
