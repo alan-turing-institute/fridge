@@ -316,10 +316,15 @@ class ObjectStorage(ComponentResource):
             ),
         )
 
+        self.seaweedfs_s3_endpoint = Output.concat(
+            "seaweedfs-s3.", self.seaweedfs_ns.metadata.name, ".svc.cluster.local:8334"
+        )
+
         self.register_outputs(
             {
                 "seaweedfs": self.seaweedfs,
                 "seaweedfs_ns": self.seaweedfs_ns,
                 "seaweedfs_s3_secret": seaweedfs_s3_secret,
+                "seaweedfs_endpoint": self.seaweedfs_s3_endpoint,
             }
         )
