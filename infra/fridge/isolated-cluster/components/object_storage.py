@@ -99,6 +99,23 @@ class ObjectStorage(ComponentResource):
             ),
         )
 
+        seaweedfs_admin_secret = Secret(
+            "seaweedfs-admin-secret",
+            metadata=ObjectMetaArgs(
+                name="seaweedfs-admin-secret",
+                namespace=self.seaweedfs_ns.metadata.name,
+            ),
+            type="Opaque",
+            string_data={
+                "adminUser": "admin",
+                "adminPassword": "admin",
+            },
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(depends_on=[self.seaweedfs_ns]),
+            ),
+        )
+
         self.seaweedfs = Chart(
             "seaweedfs",
             namespace=self.seaweedfs_ns.metadata.name,
@@ -108,6 +125,38 @@ class ObjectStorage(ComponentResource):
                 repo="https://seaweedfs.github.io/seaweedfs/helm",
             ),
             values={
+                "admin": {
+                    "enabled": True,
+                    "port": 23646,
+                    "grpcPort": 33646,
+                    "secret": {
+                        "existingSecret": seaweedfs_admin_secret.metadata.name,
+                        "userKey": "adminUser",
+                        "pwKey": "adminPassword",
+                    },
+                    "podSecurityContext": {
+                        "enabled": True,
+                        "fsGroup": 1000,
+                        "runAsUser": 1000,
+                        "runAsGroup": 1000,
+                        "runAsNonRoot": True,
+                        "seccompProfile": {
+                            "type": "RuntimeDefault",
+                        },
+                    },
+                    "containerSecurityContext": {
+                        "enabled": True,
+                        "fsGroup": 1000,
+                        "runAsUser": 1000,
+                        "runAsGroup": 1000,
+                        "runAsNonRoot": True,
+                        "allowPrivilegeEscalation": False,
+                        "capabilities": {"drop": ["ALL"]},
+                        "seccompProfile": {
+                            "type": "RuntimeDefault",
+                        },
+                    },
+                },
                 "global": {
                     "seaweedfs": {
                         "enableSecurity": True,
@@ -223,12 +272,14 @@ class ObjectStorage(ComponentResource):
                         "type": "emptyDir",
                     },
                     "httpsPort": 8334,
+                    "enableAuth": True,
                     "existingConfigSecret": seaweedfs_s3_secret.metadata.name,
                     "tlsSecret": "seaweedfs-tls",
-                    "createBuckets": [
-                        {"name": "ingress", "anonymousRead": False},
-                        {"name": "egress", "anonymousRead": True},
-                    ],
+                    # createBuckets is disabled due to https://github.com/seaweedfs/seaweedfs/issues/10502; renable it once fixed upstream
+                    # "createBuckets": [
+                    #     {"name": "ingress", "anonymousRead": False},
+                    #     {"name": "egress", "anonymousRead": True},
+                    # ],
                     "podSecurityContext": {
                         "enabled": True,
                         "fsGroup": 1000,
