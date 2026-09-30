@@ -133,7 +133,9 @@ class S3Client:
             return StreamingResponse(
                 response["Body"],
                 media_type=response.get("ContentType", "application/octet-stream"),
-                headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+                headers={
+                    "Content-Disposition": f'attachment; filename="{target_file}"'
+                },
             )
         except ClientError as error:
             self.handle_s3_error(error)
