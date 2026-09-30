@@ -113,7 +113,27 @@ class S3Client:
         }
 
     def get_object(self, bucket, file_name, target_file=None, version=None):
-        pass
+        """
+        Retrieves an object from the specified S3 bucket.
+
+        :param bucket: S3 bucket to retrieve the object from
+        :param file_name: Name of the object to retrieve
+        :param target_file: Optional file to save the retrieved object to
+        :param version: Optional version of the object to retrieve
+        """
+        try:
+            get_object_params = {"Bucket": bucket, "Key": file_name}
+            if version:
+                get_object_params["VersionId"] = version
+
+            response = self.client.get_object(**get_object_params)
+            if not target_file:
+                target_file = file_name
+            with open(target_file, "wb") as f:
+                f.write(response["Body"].read())
+            return {"status": 200, "response": f"Object saved to {target_file}"}
+        except ClientError as error:
+            self.handle_s3_error(error)
 
     def list_objects(self, bucket, prefix=None, recursive=False):
         pass
