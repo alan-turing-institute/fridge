@@ -5,6 +5,7 @@ from botocore.client import Config
 from botocore.exceptions import ClientError
 from boto3.s3.transfer import TransferConfig
 from fastapi import UploadFile, HTTPException
+from fastapi.responses import StreamingResponse
 from io import BytesIO
 from starlette.concurrency import run_in_threadpool
 
@@ -129,9 +130,11 @@ class S3Client:
             response = self.client.get_object(**get_object_params)
             if not target_file:
                 target_file = file_name
-            with open(target_file, "wb") as f:
-                f.write(response["Body"].read())
-            return {"status": 200, "response": f"Object saved to {target_file}"}
+            return StreamingResponse(
+                response["Body"],
+                media_type=response.get("ContentType", "application/octet-stream"),
+                headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+            )
         except ClientError as error:
             self.handle_s3_error(error)
 
@@ -162,8 +165,45 @@ class S3Client:
         except ClientError as error:
             self.handle_s3_error(error)
 
-    def delete_object(self, bucket, file_name, version=None):
-        pass
-
     def check_object_exists(self, bucket, file_name, version=None):
-        pass
+        """
+        Checks if an object exists in the specified S3 bucket.
+
+        :param bucket: S3 bucket to check the object in
+        :param file_name: Name of the object to check
+        :param version: Optional version of the object to check
+        :return: True if the object exists, False otherwise
+        """
+        try:
+            head_params = {"Bucket": bucket, "Key": file_name}
+            if version:
+                head_params["VersionId"] = version
+
+            self.client.head_object(**head_params)
+            return True
+        except ClientError as error:
+            if error.response["Error"]["Code"] == "NoSuchKey":
+                return False
+            self.handle_s3_error(error)
+            return False
+
+    def delete_object(self, bucket, file_name, version=None):
+        """
+        Deletes an object from the specified S3 bucket.
+
+        :param bucket: S3 bucket to delete the object from
+        :param file_name: Name of the object to delete
+        :param version: Optional version of the object to delete
+        """
+        try:
+            delete_object_params = {"Bucket": bucket, "Key": file_name}
+            if version:
+                delete_object_params["VersionId"] = version
+
+            self.client.delete_object(**delete_object_params)
+            return {
+                "status": 200,
+                "response": f"Object {file_name} deleted from {bucket}",
+            }
+        except ClientError as error:
+            self.handle_s3_error(error)
