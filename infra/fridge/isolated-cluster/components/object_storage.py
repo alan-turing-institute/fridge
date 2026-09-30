@@ -108,6 +108,11 @@ class ObjectStorage(ComponentResource):
                 repo="https://seaweedfs.github.io/seaweedfs/helm",
             ),
             values={
+                "global": {
+                    "seaweedfs": {
+                        "enableSecurity": True,
+                    },
+                },
                 "master": {
                     "replicas": 1,
                     "data": {
@@ -217,6 +222,7 @@ class ObjectStorage(ComponentResource):
                     "logs": {
                         "type": "emptyDir",
                     },
+                    "httpsPort": 8334,
                     "existingConfigSecret": seaweedfs_s3_secret.metadata.name,
                     "tlsSecret": "seaweedfs-tls",
                     "createBuckets": [
