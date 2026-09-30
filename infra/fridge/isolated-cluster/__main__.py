@@ -159,7 +159,7 @@ api_server = components.ApiServer(
         cluster_issuer=cert_manager.cert_manager_dev_issuer,
         config=config,
         fridge_api_ip=access_stack.get_output("fridge_api_ip_address"),
-        s3_url=seaweedfs.seaweedfs_s3_url,
+        s3_url=seaweedfs.seaweedfs_s3_endpoint,
         verify_tls=False,  # This is only relevant for Argo Workflows, which uses a self-signed certificate in the isolated cluster. The API server will use the MinIO trust bundle to verify MinIO's certificate.
     ),
     opts=ResourceOptions(
