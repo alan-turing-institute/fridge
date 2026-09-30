@@ -160,6 +160,7 @@ class ApiServer(ComponentResource):
                 ),
                 "S3_ACCESS_KEY": args.config.require_secret("s3_access_key"),
                 "S3_SECRET_KEY": args.config.require_secret("s3_secret_key"),
+                "S3_SECURE": str(True),
                 "S3_URL": args.s3_url,
                 "VERIFY_TLS": str(args.verify_tls),
             },
