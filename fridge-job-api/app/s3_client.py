@@ -136,7 +136,31 @@ class S3Client:
             self.handle_s3_error(error)
 
     def list_objects(self, bucket, prefix=None, recursive=False):
-        pass
+        """
+        Lists objects in the specified S3 bucket.
+
+        :param bucket: S3 bucket to list objects in
+        :param prefix: Optional prefix to filter objects by
+        :param recursive: Optional flag to list objects recursively
+        :return: List of objects in the specified S3 bucket
+        """
+        try:
+            list_objects_params = {"Bucket": bucket}
+            if prefix:
+                list_objects_params["Prefix"] = prefix
+
+            response = self.client.list_objects_v2(**list_objects_params)
+            objects = response.get("Contents", [])
+            if not recursive:
+                # Filter out objects that are not in the top-level directory
+                objects = [
+                    obj
+                    for obj in objects
+                    if "/" not in (obj["Key"][len(prefix) :] if prefix else obj["Key"])
+                ]
+            return [obj["Key"] for obj in objects]
+        except ClientError as error:
+            self.handle_s3_error(error)
 
     def delete_object(self, bucket, file_name, version=None):
         pass
