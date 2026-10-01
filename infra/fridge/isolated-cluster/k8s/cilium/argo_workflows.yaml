@@ -19,8 +19,7 @@ spec:
           rules:
             dns:
               - matchPattern: seaweedfs-s3.seaweedfs.svc.cluster.local
-    # Outbound to minio services
-    # For data I/O with minio
+    # Outbound to seaweedfs-s3 service for data I/O
     - toServices:
         - k8sService:
             namespace: seaweedfs
