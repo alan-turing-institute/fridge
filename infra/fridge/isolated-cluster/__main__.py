@@ -107,6 +107,7 @@ argo_workflows = components.WorkflowServer(
     "argo-workflows",
     args=components.WorkflowServerArgs(
         config=config,
+        s3_credentials=seaweedfs.argo_s3_credentials,
     ),
     opts=ResourceOptions(
         depends_on=[
