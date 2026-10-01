@@ -1,5 +1,5 @@
 import pulumi
-from pulumi import ComponentResource, FileAsset, ResourceOptions
+from pulumi import ComponentResource, FileAsset, Output, ResourceOptions
 from pulumi_kubernetes.core.v1 import Namespace, Secret, ServiceAccount
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
@@ -18,8 +18,10 @@ class WorkflowServerArgs:
     def __init__(
         self,
         config: pulumi.config.Config,
+        s3_credentials: dict,
     ):
         self.config = config
+        self.s3_credentials = s3_credentials
 
 
 class WorkflowServer(ComponentResource):
@@ -49,17 +51,21 @@ class WorkflowServer(ComponentResource):
             opts=child_opts,
         )
 
-        argo_minio_secret = Secret(
-            "argo-minio-secret",
+        argo_s3_secret = Secret(
+            "argo-s3-secret",
             metadata=ObjectMetaArgs(
-                name="argo-artifacts-minio",
+                name="argo-artifacts-s3",
                 namespace=argo_workflows_ns.metadata.name,
             ),
             type="Opaque",
-            string_data={
-                "accesskey": args.config.require_secret("minio_root_user"),
-                "secretkey": args.config.require_secret("minio_root_password"),
-            },
+            string_data=Output.all(
+                args.s3_credentials["accessKey"], args.s3_credentials["secretKey"]
+            ).apply(
+                lambda creds: {
+                    "accesskey": creds[0],
+                    "secretkey": creds[1],
+                }
+            ),
             opts=ResourceOptions.merge(
                 child_opts,
                 ResourceOptions(depends_on=[argo_server_ns]),
@@ -67,7 +73,7 @@ class WorkflowServer(ComponentResource):
         )
 
         argo_depends_on = [
-            argo_minio_secret,
+            argo_s3_secret,
             argo_server_ns,
             argo_workflows_ns,
         ]
@@ -365,8 +371,15 @@ class WorkflowServer(ComponentResource):
         self.register_outputs(
             {
                 "argo_workflows": argo_workflows,
-                "argo_minio_secret": argo_minio_secret,
+                "argo_s3_secret": argo_s3_secret,
                 "argo_server_ns": argo_server_ns,
                 "argo_workflows_ns": argo_workflows_ns,
+                "workflow_role": self.workflow_role,
+                "workflow_role_binding": self.workflow_role_binding,
+                "argo_server_role": self.argo_server_role,
+                "argo_server_role_binding": self.argo_server_role_binding,
+                "executor_sa": self.executor_sa,
+                "executor_role": self.executor_role,
+                "executor_role_binding": self.executor_role_binding,
             }
         )
