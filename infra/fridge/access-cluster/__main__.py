@@ -39,20 +39,9 @@ if k8s_environment == K8sEnvironment.AKS:
         file="./k8s/hubble/hubble_ui.yaml",
     )
 
-# Private API proxy
-api_ssh_jumpbox = components.FridgeAPIJumpbox(
-    "fridge-api-ssh-jumpbox",
-    components.FridgeAPIJumpboxArgs(
-        config=config,
-        k8s_environment=k8s_environment,
-    ),
-)
-
 ingress_nginx = components.Ingress(
     "ingress-nginx",
-    args=components.IngressArgs(
-        api_jumpbox=api_ssh_jumpbox, k8s_environment=k8s_environment
-    ),
+    args=components.IngressArgs(k8s_environment=k8s_environment),
 )
 
 cert_manager = components.CertManager(
@@ -105,6 +94,13 @@ harbor = components.ContainerRegistry(
     ),
 )
 
+vpn_server = components.VpnServer(
+    "vpn-server",
+    components.VpnServerArgs(
+        config=config,
+    ),
+)
+
 # Network policy (through Cilium)
 # Network policies should be deployed last to ensure that none of them interfere with the deployment process
 resources = [
@@ -113,6 +109,7 @@ resources = [
     harbor,
     ingress_nginx,
     storage_classes,
+    vpn_server,
 ]
 
 network_policies = components.NetworkPolicies(
@@ -134,3 +131,6 @@ if k8s_environment == K8sEnvironment.AKS:
     pulumi.export("harbor_ip_address", harbor.harbor_ip)
     pulumi.export("ingress_ip", ingress_nginx.ingress_ip)
     pulumi.export("ingress_ports", ingress_nginx.ingress_ports)
+if tls_environment != TlsEnvironment.PRODUCTION:
+    pulumi.export("harbor_ca_cert", harbor.harbor_ca_cert)
+pulumi.export("harbor_uses_custom_ca", harbor.harbor_uses_custom_ca)

@@ -103,18 +103,16 @@ class Networking(ComponentResource):
                     description="Allow HTTPS traffic for Harbor",
                 ),
                 network.SecurityRuleArgs(
-                    name="AllowSSHServerInbound",
-                    priority=200,
+                    name="AllowHTTPInbound",
+                    priority=110,
                     direction=network.SecurityRuleDirection.INBOUND,
                     access=network.SecurityRuleAccess.ALLOW,
-                    protocol=network.SecurityRuleProtocol.TCP,
+                    protocol=network.SecurityRuleProtocol.ASTERISK,
                     source_port_range="*",
-                    destination_port_range="2500",
-                    source_address_prefixes=args.config.require_object(
-                        "admin_ip_allowlist"
-                    ),
+                    destination_port_range="80",
+                    source_address_prefix="Internet",
                     destination_address_prefix="*",
-                    description="Allow SSH traffic to API Proxy SSH server",
+                    description="Allow HTTP traffic for ACME challenges",
                 ),
                 # Allow Azure Load Balancer health probes
                 network.SecurityRuleArgs(

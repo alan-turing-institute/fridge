@@ -172,7 +172,9 @@ api_server = components.ApiServer(
     args=components.ApiServerArgs(
         argo_server_ns=argo_workflows.argo_server_ns,
         argo_workflows_ns=argo_workflows.argo_workflows_ns,
+        cluster_issuer=cert_manager.cert_manager_dev_issuer,
         config=config,
+        fridge_api_ip=access_stack.get_output("fridge_api_ip_address"),
         minio_url=minio.minio_cluster_url,
         minio_tenant_name=minio.minio_tenant_name,
         verify_tls=False,  # This is only relevant for Argo Workflows, which uses a self-signed certificate in the isolated cluster. The API server will use the MinIO trust bundle to verify MinIO's certificate.
@@ -234,7 +236,9 @@ container_runtime_config = components.ContainerRuntimeConfig(
     "container-runtime-config",
     args=components.ContainerRuntimeConfigArgs(
         config=config,
+        harbor_ca_cert=access_stack.get_output("harbor_ca_cert"),
         harbor_fqdn=access_stack.get_output("harbor_fqdn"),
+        harbor_uses_custom_ca=access_stack.get_output("harbor_uses_custom_ca"),
         k8s_environment=k8s_environment,
     ),
     opts=ResourceOptions(
