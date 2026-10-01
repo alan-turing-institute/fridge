@@ -303,15 +303,15 @@ class ApiServer(ComponentResource):
                                     failure_threshold=3,
                                 ),
                                 ports=[ContainerPortArgs(container_port=8000)],
-                                # readiness_probe=ProbeArgs(
-                                #     http_get=HTTPGetActionArgs(
-                                #         path="/readyz", port=8443, scheme="HTTPS"
-                                #     ),
-                                #     initial_delay_seconds=10,
-                                #     period_seconds=30,
-                                #     timeout_seconds=5,
-                                #     failure_threshold=5,
-                                # ),
+                                readiness_probe=ProbeArgs(
+                                    http_get=HTTPGetActionArgs(
+                                        path="/readyz", port=8443, scheme="HTTPS"
+                                    ),
+                                    initial_delay_seconds=10,
+                                    period_seconds=30,
+                                    timeout_seconds=5,
+                                    failure_threshold=5,
+                                ),
                                 security_context=SecurityContextArgs(
                                     allow_privilege_escalation=False,
                                     capabilities=CapabilitiesArgs(
