@@ -46,9 +46,10 @@ spec:
     - toEndpoints:
       - matchLabels:
           k8s:io.kubernetes.pod.namespace: seaweedfs
+          app.kubernetes.io/component: s3
       toPorts:
         - ports:
-          - port: "8333"
+          - port: "8334"
             protocol: TCP
     - toEndpoints:
       - matchLabels:
