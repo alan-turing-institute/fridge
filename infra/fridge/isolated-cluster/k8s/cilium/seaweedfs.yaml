@@ -1,0 +1,95 @@
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-deny
+  namespace: seaweedfs
+spec:
+  endpointSelector: {}
+  ingress:
+    - {}
+  egress:
+    - {}
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: "seaweedfs-kube-dns"
+  namespace: "seaweedfs"
+spec:
+  # Apply to all pods in this namespace
+  endpointSelector: {}
+  egress:
+    # Outbound to k8s DNS to look up IPs
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+          rules:
+            dns:
+              - matchPattern: "*"
+  ingress:
+    - {}
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: "seaweedfs-interapp"
+  namespace: "seaweedfs"
+spec:
+  # Apply to all pods in this namespace
+  endpointSelector:
+    matchLabels:
+      k8s:app.kubernetes.io/name: seaweedfs
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: seaweedfs
+            k8s:app.kubernetes.io/name: seaweedfs
+      toPorts:
+        - ports:
+          - port: "9333"
+            protocol: TCP
+          - port: "18080"
+            protocol: TCP
+          - port: "18888"
+            protocol: TCP
+          - port: "19333"
+            protocol: TCP
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: seaweedfs
+            k8s:app.kubernetes.io/name: seaweedfs
+      toPorts:
+        - ports:
+          - port: "9333"
+            protocol: TCP
+          - port: "18080"
+            protocol: TCP
+          - port: "18888"
+            protocol: TCP
+          - port: "19333"
+            protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: "seaweedfs-s3"
+  namespace: "seaweedfs"
+spec:
+  # Apply to all pods in this namespace
+  endpointSelector:
+    matchLabels:
+      k8s:app.kubernetes.io/name: seaweedfs
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: fridge-api
+      toPorts:
+        - ports:
+          - port: "8334"
+            protocol: TCP
