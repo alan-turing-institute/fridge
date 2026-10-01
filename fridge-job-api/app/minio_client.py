@@ -1,3 +1,9 @@
+import os
+import ssl
+import sys
+import urllib3
+import xml.etree.ElementTree as ET
+
 from fastapi import File, UploadFile, HTTPException
 from fastapi.responses import StreamingResponse
 from io import BytesIO
@@ -5,11 +11,6 @@ from minio import Minio, versioningconfig, commonconfig
 from minio.error import S3Error
 from pathlib import Path
 from threading import Lock
-
-import os
-import ssl
-import urllib3
-import xml.etree.ElementTree as ET
 
 
 class MinioClient:
@@ -50,7 +51,7 @@ class MinioClient:
         # Exit if minio client keys are not available
         if access_key is None or secret_key is None:
             print("Failed to initialise Minio client")
-            exit(1)
+            sys.exit(1)
 
         self._create_client(access_key, secret_key, st)
         print("Successfully configured Minio client")
@@ -243,6 +244,28 @@ class MinioClient:
         # Handle all other exceptions as object does not exist
         except Exception as error:
             return False
+
+    def list_objects(self, bucket, prefix=None, recursive=False):
+        self._ensure_valid_token()
+        try:
+            objects = self.client.list_objects(
+                bucket, prefix=prefix, recursive=recursive
+            )
+            return [
+                {
+                    "object_name": obj.object_name,
+                    "size": obj.size,
+                    "last_modified": obj.last_modified.isoformat(),
+                    "version_id": obj.version_id,
+                }
+                for obj in objects
+            ]
+        except S3Error as error:
+            self.handle_minio_error(error)
+        except Exception as error:
+            raise HTTPException(
+                status_code=500, detail=f"Unable to list objects in bucket: {error}"
+            )
 
     def delete_object(self, bucket, file_name, version=None):
         self._ensure_valid_token()

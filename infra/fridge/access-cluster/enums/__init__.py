@@ -35,7 +35,8 @@ tls_issuer_names = {
 class SoftwareVersion(Enum):
     CERT_MANAGER = "1.19.4"
     CURL_JQ = "latest"
+    HAPROXY = "3.3.7"
     HARBOR = "1.17.1"
     INGRESS_NGINX = "4.13.2"
     LONGHORN = "1.9.0"
-    OPENSSH_SERVER = "version-10.2_p1-r0"
+    NETBIRD = "0.74.5"
