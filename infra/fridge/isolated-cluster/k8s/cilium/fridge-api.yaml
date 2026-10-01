@@ -40,7 +40,7 @@ spec:
       - remote-node
       toPorts:
         - ports:
-          - port: "8000"
+          - port: "8443"
             protocol: TCP
   egress:
     - toEndpoints:
