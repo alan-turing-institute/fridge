@@ -281,23 +281,6 @@ spec:
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
 metadata:
-  name: argo-artifacts-dawn
-  namespace: argo-artifacts
-spec:
-  endpointSelector:
-    matchLabels:
-      v1.min.io/tenant: argo-artifacts
-  ingress:
-    - fromEntities:
-        - world
-      toPorts:
-        - ports:
-            - port: "4444"
-              protocol: TCP
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
   name: argo-server-dawn
   namespace: argo-server
 spec:
