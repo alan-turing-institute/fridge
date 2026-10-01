@@ -28,14 +28,6 @@ spec:
         - ports:
           - port: "2746"
             protocol: TCP
-    - fromEndpoints:
-      - matchLabels:
-          v1.min.io/tenant: argo-artifacts
-          k8s:io.kubernetes.pod.namespace: argo-artifacts
-      toPorts:
-        - ports:
-          - port: "9000"
-            protocol: TCP
     - fromEntities:
       - remote-node
       toPorts:
@@ -53,25 +45,10 @@ spec:
             protocol: TCP
     - toEndpoints:
       - matchLabels:
-          v1.min.io/tenant: argo-artifacts
-          k8s:io.kubernetes.pod.namespace: argo-artifacts
-      toPorts:
-        - ports:
-          - port: "9000"
-            protocol: TCP
-    - toEndpoints:
-      - matchLabels:
           k8s:io.kubernetes.pod.namespace: seaweedfs
       toPorts:
         - ports:
           - port: "8333"
-            protocol: TCP
-    - toEndpoints:
-      - matchLabels:
-          k8s:io.kubernetes.pod.namespace: minio-operator
-      toPorts:
-        - ports:
-          - port: "4223"
             protocol: TCP
     - toEndpoints:
       - matchLabels:
