@@ -4,6 +4,7 @@ from pulumi_kubernetes.apiextensions import CustomResource
 from pulumi_kubernetes.core.v1 import Namespace, Secret
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
+from pulumi_random import RandomPassword
 
 from .storage_classes import StorageClasses
 from enums import PodSecurityStandard, SoftwareVersion
@@ -42,29 +43,58 @@ class ObjectStorage(ComponentResource):
             "seaweedfs-s3.", self.seaweedfs_ns.metadata.name, ".svc.cluster.local"
         )
 
+        # Generate some credentials for Argo and Fridge to use for S3 access. These are stored in a secret and referenced by the SeaweedFS Helm chart.
+        self.argo_s3_credentials = {
+            "accessKey": RandomPassword(
+                "argo-s3-access-key",
+                length=32,
+                special=False,
+                opts=ResourceOptions.merge(
+                    child_opts,
+                    ResourceOptions(depends_on=[self.seaweedfs_ns]),
+                ),
+            ).result,
+            "secretKey": RandomPassword(
+                "argo-s3-secret-key",
+                length=32,
+                special=False,
+                opts=ResourceOptions.merge(
+                    child_opts,
+                    ResourceOptions(depends_on=[self.seaweedfs_ns]),
+                ),
+            ).result,
+        }
+
         # SeaweedFS's S3 gateway takes a single static identity, not a MinIO-style root user
-        seaweedfs_s3_config = Output.format(
-            """{{
+        seaweedfs_s3_config = Output.json_dumps(
+            {
                 "identities": [
-                    {{
+                    {
                         "name": "fridge",
                         "credentials": [
-                            {{"accessKey": "{0}", "secretKey": "{1}"}}
+                            {
+                                "accessKey": args.config.require_secret(
+                                    "s3_access_key"
+                                ),
+                                "secretKey": args.config.require_secret(
+                                    "s3_secret_key"
+                                ),
+                            }
                         ],
-                        "actions": ["Admin", "Read", "Write"]
-                    }},
-                    {{
+                        "actions": ["Admin", "Read", "Write"],
+                    },
+                    {
                         "name": "anonymous",
                         "credentials": [],
-                        "actions": [
-                            "Read:ingress",
-                            "Write:egress",
-                        ]
-                    }}
+                        "actions": ["Read:ingress", "Write:egress"],
+                    },
+                    {
+                        "name": "fridge-argo",
+                        "credentials": [self.argo_s3_credentials],
+                        "actions": ["Read:ingress", "Write:egress"],
+                    },
                 ]
-            }}""",
-            args.config.require_secret("s3_access_key"),
-            args.config.require_secret("s3_secret_key"),
+            },
         )
 
         seaweedfs_s3_secret = Secret(
