@@ -52,6 +52,14 @@ class ObjectStorage(ComponentResource):
                             {{"accessKey": "{0}", "secretKey": "{1}"}}
                         ],
                         "actions": ["Admin", "Read", "Write"]
+                    }},
+                    {{
+                        "name": "anonymous",
+                        "credentials": [],
+                        "actions": [
+                            "Read:ingress",
+                            "Write:egress",
+                        ]
                     }}
                 ]
             }}""",
@@ -146,15 +154,8 @@ class ObjectStorage(ComponentResource):
                     },
                     "containerSecurityContext": {
                         "enabled": True,
-                        "fsGroup": 1000,
-                        "runAsUser": 1000,
-                        "runAsGroup": 1000,
-                        "runAsNonRoot": True,
                         "allowPrivilegeEscalation": False,
                         "capabilities": {"drop": ["ALL"]},
-                        "seccompProfile": {
-                            "type": "RuntimeDefault",
-                        },
                     },
                 },
                 "global": {
@@ -184,15 +185,8 @@ class ObjectStorage(ComponentResource):
                     },
                     "containerSecurityContext": {
                         "enabled": True,
-                        "fsGroup": 1000,
-                        "runAsUser": 1000,
-                        "runAsGroup": 1000,
-                        "runAsNonRoot": True,
                         "allowPrivilegeEscalation": False,
                         "capabilities": {"drop": ["ALL"]},
-                        "seccompProfile": {
-                            "type": "RuntimeDefault",
-                        },
                     },
                 },
                 "volume": {
@@ -221,15 +215,8 @@ class ObjectStorage(ComponentResource):
                     },
                     "containerSecurityContext": {
                         "enabled": True,
-                        "fsGroup": 1000,
-                        "runAsUser": 1000,
-                        "runAsGroup": 1000,
-                        "runAsNonRoot": True,
                         "allowPrivilegeEscalation": False,
                         "capabilities": {"drop": ["ALL"]},
-                        "seccompProfile": {
-                            "type": "RuntimeDefault",
-                        },
                     },
                 },
                 "filer": {
@@ -254,15 +241,8 @@ class ObjectStorage(ComponentResource):
                     },
                     "containerSecurityContext": {
                         "enabled": True,
-                        "fsGroup": 1000,
-                        "runAsUser": 1000,
-                        "runAsGroup": 1000,
-                        "runAsNonRoot": True,
                         "allowPrivilegeEscalation": False,
                         "capabilities": {"drop": ["ALL"]},
-                        "seccompProfile": {
-                            "type": "RuntimeDefault",
-                        },
                     },
                 },
                 "s3": {
@@ -292,15 +272,8 @@ class ObjectStorage(ComponentResource):
                     },
                     "containerSecurityContext": {
                         "enabled": True,
-                        "fsGroup": 1000,
-                        "runAsUser": 1000,
-                        "runAsGroup": 1000,
-                        "runAsNonRoot": True,
                         "allowPrivilegeEscalation": False,
                         "capabilities": {"drop": ["ALL"]},
-                        "seccompProfile": {
-                            "type": "RuntimeDefault",
-                        },
                     },
                 },
             },
