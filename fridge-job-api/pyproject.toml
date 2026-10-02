@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fridge-job-api"
-version = "0.6.0"
+version = "0.7.0"
 description = "An API for managing and monitoring jobs in the FRIDGE system"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -12,7 +12,7 @@ dependencies = [
     "dotenv>=0.9.9",
     "fastapi[standard]>=0.140.13",
     "kubernetes>=36.0.0",
-    "minio>=7.2.20",
+    "boto3>=1.34",
     "requests>=2.34.2",
 ]
 
