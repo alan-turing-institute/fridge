@@ -308,7 +308,7 @@ spec:
         - world
       toPorts:
         - ports:
-            - port: "8000"
+            - port: "8443"
               protocol: TCP
   egress:
     - toEntities:
