@@ -1,3 +1,4 @@
+import re
 import pulumi
 from pulumi import ComponentResource, Output, ResourceOptions
 from pulumi_kubernetes.apiextensions import CustomResource
@@ -8,6 +9,8 @@ from pulumi_random import RandomPassword
 
 from .storage_classes import StorageClasses
 from enums import PodSecurityStandard, SoftwareVersion
+
+_K8S_QUANTITY = re.compile(r"^\d+(\.\d+)?(Ki|Mi|Gi|Ti|Pi|Ei|k|M|G|T|P|E)$")
 
 
 class ObjectStorageArgs:
@@ -28,6 +31,12 @@ class ObjectStorage(ComponentResource):
     ) -> None:
         super().__init__("fridge:k8s:ObjectStorage", name, {}, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
+
+        seaweedfs_pool_size = args.config.require("seaweedfs_pool_size")
+        if not _K8S_QUANTITY.match(seaweedfs_pool_size):
+            raise ValueError(
+                f"seaweedfs_pool_size '{seaweedfs_pool_size}' is not a valid Kubernetes quantity (e.g. 40Gi)"
+            )
 
         self.seaweedfs_ns = Namespace(
             "seaweedfs-ns",
@@ -145,8 +154,8 @@ class ObjectStorage(ComponentResource):
             ),
             type="Opaque",
             string_data={
-                "adminUser": "admin",
-                "adminPassword": "admin",
+                "adminUser": args.config.require_secret("seaweed_root_user"),
+                "adminPassword": args.config.require_secret("seaweed_root_password"),
             },
             opts=ResourceOptions.merge(
                 child_opts,
@@ -226,7 +235,7 @@ class ObjectStorage(ComponentResource):
                             "name": "data",
                             "type": "persistentVolumeClaim",
                             "storageClass": args.storage_classes.encrypted_storage_class.metadata.name,
-                            "size": "50Gi",
+                            "size": seaweedfs_pool_size,
                             "maxVolumes": 0,
                         }
                     ],

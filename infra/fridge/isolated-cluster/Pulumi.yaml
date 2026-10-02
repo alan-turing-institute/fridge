@@ -35,17 +35,17 @@ config:
   k8s_env:
     type: string
     description: The Kubernetes environment type (e.g. AKS, Dawn)
-  minio_root_user:
+  seaweed_root_user:
     type: string
-    description: MinIO root user
+    description: SeaweedFS root user
     secret: true
-  minio_root_password:
+  seaweed_root_password:
     type: string
-    description: MinIO root password
+    description: SeaweedFS root password
     secret: true
-  minio_pool_size:
+  seaweedfs_pool_size:
     type: string
-    description: Size of the MinIO storage pool (e.g., 20Gi)
+    description: Size of the SeaweedFS storage pool (e.g., 40Gi)
   organization_name:
     type: string
     description: The Pulumi organization name. This is `organization`
