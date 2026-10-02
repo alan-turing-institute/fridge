@@ -95,6 +95,30 @@ spec:
             k8s:io.kubernetes.pod.namespace: fridge-api
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: argo-workflows
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: seaweedfs
+            app: seaweedfs-config-job
+      toPorts:
+        - ports:
+          - port: "8334"
+            protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: "seaweedfs-config-job"
+  namespace: "seaweedfs"
+spec:
+  # Apply to all pods in this namespace
+  endpointSelector:
+    matchLabels:
+      app: seaweedfs-config-job
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: seaweedfs
+            k8s:app.kubernetes.io/name: seaweedfs
+            k8s:app.kubernetes.io/component: s3
       toPorts:
         - ports:
           - port: "8334"

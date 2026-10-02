@@ -101,6 +101,19 @@ seaweedfs = components.ObjectStorage(
     ),
 )
 
+seaweedfs_config = components.SeaweedConfigJob(
+    "seaweedfs-config",
+    args=components.SeaweedConfigArgs(
+        config=config,
+        seaweedfs=seaweedfs,
+    ),
+    opts=ResourceOptions(
+        depends_on=[
+            seaweedfs,
+        ]
+    ),
+)
+
 
 # Argo Workflows
 argo_workflows = components.WorkflowServer(

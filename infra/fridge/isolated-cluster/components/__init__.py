@@ -6,6 +6,7 @@ from .dns_configuration import DNSConfig, DNSConfigArgs
 from .gpu_operator import GPUOperator, GPUOperatorArgs
 from .network_policies import NetworkPolicies, NetworkPoliciesArgs
 from .object_storage import ObjectStorage, ObjectStorageArgs
+from .seaweed_config import SeaweedConfigJob, SeaweedConfigArgs
 from .storage_classes import StorageClasses, StorageClassesArgs
 from .test_workflows import TestWorkflows, TestWorkflowsArgs
 from .workflow_server import WorkflowServer, WorkflowServerArgs
