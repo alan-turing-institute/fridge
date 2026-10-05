@@ -33,7 +33,7 @@ class SoftwareVersion(Enum):
     CERT_MANAGER = "1.17.1"
     CURL = "8.22.0"
     FRIDGE_API = "0.7.0"
-    HAPROXY = "3.3.7"
+    HAPROXY = "3.4.6"
     INTEL_GPU_OPERATOR = "0.35.0"
     LONGHORN = "1.9.0"
     NODE_FEATURE_DISCOVERY = "0.18.3"
