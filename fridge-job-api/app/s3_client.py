@@ -63,10 +63,8 @@ class S3Client:
         bucket_config = {}
         if region != "us-east-1":
             bucket_config["CreateBucketConfiguration"] = {"LocationConstraint": region}
-        self.client.create_bucket(Bucket=name, **bucket_config)
         try:
-            self.client.create_bucket(Bucket=name)
-
+            self.client.create_bucket(Bucket=name, **bucket_config)
         except ClientError as e:
             self.handle_s3_error(e)
 
