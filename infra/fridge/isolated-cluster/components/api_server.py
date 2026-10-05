@@ -42,8 +42,7 @@ from pulumi_kubernetes.rbac.v1 import (
 from enums import K8sEnvironment, PodSecurityStandard, SoftwareVersion
 
 API_SERVER_IMAGE = (
-    # f"ghcr.io/alan-turing-institute/fridge:{SoftwareVersion.FRIDGE_API.value}"
-    f"ghcr.io/craddm/fridge:api-drop-minio"
+    f"ghcr.io/alan-turing-institute/fridge:{SoftwareVersion.FRIDGE_API.value}"
 )
 
 
