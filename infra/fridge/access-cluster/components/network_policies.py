@@ -214,6 +214,10 @@ class NetworkPolicies(ComponentResource):
                 "toPorts": [{"ports": [{"port": "443", "protocol": "TCP"}]}],
             },
             {
+                "toFQDNs": [{"matchName": netbird_hosts["relay"]}],
+                "toPorts": [{"ports": [{"port": "443", "protocol": "UDP"}]}],
+            },
+            {
                 "toFQDNs": [{"matchName": netbird_hosts["stun"]}],
                 "toPorts": [
                     {
