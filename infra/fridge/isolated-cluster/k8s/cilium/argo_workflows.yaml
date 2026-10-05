@@ -7,7 +7,7 @@ spec:
   # Apply to all pods in this namespace
   endpointSelector: {}
   egress:
-    # Outbound to k8s DNS to look up minio service IP only
+    # Outbound to k8s DNS to look up SeaweedFS service IP only
     - toEndpoints:
         - matchLabels:
             io.kubernetes.pod.namespace: kube-system
@@ -18,22 +18,12 @@ spec:
               protocol: ANY
           rules:
             dns:
-              - matchPattern: minio.argo-artifacts.svc.cluster.local
-    # Outbound to argo artifacts pod, via label we have defined
-    # For data I/O with minio
-    - toEndpoints:
-        - matchLabels:
-            io.kubernetes.pod.namespace: argo-artifacts
-            v1.min.io/pool: argo-artifacts-pool-0
-    # Outbound to minio services
-    # For data I/O with minio
+              - matchPattern: seaweedfs-s3.seaweedfs.svc.cluster.local
+    # Outbound to seaweedfs-s3 service for data I/O
     - toServices:
         - k8sService:
-            namespace: argo-artifacts
-            serviceName: minio
-        - k8sService:
-            namespace: argo-artifacts
-            serviceName: argo-artifacts-hl
+            namespace: seaweedfs
+            serviceName: seaweedfs-s3
     # Outbound to k8s API
     # For informing that a job has completed
     - toEntities:

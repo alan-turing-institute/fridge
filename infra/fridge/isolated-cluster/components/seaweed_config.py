@@ -1,3 +1,4 @@
+import pulumi
 from pulumi import ComponentResource, Output, ResourceOptions
 from pulumi_kubernetes.batch.v1 import (
     Job,
@@ -8,93 +9,107 @@ from pulumi_kubernetes.core.v1 import (
     ConfigMapVolumeSourceArgs,
     ContainerArgs,
     EnvVarArgs,
-    Namespace,
     PodSpecArgs,
     PodTemplateSpecArgs,
     SecurityContextArgs,
     VolumeMountArgs,
     VolumeArgs,
 )
-from pulumi_kubernetes.helm.v4 import Chart
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 
 from enums import SoftwareVersion
 
 
-class MinioConfigArgs:
+class SeaweedConfigArgs:
     def __init__(
         self,
-        minio_tenant_ns: Namespace,
-        minio_tenant: Chart,
-        minio_credentials: dict,
-        minio_cluster_url: Output[str],
+        config: pulumi.config.Config,
+        seaweedfs: ComponentResource,
     ):
-        self.minio_cluster_url = minio_cluster_url
-        self.minio_credentials = minio_credentials
-        self.minio_tenant_ns = minio_tenant_ns
-        self.minio_tenant = minio_tenant
+        self.config = config
+        self.seaweedfs = seaweedfs
 
 
-class MinioConfigJob(ComponentResource):
+class SeaweedConfigJob(ComponentResource):
     def __init__(
-        self, name: str, args: MinioConfigArgs, opts: ResourceOptions | None = None
+        self, name: str, args: SeaweedConfigArgs, opts: ResourceOptions | None = None
     ) -> None:
-        super().__init__("fridge:k8s:MinioConfigJob", name, {}, opts)
+        super().__init__("fridge:k8s:SeaweedConfigJob", name, {}, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
-        minio_setup_sh = """
-            #!/bin/sh
-            mkdir -p /tmp/.mc/certs/CAs/
-            cp /tmp/minio-ca/ca.crt /tmp/.mc/certs/CAs/ca.crt
+        setup_sh = """#!/bin/sh
+            set -u
 
             MAX_RETRIES=15
             RETRY_INTERVAL=5
-            i=0
 
-            until mc alias set "$MINIO_ALIAS" "$MINIO_URL" "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"; do
-                i=$((i+1))
-                if [ $i -ge $MAX_RETRIES ]; then
-                    echo "Failed to configure MinIO alias after $MAX_RETRIES attempts. Exiting."
-                    exit 1
-                fi
-                echo "MinIO not ready yet. Retrying in $RETRY_INTERVAL seconds... (Attempt $i/$MAX_RETRIES)"
-                sleep $RETRY_INTERVAL
+            echo "SeaweedFS bucket setup starting"
+            echo "Endpoint: $S3_URL"
+            echo "Buckets: ingress egress"
+
+            for b in ingress egress; do
+                echo "Creating bucket: $b"
+                i=0
+                while :; do
+                    code=$(curl -s -o /tmp/response.txt -w '%{http_code}' -X PUT \\
+                        --cacert /tmp/ca/ca.crt \\
+                        --aws-sigv4 "aws:amz:us-east-1:s3" \\
+                        --user "$S3_ACCESS_KEY:$S3_SECRET_KEY" \\
+                        "$S3_URL/$b")
+                    rc=$?
+                    echo "[$b] Attempt $i/$MAX_RETRIES: curl exit=$rc http=$code"
+
+                    case "$code" in
+                        200) echo "[$b] Bucket created"; break;;
+                        409) echo "[$b] Bucket already exists, nothing to do"; break;;
+                    esac
+
+                    [ -s /tmp/response.txt ] && echo "[$b] Response: $(cat /tmp/response.txt)"
+                    if [ $i -ge $MAX_RETRIES ]; then
+                        echo "[$b] Giving up after $MAX_RETRIES attempts"
+                        exit 1
+                    fi
+                    echo "[$b] Retrying in $RETRY_INTERVAL seconds"
+                    sleep $RETRY_INTERVAL
+                done
             done
 
-            echo "Configuring ingress and egress buckets with anonymous S3 policies"
-            mc anonymous set upload "$MINIO_ALIAS/egress"
-            mc anonymous set download "$MINIO_ALIAS/ingress"
-        """
+            echo "SeaweedFS bucket setup complete"
+            """
 
-        # Create a ConfigMap for MinIO configuration
-        minio_config_map = ConfigMap(
-            "minio-configuration",
+        # Create a ConfigMap for SeaweedFS configuration
+        seaweed_config_map = ConfigMap(
+            "seaweedfs-configuration",
             metadata=ObjectMetaArgs(
-                name="minio-configuration",
-                namespace=args.minio_tenant_ns.metadata.name,
+                name="seaweedfs-configuration",
+                namespace=args.seaweedfs.seaweedfs_ns.metadata.name,
             ),
             data={
-                "setup.sh": minio_setup_sh,
+                "setup.sh": setup_sh,
             },
             opts=child_opts,
         )
 
-        # Create a Job to configure MinIO
-        Job(
-            "minio-config-job",
+        # Create a Job to configure SeaweedFS
+        seaweed_config_job = Job(
+            "seaweedfs-config-job",
             metadata=ObjectMetaArgs(
-                name="minio-config-job",
-                namespace=args.minio_tenant_ns.metadata.name,
-                labels={"app": "minio-config-job"},
+                name="seaweedfs-config-job",
+                namespace=args.seaweedfs.seaweedfs_ns.metadata.name,
+                labels={"app": "seaweedfs-config-job"},
             ),
             spec=JobSpecArgs(
                 backoff_limit=2,
                 template=PodTemplateSpecArgs(
+                    metadata=ObjectMetaArgs(
+                        # This ensures the generated Pods actually get the label
+                        labels={"app": "seaweedfs-config-job"},
+                    ),
                     spec=PodSpecArgs(
                         containers=[
                             ContainerArgs(
-                                name="minio-config-job",
-                                image=f"minio/mc:{SoftwareVersion.MINIO_MC.value}",
+                                name="seaweedfs-config-job",
+                                image=f"curlimages/curl:{SoftwareVersion.CURL.value}",
                                 command=[
                                     "/bin/sh",
                                     "-c",
@@ -113,27 +128,23 @@ class MinioConfigJob(ComponentResource):
                                     },
                                 },
                                 env=[
-                                    EnvVarArgs(name="MC_CONFIG_DIR", value="/tmp/.mc"),
                                     EnvVarArgs(
-                                        name="MINIO_ALIAS",
-                                        value="argoartifacts",
-                                    ),
-                                    EnvVarArgs(
-                                        name="MINIO_URL",
+                                        name="S3_URL",
                                         value=Output.concat(
-                                            "https://", args.minio_cluster_url, ":443"
+                                            "https://",
+                                            args.seaweedfs.seaweedfs_s3_endpoint,
                                         ),
                                     ),
                                     EnvVarArgs(
-                                        name="MINIO_ROOT_USER",
-                                        value=args.minio_credentials.get(
-                                            "minio_root_user", ""
+                                        name="S3_ACCESS_KEY",
+                                        value=args.config.require_secret(
+                                            "s3_access_key"
                                         ),
                                     ),
                                     EnvVarArgs(
-                                        name="MINIO_ROOT_PASSWORD",
-                                        value=args.minio_credentials.get(
-                                            "minio_root_password", ""
+                                        name="S3_SECRET_KEY",
+                                        value=args.config.require_secret(
+                                            "s3_secret_key"
                                         ),
                                     ),
                                 ],
@@ -147,12 +158,12 @@ class MinioConfigJob(ComponentResource):
                                 ),
                                 volume_mounts=[
                                     VolumeMountArgs(
-                                        name="minio-config-volume",
+                                        name="seaweedfs-config-volume",
                                         mount_path="/tmp/scripts/",
                                     ),
                                     VolumeMountArgs(
-                                        name="minio-tls-ca",
-                                        mount_path="/tmp/minio-ca/",
+                                        name="seaweedfs-tls-ca",
+                                        mount_path="/tmp/ca/",
                                         read_only=True,
                                     ),
                                 ],
@@ -160,16 +171,16 @@ class MinioConfigJob(ComponentResource):
                         ],
                         volumes=[
                             VolumeArgs(
-                                name="minio-config-volume",
+                                name="seaweedfs-config-volume",
                                 config_map=ConfigMapVolumeSourceArgs(
-                                    name=minio_config_map.metadata.name,
+                                    name=seaweed_config_map.metadata.name,
                                     default_mode=0o777,
                                 ),
                             ),
                             VolumeArgs(
-                                name="minio-tls-ca",
+                                name="seaweedfs-tls-ca",
                                 secret={
-                                    "secretName": "argo-artifacts-tls",
+                                    "secretName": "seaweedfs-tls",
                                     "items": [{"key": "ca.crt", "path": "ca.crt"}],
                                 },
                             ),
@@ -178,5 +189,8 @@ class MinioConfigJob(ComponentResource):
                     ),
                 ),
             ),
-            opts=child_opts,
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(depends_on=[args.seaweedfs]),
+            ),
         )

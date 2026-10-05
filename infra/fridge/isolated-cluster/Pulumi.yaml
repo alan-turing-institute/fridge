@@ -35,23 +35,25 @@ config:
   k8s_env:
     type: string
     description: The Kubernetes environment type (e.g. AKS, Dawn)
-  minio_root_user:
-    type: string
-    description: MinIO root user
-    secret: true
-  minio_root_password:
-    type: string
-    description: MinIO root password
-    secret: true
-  minio_pool_size:
-    type: string
-    description: Size of the MinIO storage pool (e.g., 20Gi)
   organization_name:
     type: string
     description: The Pulumi organization name. This is `organization`
   project_name:
     type: string
     description: The Pulumi project name for the access cluster deployment
+  seaweedfs:
+    value:
+      root_user:
+        type: string
+        description: SeaweedFS root user
+        secret: true
+      root_password:
+        type: string
+        description: SeaweedFS root password
+        secret: true
+      pool_size:
+        type: string
+        description: Size of the SeaweedFS storage pool (e.g., 40Gi)
   kubernetes:context:
     value: ""
     description: Kubernetes context for the FRIDGE deployment

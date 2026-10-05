@@ -85,9 +85,9 @@ standard_namespaces = ["default", "kube-node-lease", "kube-public"]
 for namespace in standard_namespaces:
     patch_namespace(namespace, PodSecurityStandard.RESTRICTED)
 
-# Minio
-minio = components.ObjectStorage(
-    "minio",
+# SeaweedFS object storage
+seaweedfs = components.ObjectStorage(
+    "seaweedfs",
     args=components.ObjectStorageArgs(
         config=config,
         cluster_issuer=cert_manager.cert_manager_dev_issuer,
@@ -101,19 +101,16 @@ minio = components.ObjectStorage(
     ),
 )
 
-minio_config = components.MinioConfigJob(
-    "minio-config-job",
-    args=components.MinioConfigArgs(
-        minio_cluster_url=minio.minio_cluster_url,
-        minio_credentials={
-            "minio_root_user": config.require_secret("minio_root_user"),
-            "minio_root_password": config.require_secret("minio_root_password"),
-        },
-        minio_tenant_ns=minio.minio_tenant_ns,
-        minio_tenant=minio.minio_tenant,
+seaweedfs_config = components.SeaweedConfigJob(
+    "seaweedfs-config",
+    args=components.SeaweedConfigArgs(
+        config=config,
+        seaweedfs=seaweedfs,
     ),
     opts=ResourceOptions(
-        depends_on=[minio],
+        depends_on=[
+            seaweedfs,
+        ]
     ),
 )
 
@@ -123,6 +120,7 @@ argo_workflows = components.WorkflowServer(
     "argo-workflows",
     args=components.WorkflowServerArgs(
         config=config,
+        s3_credentials=seaweedfs.argo_s3_credentials,
     ),
     opts=ResourceOptions(
         depends_on=[
@@ -175,8 +173,7 @@ api_server = components.ApiServer(
         cluster_issuer=cert_manager.cert_manager_dev_issuer,
         config=config,
         fridge_api_ip=access_stack.get_output("fridge_api_ip_address"),
-        minio_url=minio.minio_cluster_url,
-        minio_tenant_name=minio.minio_tenant_name,
+        s3_url=seaweedfs.seaweedfs_s3_endpoint,
         verify_tls=False,  # This is only relevant for Argo Workflows, which uses a self-signed certificate in the isolated cluster. The API server will use the MinIO trust bundle to verify MinIO's certificate.
     ),
     opts=ResourceOptions(
@@ -215,8 +212,6 @@ resources = [
     api_server,
     argo_workflows,
     block_storage,
-    minio,
-    minio_config,
     storage_classes,
 ]
 

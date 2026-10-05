@@ -46,13 +46,13 @@ server:
 artifactRepository:
   s3:
     bucket: ingress
-    endpoint: minio.argo-artifacts.svc.cluster.local:443
+    endpoint: seaweedfs-s3.seaweedfs.svc.cluster.local:8334
     region: eu-west-2 # note this is not a real region! this is just a placeholder necessary for s3 compatibility
     accessKeySecret:
-      name: argo-artifacts-minio
+      name: argo-artifacts-s3
       key: accesskey
     secretKeySecret:
-      name: argo-artifacts-minio
+      name: argo-artifacts-s3
       key: secretkey
     caSecret:
       name: trusted-certificates
