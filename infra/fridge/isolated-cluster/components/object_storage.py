@@ -32,11 +32,21 @@ class ObjectStorage(ComponentResource):
         super().__init__("fridge:k8s:ObjectStorage", name, {}, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
-        seaweedfs_pool_size = args.config.require("seaweedfs_pool_size")
-        if not _K8S_QUANTITY.match(seaweedfs_pool_size):
-            raise ValueError(
-                f"seaweedfs_pool_size '{seaweedfs_pool_size}' is not a valid Kubernetes quantity (e.g. 40Gi)"
-            )
+        seaweedfs_config = args.config.require_secret_object("seaweedfs")
+
+        def validate_pool_size(config):
+            size = config["pool_size"]
+            if not isinstance(size, str) or not _K8S_QUANTITY.match(size):
+                raise ValueError(
+                    f"seaweedfs.pool_size '{size}' is not a valid Kubernetes quantity (e.g. 40Gi)"
+                )
+            return size
+
+        seaweedfs_pool_size = seaweedfs_config.apply(validate_pool_size)
+        seaweedfs_root_user = seaweedfs_config.apply(lambda config: config["root_user"])
+        seaweed_root_password = seaweedfs_config.apply(
+            lambda config: config["root_password"]
+        )
 
         self.seaweedfs_ns = Namespace(
             "seaweedfs-ns",
@@ -154,8 +164,8 @@ class ObjectStorage(ComponentResource):
             ),
             type="Opaque",
             string_data={
-                "adminUser": args.config.require_secret("seaweed_root_user"),
-                "adminPassword": args.config.require_secret("seaweed_root_password"),
+                "adminUser": seaweedfs_root_user,
+                "adminPassword": seaweed_root_password,
             },
             opts=ResourceOptions.merge(
                 child_opts,
