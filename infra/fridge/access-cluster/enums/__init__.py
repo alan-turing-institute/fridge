@@ -36,7 +36,7 @@ class SoftwareVersion(Enum):
     CERT_MANAGER = "1.21.2"
     CURL_JQ = "latest"
     HAPROXY = "3.4.6"
-    HARBOR = "1.17.1"
+    HARBOR = "1.19.2"
     INGRESS_NGINX = "4.13.2"
     LONGHORN = "1.9.0"
     NETBIRD = "0.80.0"
