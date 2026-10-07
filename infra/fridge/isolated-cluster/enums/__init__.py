@@ -30,7 +30,7 @@ tls_issuer_names = {
 
 class SoftwareVersion(Enum):
     ARGO_WORKFLOWS = "2.0.6"  # Corresponds to Argo Workflows v4.1.3
-    CERT_MANAGER = "1.17.1"
+    CERT_MANAGER = "1.21.2"
     CURL = "8.22.0"
     FRIDGE_API = "0.7.0"
     HAPROXY = "3.4.6"
@@ -38,4 +38,4 @@ class SoftwareVersion(Enum):
     LONGHORN = "1.9.0"
     NODE_FEATURE_DISCOVERY = "0.18.3"
     SEAWEEDFS = "4.47.0"
-    TRUST_MANAGER = "0.21.1"
+    TRUST_MANAGER = "0.25.0"
