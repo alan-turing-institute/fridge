@@ -140,6 +140,7 @@ spec:
               - matchName: "registry.k8s.io"
               - matchPattern: "*.pkg.dev"
               - matchName: "prod-registry-k8s-io-eu-west-1.s3.dualstack.eu-west-1.amazonaws.com"
+              - matchName: "cdn.registry.k8s.io"
     - toFQDNs:
       - matchName: "auth.docker.io"
       - matchName: "docker-images-prod.6aa30f8b08e16409b46e0173d6de2f56.r2.cloudflarestorage.com"
@@ -154,8 +155,9 @@ spec:
       - matchPattern: "**.cluster.local"
       # registry.k8s.io forwards to many different potential endpoints, depending on factors such as region and load
       # We need to allow those endpoints too. However, there is no list of known registry.k8s.io endpoints,
-      # and they can change over time. Points below are some known endpoints observered in our environment
+      # and they can change over time. Points below are some known endpoints observed in our environment
       - matchName: "registry.k8s.io"
+      - matchName: "cdn.registry.k8s.io"
       - matchPattern: "*.pkg.dev"
       - matchName: "prod-registry-k8s-io-eu-west-1.s3.dualstack.eu-west-1.amazonaws.com"
 ---
