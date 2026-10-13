@@ -26,6 +26,7 @@ project:
         - file: deploy/infrastructure.md
         - file: deploy/netbird.md
         - file: deploy/services.md
+        - file: deploy/configuration.md
     - title: Develop
       children:
         - file: develop/target.md
