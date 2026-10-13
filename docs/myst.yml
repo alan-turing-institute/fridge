@@ -20,6 +20,9 @@ project:
         - file: architecture/architecture.md
         - file: architecture/defence_in_depth.md
         - file: architecture/lifecycle.md
+    - title: Use
+      children:
+        - file: use/api.md
     - title: Deploy
       children:
         - file: deploy/overview.md
