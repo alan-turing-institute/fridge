@@ -66,6 +66,15 @@ config:
         type: string
         description: Netbird setup key for the access cluster
         secret: true
+  fridge_api_ip_address:
+    type: string
+    description: IP address of the FRIDGE API in the isolated cluster. On AKS this must match fridge_api_ip in the isolated cluster stack
+  harbor_ip:
+    type: string
+    description: IP address of Harbor as seen from the cluster nodes, used to configure containerd to pull from Harbor
+  isolated_cluster_api_endpoint:
+    type: string
+    description: Host name or IP address of the isolated cluster's Kubernetes API server
   kubernetes:context:
     value: ""
     description: Kubernetes context for the FRIDGE deployment
