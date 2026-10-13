@@ -71,7 +71,7 @@ Additional NetBird-specific configuration fields are required in the Pulumi conf
 - `setup_key`
 - `endpoint_overrides`
 
-Non-secret values can be added to the configuration file manually or using `pulumi config set --path "netbird.<field_name>" "<value>".
+Non-secret values can be added to the configuration file manually or using `pulumi config set --path "netbird.<field_name>" "<value>"`.
 
 `hostname` should be a stable, descriptive name to be used for the peer in the access cluster (e.g. `fridge-access-prod`).
 
