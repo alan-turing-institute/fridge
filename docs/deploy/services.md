@@ -1,7 +1,7 @@
 # Deploy Services
 
 This page explains how to deploy the FRIDGE services to a FRIDGE tenancy.
-This process includes configuration for various components such as Argo Workflows, MinIO, network policies, and other infrastructure settings.
+This process includes configuration for various components such as Argo Workflows, SeaweedFS, network policies, and other infrastructure settings.
 It does not deploy the Kubernetes clusters within the FRIDGE tenancy; instead, it assumes that Kubernetes clusters have already been deployed.
 
 :::{seealso}
@@ -24,7 +24,7 @@ Currently, FRIDGE is configured to support deployment on Azure Kubernetes Servic
 The isolated cluster can also be deployed to a local [k3s](https://k3s.io/) instance.
 
 You will require appropriate Kubernetes contexts for both clusters.
-The `Hosting Organisation` should provide you with the required credentials.
+The `Hosting Administrators` should provide you with the required credentials.
 
 :::{note}
 The following instructions assume you already have access to Kubernetes clusters deployed in accordance with the instructions in [Deploy Infrastructure](./infrastructure.md).
@@ -61,12 +61,12 @@ You can set individual configuration values for the stack using the following co
 pulumi config set <key> <value>
 ```
 
-Some of the configuration keys must be set as secrets, such as the `MinIO` access key and secret key.
+Some of the configuration keys must be set as secrets, such as the S3 access key and secret key used for object storage (`s3_access_key` and `s3_secret_key`).
 Those *must* be set using the Pulumi CLI using the `--secret` flag.
-For example, the following command sets the `minio_root_password`:
+For example, the following command sets the `s3_secret_key`:
 
 ```console
-pulumi config set --secret minio_root_password <your-minio-secret-key>
+pulumi config set --secret s3_secret_key <your-s3-secret-key>
 ```
 
 It is critical that you set all required configuration keys before deploying the stack.

@@ -44,7 +44,7 @@ To deploy the infrastructure, follow these steps:
 pulumi stack init <stack-name>
 ```
 
-1. Configure the stack with the necessary settings, such as the Azure region, and desired resource group name:
+2. Configure the stack with the necessary settings, such as the Azure region, and desired resource group name:
 
 ```console
 pulumi config set azure-native:location <region>
@@ -55,7 +55,7 @@ pulumi config set resource_group_name <resource-group-name>
 The provided `Pulumi.yaml` provides the full schema to follow for the Pulumi configuration file
 :::
 
-1. Deploy the infrastructure:
+3. Deploy the infrastructure:
 
 ```console
 pulumi up

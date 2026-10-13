@@ -111,7 +111,7 @@ Access to the {term}`Access Cluster` Kubernetes API is through the bastion route
 The {term}`Access Cluster` provides a controlled VPN connection to the FRIDGE tenancy using [NetBird](https://netbird.io)
 
 Traffic from authorised peers is received by the {term}`Access Cluster` and forwarded by a reverse proxy to the permitted services in the {term}`Isolated Cluster`.
-This provides access to the FRIDGE API for {term}`Job Submitters <Job Submitter>`, and the {term}`Isolated Cluster` Kubernetes API for {term}`TRE Administrators`.
+This provides access to the FRIDGE API for {term}`Job Submitters <Job Submitter>`, and the {term}`Isolated Cluster` Kubernetes API for {term}`TRE Administrators <TRE Administrator>`.
 
 NetBird Groups and policies control which users and administrators may access the FRIDGE services.
 The VPN route does not provide general access to either the access or isolated virtual networks.
@@ -195,7 +195,7 @@ This provides a convenient way to handle the ingress of inputs and egress of res
 Buckets are created for inputs and results.
 The inputs bucket is read-only to jobs, to prevent the corruption of input data.
 
-The object storage is provided by an instance of [Minio](https://www.min.io/) and uses a volume of the secure storage class for its backend.
+The object storage is provided by an instance of [SeaweedFS](https://github.com/seaweedfs/seaweedfs) and uses a volume of the secure storage class for its backend.
 
 #### Secure volumes
 
