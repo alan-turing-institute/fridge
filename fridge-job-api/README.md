@@ -24,6 +24,8 @@ For local development, you can set the following variables in a `.env` file:
 - `S3_URL`: The URL of the S3 server
 - `S3_ACCESS_KEY`: Access Key to authenticate with S3 server
 - `S3_SECRET_KEY`: Secret Key to authenticate with the S3 server
+
+`S3_ACCESS_KEY` and `S3_SECRET_KEY` are the API's generic credentials, limited by default to the shared `ingress` and `egress` buckets with no S3 admin rights. Callers may instead send their own S3 credentials in the optional `X-S3-Access-Key` and `X-S3-Secret-Key` request headers (both together) to use a user-specific bucket or, for an admin, to create buckets. If omitted, the generic credentials are used.
 - `FRIDGE_API_ADMIN`: The username of the admin user for the FRIDGE API
 - `FRIDGE_API_PASSWORD`: The password for the admin user for the FRIDGE API
 - `VERIFY_TLS`: Set to `False` to disable TLS verification (not recommended for production). Note that this applies only to the TLS certificate for Argo Workflows, which is self-issued
