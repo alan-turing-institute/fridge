@@ -3,7 +3,7 @@ from string import Template
 
 import pulumi
 from pulumi import ComponentResource, Output, ResourceOptions
-
+from pulumi_kubernetes.apiextensions import CustomResource
 from pulumi_kubernetes.batch.v1 import (
     Job,
     JobSpecArgs,
@@ -97,6 +97,29 @@ class ContainerRegistry(ComponentResource):
             else "ReadWriteOnce",
         }
 
+        self.harbor_certificate = CustomResource(
+            "harbor-certificate",
+            api_version="cert-manager.io/v1",
+            kind="Certificate",
+            metadata=ObjectMetaArgs(
+                name="harbor-certificate",
+                namespace=self.harbor_ns.metadata.name,
+            ),
+            spec={
+                "secretName": "harbor-tls-secret",
+                "issuerRef": {
+                    "name": tls_issuer_names[args.tls_environment],
+                    "kind": "ClusterIssuer",
+                },
+                "commonName": self.harbor_fqdn,
+                "dnsNames": [self.harbor_fqdn],
+            },
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(depends_on=[self.harbor_ns]),
+            ),
+        )
+
         self.harbor = Release(
             "harbor",
             ReleaseArgs(
@@ -131,7 +154,7 @@ class ContainerRegistry(ComponentResource):
             ),
             opts=ResourceOptions.merge(
                 child_opts,
-                ResourceOptions(depends_on=[self.harbor_ns]),
+                ResourceOptions(depends_on=[self.harbor_ns, self.harbor_certificate]),
             ),
         )
 
@@ -143,9 +166,6 @@ class ContainerRegistry(ComponentResource):
                 annotations={
                     "nginx.ingress.kubernetes.io/force-ssl-redirect": "true",
                     "nginx.ingress.kubernetes.io/proxy-body-size": "0",
-                    "cert-manager.io/cluster-issuer": tls_issuer_names[
-                        args.tls_environment
-                    ],
                 },
             ),
             spec=IngressSpecArgs(
@@ -153,7 +173,7 @@ class ContainerRegistry(ComponentResource):
                 tls=[
                     IngressTLSArgs(
                         hosts=[self.harbor_fqdn],
-                        secret_name="harbor-ingress-tls",
+                        secret_name="harbor-tls-secret",
                     )
                 ],
                 rules=[
@@ -183,6 +203,7 @@ class ContainerRegistry(ComponentResource):
                 ResourceOptions(
                     depends_on=[
                         self.harbor,
+                        self.harbor_certificate,
                     ]
                 ),
             ),
@@ -204,13 +225,13 @@ class ContainerRegistry(ComponentResource):
                 )
 
             self.harbor_tls_secret = Secret.get(
-                "harbor-ingress-tls-secret",
-                Output.concat(self.harbor_ns.metadata.name, "/harbor-ingress-tls"),
+                "harbor-tls-secret",
+                Output.all(self.harbor_ns.metadata.name, self.harbor_certificate.id),
                 opts=ResourceOptions.merge(
                     child_opts,
                     ResourceOptions(
                         depends_on=[
-                            self.harbor_ingress,
+                            self.harbor_certificate,
                         ]
                     ),
                 ),
