@@ -1,6 +1,5 @@
 import boto3
 import os
-import sys
 from botocore.client import Config
 from botocore.exceptions import ClientError
 from boto3.s3.transfer import TransferConfig
@@ -25,11 +24,6 @@ class S3Client:
     def __init__(self, endpoint, access_key, secret_key, secure=True):
         scheme = "https" if secure else "http"
 
-        # Exit if s3 client keys are not available
-        if access_key is None or secret_key is None:
-            print("Failed to initialise S3 client")
-            sys.exit(1)
-
         self.client = boto3.client(
             "s3",
             endpoint_url=f"{scheme}://{endpoint}",
@@ -42,13 +36,18 @@ class S3Client:
             ),
             verify=self.S3_CA_CRT if os.path.exists(self.S3_CA_CRT) else True,
         )
-        print("Successfully configured S3 client")
 
     def handle_s3_error(self, error: ClientError):
         code = error.response["Error"]["Code"]
-        status = {"NoSuchBucket": 404, "NoSuchKey": 404, "AccessDenied": 403}.get(
-            code, 500
-        )
+        status = {
+            "NoSuchBucket": 404,
+            "NoSuchKey": 404,
+            "404": 404,
+            "403": 403,
+            "AccessDenied": 403,
+            "InvalidAccessKeyId": 401,
+            "SignatureDoesNotMatch": 401,
+        }.get(code, 500)
         raise HTTPException(
             status_code=status, detail=error.response["Error"]["Message"]
         )
@@ -182,7 +181,7 @@ class S3Client:
             self.client.head_object(**head_params)
             return True
         except ClientError as error:
-            if error.response["Error"]["Code"] == "NoSuchKey":
+            if error.response["Error"]["Code"] in ("NoSuchKey", "404"):
                 return False
             self.handle_s3_error(error)
             return False
