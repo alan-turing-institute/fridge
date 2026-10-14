@@ -100,17 +100,23 @@ class ObjectStorage(ComponentResource):
                                 ),
                             }
                         ],
-                        "actions": ["Admin", "Read", "Write"],
+                        # Generic identity for the API: limited to the shared buckets and no Admin.
+                        # User-specific buckets and admin operations use credentials supplied by the caller.
+                        "actions": [
+                            "Read:ingress",
+                            "List:ingress",
+                            "Write:ingress",
+                            "Read:egress",
+                            "List:egress",
+                            "Write:egress",
+                        ],
                     },
                     {
-                        "name": "anonymous",
-                        "credentials": [],
-                        "actions": ["Read:ingress", "Write:egress"],
-                    },
-                    {
+                        # Used by the data-copy workflow. Read is unscoped so that it can copy
+                        # from any (including per-user) ingress bucket; write is limited to egress.
                         "name": "fridge-argo",
                         "credentials": [self.argo_s3_credentials],
-                        "actions": ["Read:ingress", "Write:egress"],
+                        "actions": ["Read", "List", "Write:egress"],
                     },
                 ]
             },
