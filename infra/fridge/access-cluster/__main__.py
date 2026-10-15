@@ -88,6 +88,7 @@ harbor = components.ContainerRegistry(
         config=config,
         tls_environment=tls_environment,
         storage_classes=storage_classes,
+        dev_ca_cert=cert_manager.dev_ca_cert,
     ),
     opts=ResourceOptions(
         depends_on=[ingress_nginx, cert_manager, storage_classes],
