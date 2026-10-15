@@ -283,15 +283,14 @@ class ContainerRegistry(ComponentResource):
             ),
         )
 
-        self.skip_harbor_tls = Template(
-            open("k8s/harbor/skip_harbor_tls_verification.yaml", "r").read()
-        ).substitute(
-            namespace="containerd-config",
-            harbor_fqdn=self.harbor_fqdn,
-            harbor_url=self.harbor_external_url,
-            harbor_ip=args.config.require("harbor_ip"),
-            harbor_internal_url="http://" + args.config.require("harbor_ip"),
-        )
+        with open("k8s/harbor/skip_harbor_tls_verification.yaml", "r") as f:
+            self.skip_harbor_tls = Template(f.read()).substitute(
+                namespace="containerd-config",
+                harbor_fqdn=self.harbor_fqdn,
+                harbor_url=self.harbor_external_url,
+                harbor_ip=args.config.require("harbor_ip"),
+                harbor_internal_url="http://" + args.config.require("harbor_ip"),
+            )
 
         self.configure_containerd_daemonset = ConfigGroup(
             "configure-containerd-daemon",
