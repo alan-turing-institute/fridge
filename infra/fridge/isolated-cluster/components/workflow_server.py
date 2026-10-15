@@ -226,7 +226,7 @@ class WorkflowServer(ComponentResource):
             ],
             opts=ResourceOptions.merge(
                 child_opts,
-                ResourceOptions(depends_on=[self.workflow_role, argo_workflows]),
+                ResourceOptions(depends_on=self.workflow_role),
             ),
         )
 
@@ -307,7 +307,7 @@ class WorkflowServer(ComponentResource):
             ],
             opts=ResourceOptions.merge(
                 child_opts,
-                ResourceOptions(depends_on=[self.argo_server_role, argo_workflows]),
+                ResourceOptions(depends_on=[self.argo_server_role]),
             ),
         )
 
