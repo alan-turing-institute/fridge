@@ -1,3 +1,4 @@
+from pathlib import Path
 from string import Template
 
 import pulumi
@@ -210,14 +211,24 @@ class ContainerRegistry(ComponentResource):
             ),
         )
 
-        if args.tls_environment == TlsEnvironment.DEVELOPMENT:
-            self.harbor_ca_cert = Output.from_input(args.dev_ca_cert)
-            self.harbor_uses_custom_ca = Output.from_input(True)
-        elif args.tls_environment == TlsEnvironment.STAGING:
-            # TODO: replace with the Let's Encrypt staging root bundle
-            ...  # keep your existing _extract_ca_bundle / Secret.get block here for now
-        else:
-            self.harbor_uses_custom_ca = Output.from_input(False)
+        # CA bundle that clients (e.g. containerd on the isolated cluster) need in
+        # order to verify Harbor's certificate. None means the system trust store
+        # is sufficient.
+        self.harbor_ca_bundle: Output[str] | None = None
+        match args.tls_environment:
+            case TlsEnvironment.DEVELOPMENT:
+                self.harbor_ca_bundle = Output.from_input(args.dev_ca_cert)
+            case TlsEnvironment.STAGING:
+                # cert-manager does not populate ca.crt for ACME certificates, so
+                # use the published Let's Encrypt staging roots instead
+                self.harbor_ca_bundle = Output.from_input(
+                    "".join(
+                        Path(path).read_text()
+                        for path in sorted(
+                            Path("certs/letsencrypt-staging").glob("*.pem")
+                        )
+                    )
+                )
 
         if k8s_environment == K8sEnvironment.AKS:
             self.harbor_internal_loadbalancer = Service(
@@ -401,10 +412,7 @@ class ContainerRegistry(ComponentResource):
             "harbor_ingress": self.harbor_ingress,
             "harbor_ns": self.harbor_ns,
         }
-        if args.tls_environment != TlsEnvironment.PRODUCTION:
-            outputs["harbor_ca_cert"] = self.harbor_ca_cert
-        elif args.tls_environment == TlsEnvironment.STAGING:
-            outputs["harbor_tls_secret"] = self.harbor_tls_secret
-        outputs["harbor_uses_custom_ca"] = self.harbor_uses_custom_ca
+        if self.harbor_ca_bundle is not None:
+            outputs["harbor_ca_bundle"] = self.harbor_ca_bundle
 
         self.register_outputs(outputs)
