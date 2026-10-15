@@ -73,4 +73,5 @@ class NetworkPolicies(ComponentResource):
                 "./k8s/cilium/kube-system.yaml",
                 "./k8s/cilium/seaweedfs.yaml",
             ],
+            opts=child_opts,
         )
