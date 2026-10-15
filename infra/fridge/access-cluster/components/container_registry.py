@@ -1,8 +1,7 @@
-import base64
 from string import Template
 
 import pulumi
-from pulumi import ComponentResource, Output, ResourceOptions
+from pulumi import ComponentResource, Input, Output, ResourceOptions
 from pulumi_kubernetes.apiextensions import CustomResource
 from pulumi_kubernetes.batch.v1 import (
     Job,
@@ -55,10 +54,12 @@ class ContainerRegistryArgs:
         config: pulumi.config.Config,
         storage_classes: StorageClasses,
         tls_environment: TlsEnvironment,
+        dev_ca_cert: Input[str] | None = None,
     ) -> None:
         self.config = config
-        self.tls_environment = tls_environment
+        self.dev_ca_cert = dev_ca_cert
         self.storage_classes = storage_classes
+        self.tls_environment = tls_environment
 
 
 class ContainerRegistry(ComponentResource):
@@ -209,39 +210,12 @@ class ContainerRegistry(ComponentResource):
             ),
         )
 
-        if args.tls_environment != TlsEnvironment.PRODUCTION:
-
-            def _extract_ca_bundle(tls_crt_b64: str) -> str:
-                tls_crt = base64.b64decode(tls_crt_b64).decode("utf-8")
-                certs = tls_crt.split("-----BEGIN CERTIFICATE-----")
-                # certs[0] is empty, certs[1] is the leaf; everything after is the issuing chain
-                chain = certs[2:]
-                if not chain:
-                    # Self-signed / CA issuers only have one cert - it *is* the CA
-                    return tls_crt
-                return (
-                    "-----BEGIN CERTIFICATE-----"
-                    + "-----BEGIN CERTIFICATE-----".join(chain)
-                )
-
-            self.harbor_tls_secret = Secret.get(
-                "harbor-tls-secret",
-                Output.all(self.harbor_ns.metadata.name, self.harbor_certificate.id),
-                opts=ResourceOptions.merge(
-                    child_opts,
-                    ResourceOptions(
-                        depends_on=[
-                            self.harbor_certificate,
-                        ]
-                    ),
-                ),
-            )
-
-            self.harbor_ca_cert = self.harbor_tls_secret.data.apply(
-                lambda data: _extract_ca_bundle(data["tls.crt"])
-            )
-
+        if args.tls_environment == TlsEnvironment.DEVELOPMENT:
+            self.harbor_ca_cert = Output.from_input(args.dev_ca_cert)
             self.harbor_uses_custom_ca = Output.from_input(True)
+        elif args.tls_environment == TlsEnvironment.STAGING:
+            # TODO: replace with the Let's Encrypt staging root bundle
+            ...  # keep your existing _extract_ca_bundle / Secret.get block here for now
         else:
             self.harbor_uses_custom_ca = Output.from_input(False)
 
@@ -429,9 +403,8 @@ class ContainerRegistry(ComponentResource):
         }
         if args.tls_environment != TlsEnvironment.PRODUCTION:
             outputs["harbor_ca_cert"] = self.harbor_ca_cert
+        elif args.tls_environment == TlsEnvironment.STAGING:
             outputs["harbor_tls_secret"] = self.harbor_tls_secret
-            outputs["harbor_uses_custom_ca"] = self.harbor_uses_custom_ca
-        else:
-            outputs["harbor_uses_custom_ca"] = self.harbor_uses_custom_ca
+        outputs["harbor_uses_custom_ca"] = self.harbor_uses_custom_ca
 
         self.register_outputs(outputs)
