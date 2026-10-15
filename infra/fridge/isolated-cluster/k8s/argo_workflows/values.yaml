@@ -10,6 +10,9 @@ controller:
     runAsUser: 8737
     seccompProfile:
       type: RuntimeDefault
+crds:
+  install: true
+  full: false
 executor:
   securityContext:
     allowPrivilegeEscalation: false
