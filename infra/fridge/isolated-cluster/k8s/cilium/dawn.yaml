@@ -342,6 +342,7 @@ spec:
             - port: "53"
               protocol: ANY
     - toCIDR:
+        # Hardcoded Cinder proxy IP address
         - 10.10.0.231/32
       toPorts:
         - ports:
