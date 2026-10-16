@@ -1,8 +1,9 @@
+import base64
 import pulumi
 
 from pulumi import ComponentResource, Output, ResourceOptions
 from pulumi_kubernetes.apiextensions import CustomResource
-from pulumi_kubernetes.core.v1 import Namespace, Service
+from pulumi_kubernetes.core.v1 import Namespace, Secret, Service
 from pulumi_kubernetes.helm.v3 import Release
 from pulumi_kubernetes.helm.v4 import RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
@@ -249,12 +250,13 @@ class CertManager(ComponentResource):
                     ),
                 )
 
+        self.dev_ca_cert: Output[str] | None = None
         # Create ClusterIssuers
         issuer_outputs = {}
         # if we're using TLS development use a self-signed issuer for the certificate
         if args.tls_environment == TlsEnvironment.DEVELOPMENT:
             cert_manager_secretName = "dev-certificate"
-            cert_manager_dev_issuer_self_signed = CustomResource(
+            self.cert_manager_dev_issuer_self_signed = CustomResource(
                 resource_name="cert-manager-dev-self-signed-issuer",
                 api_version="cert-manager.io/v1",
                 kind="ClusterIssuer",
@@ -264,13 +266,14 @@ class CertManager(ComponentResource):
                 spec={"selfSigned": {}},
                 opts=ResourceOptions(depends_on=[cert_manager]),
             )
-            cert_manager_dev_certificate = CustomResource(
+            self.cert_manager_dev_certificate = CustomResource(
                 resource_name="cert-manager-dev-certificate",
                 api_version="cert-manager.io/v1",
                 kind="Certificate",
                 metadata=ObjectMetaArgs(
                     name="dev-certificate",
                     namespace="cert-manager",
+                    annotations={"pulumi.com/waitFor": "condition=Ready"},
                 ),
                 spec={
                     "isCA": True,
@@ -289,10 +292,12 @@ class CertManager(ComponentResource):
                 },
                 opts=ResourceOptions.merge(
                     child_opts,
-                    ResourceOptions(depends_on=[cert_manager_dev_issuer_self_signed]),
+                    ResourceOptions(
+                        depends_on=[self.cert_manager_dev_issuer_self_signed]
+                    ),
                 ),
             )
-            cert_manager_dev_issuer = CustomResource(
+            self.cert_manager_dev_issuer = CustomResource(
                 resource_name="cert-manager-dev-issuer",
                 api_version="cert-manager.io/v1",
                 kind="ClusterIssuer",
@@ -303,13 +308,27 @@ class CertManager(ComponentResource):
                 spec={"ca": {"secretName": cert_manager_secretName}},
                 opts=ResourceOptions.merge(
                     child_opts,
-                    ResourceOptions(depends_on=[cert_manager_dev_certificate]),
+                    ResourceOptions(depends_on=[self.cert_manager_dev_certificate]),
                 ),
             )
+            dev_ca_secret = Secret.get(
+                "dev-ca-secret",
+                self.cert_manager_dev_certificate.id.apply(
+                    lambda _: f"cert-manager/{cert_manager_secretName}"
+                ),
+                opts=ResourceOptions.merge(
+                    child_opts,
+                    ResourceOptions(depends_on=[self.cert_manager_dev_issuer]),
+                ),
+            )
+            self.dev_ca_cert = dev_ca_secret.data.apply(
+                lambda data: base64.b64decode(data["tls.crt"]).decode("utf-8")
+            )
+
             issuer_outputs = {
-                "cert_manager_dev_issuer_self_signed": cert_manager_dev_issuer_self_signed,
-                "cert_manager_dev_certificate": cert_manager_dev_certificate,
-                "cert_manager_dev_issuer": cert_manager_dev_issuer,
+                "cert_manager_dev_issuer_self_signed": self.cert_manager_dev_issuer_self_signed,
+                "cert_manager_dev_certificate": self.cert_manager_dev_certificate,
+                "cert_manager_dev_issuer": self.cert_manager_dev_issuer,
             }
         else:
             cert_manager_issuers = CustomResource(
