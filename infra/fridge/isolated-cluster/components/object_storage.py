@@ -1,12 +1,16 @@
+import re
 import pulumi
 from pulumi import ComponentResource, Output, ResourceOptions
 from pulumi_kubernetes.apiextensions import CustomResource
 from pulumi_kubernetes.core.v1 import Namespace, Secret
 from pulumi_kubernetes.helm.v4 import Chart, RepositoryOptsArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
-from .storage_classes import StorageClasses
+from pulumi_random import RandomPassword
 
+from .storage_classes import StorageClasses
 from enums import PodSecurityStandard, SoftwareVersion
+
+_K8S_QUANTITY = re.compile(r"^\d+(\.\d+)?(Ki|Mi|Gi|Ti|Pi|Ei|k|M|G|T|P|E)$")
 
 
 class ObjectStorageArgs:
@@ -25,200 +29,324 @@ class ObjectStorage(ComponentResource):
     def __init__(
         self, name: str, args: ObjectStorageArgs, opts: ResourceOptions | None = None
     ) -> None:
-        super().__init__("fridge:ObjectStorage", name, {}, opts)
+        super().__init__("fridge:k8s:ObjectStorage", name, {}, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
-        self.minio_operator_ns = Namespace(
-            "minio-operator-ns",
+        seaweedfs_config = args.config.require_secret_object("seaweedfs")
+
+        def validate_pool_size(config):
+            size = config["pool_size"]
+            if not isinstance(size, str) or not _K8S_QUANTITY.match(size):
+                raise ValueError(
+                    f"seaweedfs.pool_size '{size}' is not a valid Kubernetes quantity (e.g. 40Gi)"
+                )
+            return size
+
+        seaweedfs_pool_size = seaweedfs_config.apply(validate_pool_size)
+        seaweedfs_root_user = seaweedfs_config.apply(lambda config: config["root_user"])
+        seaweed_root_password = seaweedfs_config.apply(
+            lambda config: config["root_password"]
+        )
+
+        self.seaweedfs_ns = Namespace(
+            "seaweedfs-ns",
             metadata=ObjectMetaArgs(
-                name="minio-operator",
-                labels={"minio-trust-bundle": "enabled"}
+                name="seaweedfs",
+                labels={"seaweedfs-trust-bundle": "enabled"}
                 | PodSecurityStandard.RESTRICTED.value,
             ),
             opts=child_opts,
         )
 
-        self.minio_tenant_ns = Namespace(
-            "minio-tenant-ns",
+        self.seaweedfs_s3_url = Output.concat(
+            "seaweedfs-s3.", self.seaweedfs_ns.metadata.name, ".svc.cluster.local"
+        )
+
+        # Generate some credentials for Argo and Fridge to use for S3 access. These are stored in a secret and referenced by the SeaweedFS Helm chart.
+        self.argo_s3_credentials = {
+            "accessKey": RandomPassword(
+                "argo-s3-access-key",
+                length=32,
+                special=False,
+                opts=ResourceOptions.merge(
+                    child_opts,
+                    ResourceOptions(depends_on=[self.seaweedfs_ns]),
+                ),
+            ).result,
+            "secretKey": RandomPassword(
+                "argo-s3-secret-key",
+                length=32,
+                special=False,
+                opts=ResourceOptions.merge(
+                    child_opts,
+                    ResourceOptions(depends_on=[self.seaweedfs_ns]),
+                ),
+            ).result,
+        }
+
+        # SeaweedFS's S3 gateway takes a single static identity, not a MinIO-style root user
+        seaweedfs_s3_config = Output.json_dumps(
+            {
+                "identities": [
+                    {
+                        "name": "fridge",
+                        "credentials": [
+                            {
+                                "accessKey": args.config.require_secret(
+                                    "s3_access_key"
+                                ),
+                                "secretKey": args.config.require_secret(
+                                    "s3_secret_key"
+                                ),
+                            }
+                        ],
+                        "actions": ["Admin", "Read", "Write"],
+                    },
+                    {
+                        "name": "anonymous",
+                        "credentials": [],
+                        "actions": ["Read:ingress", "Write:egress"],
+                    },
+                    {
+                        "name": "fridge-argo",
+                        "credentials": [self.argo_s3_credentials],
+                        "actions": ["Read:ingress", "Write:egress"],
+                    },
+                ]
+            },
+        )
+
+        seaweedfs_s3_secret = Secret(
+            "seaweedfs-s3-secret",
             metadata=ObjectMetaArgs(
-                name="argo-artifacts",
-                labels={"minio-trust-bundle": "enabled"}
-                | PodSecurityStandard.RESTRICTED.value,
-            ),
-            opts=child_opts,
-        )
-
-        self.minio_operator = Chart(
-            "minio-operator",
-            namespace=self.minio_operator_ns.metadata.name,
-            chart="operator",
-            repository_opts=RepositoryOptsArgs(
-                repo="https://operator.min.io",
-            ),
-            version=SoftwareVersion.MINIO_OPERATOR.value,
-            opts=ResourceOptions.merge(
-                child_opts,
-                ResourceOptions(depends_on=[self.minio_operator_ns]),
-            ),
-        )
-
-        self.minio_cluster_url = pulumi.Output.concat(
-            "minio.", self.minio_tenant_ns.metadata.name, ".svc.cluster.local"
-        )
-
-        minio_config_env = Output.format(
-            ("export MINIO_ROOT_USER={0}\n" "export MINIO_ROOT_PASSWORD={1}"),
-            args.config.require_secret("minio_root_user"),
-            args.config.require_secret("minio_root_password"),
-        )
-
-        minio_env_secret = Secret(
-            "minio-env-secret",
-            metadata=ObjectMetaArgs(
-                name="argo-artifacts-env-configuration",
-                namespace=self.minio_tenant_ns.metadata.name,
+                name="seaweedfs-s3-config",
+                namespace=self.seaweedfs_ns.metadata.name,
             ),
             type="Opaque",
             string_data={
-                "config.env": minio_config_env,
+                "seaweedfs_s3_config": seaweedfs_s3_config,
             },
             opts=ResourceOptions.merge(
                 child_opts,
-                ResourceOptions(depends_on=[self.minio_tenant_ns]),
+                ResourceOptions(depends_on=[self.seaweedfs_ns]),
             ),
         )
 
-        self.minio_tenant_certificate = CustomResource(
-            "minio-tenant-certificate",
+        self.seaweedfs_certificate = CustomResource(
+            "seaweedfs-certificate",
             api_version="cert-manager.io/v1",
             kind="Certificate",
             metadata=ObjectMetaArgs(
-                name="argo-artifacts-tls",
-                namespace=self.minio_tenant_ns.metadata.name,
+                name="seaweedfs-tls",
+                namespace=self.seaweedfs_ns.metadata.name,
             ),
             spec={
-                "secretName": "argo-artifacts-tls",
+                "secretName": "seaweedfs-tls",
                 "issuerRef": {
                     "name": args.cluster_issuer.metadata["name"],
                     "kind": "ClusterIssuer",
                 },
                 "dnsNames": [
-                    self.minio_cluster_url,
+                    self.seaweedfs_s3_url,
                 ],
             },
             opts=ResourceOptions.merge(
                 child_opts,
-                ResourceOptions(depends_on=[self.minio_tenant_ns]),
+                ResourceOptions(depends_on=[self.seaweedfs_ns]),
             ),
         )
 
-        self.minio_trust_bundle = CustomResource(
-            "minio-trust-bundle",
-            api_version="trust.cert-manager.io/v1alpha1",
-            kind="Bundle",
+        seaweedfs_admin_secret = Secret(
+            "seaweedfs-admin-secret",
             metadata=ObjectMetaArgs(
-                name="operator-ca-tls-argo-artifacts",
+                name="seaweedfs-admin-secret",
+                namespace=self.seaweedfs_ns.metadata.name,
             ),
-            spec={
-                "sources": [
-                    {"secret": {"name": "dev-certificate", "key": "ca.crt"}},
-                ],
-                "target": {
-                    "secret": {
-                        "key": "ca.crt",
-                    },
-                    "namespaceSelector": {
-                        "matchLabels": {
-                            "minio-trust-bundle": "enabled",
-                        }
-                    },
-                },
+            type="Opaque",
+            string_data={
+                "adminUser": seaweedfs_root_user,
+                "adminPassword": seaweed_root_password,
             },
-            opts=child_opts,
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(depends_on=[self.seaweedfs_ns]),
+            ),
         )
 
-        self.minio_tenant_name = "argo-artifacts"
-
-        self.minio_tenant = Chart(
-            "minio-tenant",
-            namespace=self.minio_tenant_ns.metadata.name,
-            chart="tenant",
-            name=self.minio_tenant_name,
-            version=SoftwareVersion.MINIO_TENANT.value,
+        self.seaweedfs = Chart(
+            "seaweedfs",
+            namespace=self.seaweedfs_ns.metadata.name,
+            chart="seaweedfs",
+            version=SoftwareVersion.SEAWEEDFS.value,
             repository_opts=RepositoryOptsArgs(
-                repo="https://operator.min.io",
+                repo="https://seaweedfs.github.io/seaweedfs/helm",
             ),
             values={
-                "tenant": {
-                    "name": self.minio_tenant_name,
-                    "buckets": [
-                        {"name": "ingress"},
-                        {"name": "egress"},
-                    ],
-                    "certificate": {
-                        "requestAutoCert": False,
-                        "externalCertSecret": [
-                            {
-                                "name": f"{self.minio_tenant_name}-tls",
-                                "type": "kubernetes.io/tls",
-                            }
-                        ],
+                "admin": {
+                    "enabled": True,
+                    "port": 23646,
+                    "grpcPort": 33646,
+                    "secret": {
+                        "existingSecret": seaweedfs_admin_secret.metadata.name,
+                        "userKey": "adminUser",
+                        "pwKey": "adminPassword",
                     },
-                    "configuration": {
-                        "name": f"{self.minio_tenant_name}-env-configuration",
-                    },
-                    "configSecret": {
-                        "name": f"{self.minio_tenant_name}-env-configuration",
-                        "accessKey": None,
-                        "secretKey": None,
-                        "existingSecret": "true",
-                    },
-                    "features": {
-                        "domains": {
-                            "minio": [
-                                self.minio_cluster_url,
-                            ],
-                        }
-                    },
-                    "pools": [
-                        {
-                            "servers": 1,
-                            "name": f"{self.minio_tenant_name}-pool-0",
-                            "size": args.config.require("minio_pool_size"),
-                            "volumesPerServer": 1,
-                            "storageClassName": args.storage_classes.encrypted_storage_class.metadata.name,
-                            "containerSecurityContext": {
-                                "runAsUser": 1000,
-                                "runAsGroup": 1000,
-                                "runAsNonRoot": True,
-                                "allowPrivilegeEscalation": False,
-                                "capabilities": {"drop": ["ALL"]},
-                                "seccompProfile": {
-                                    "type": "RuntimeDefault",
-                                },
-                            },
+                    "podSecurityContext": {
+                        "enabled": True,
+                        "fsGroup": 1000,
+                        "runAsUser": 1000,
+                        "runAsGroup": 1000,
+                        "runAsNonRoot": True,
+                        "seccompProfile": {
+                            "type": "RuntimeDefault",
                         },
+                    },
+                    "containerSecurityContext": {
+                        "enabled": True,
+                        "allowPrivilegeEscalation": False,
+                        "capabilities": {"drop": ["ALL"]},
+                    },
+                },
+                "global": {
+                    "seaweedfs": {
+                        "enableSecurity": True,
+                    },
+                },
+                "master": {
+                    "replicas": 1,
+                    "data": {
+                        "type": "persistentVolumeClaim",
+                        "size": "1Gi",
+                        "storageClass": args.storage_classes.encrypted_storage_class.metadata.name,
+                    },
+                    "logs": {
+                        "type": "emptyDir",
+                    },
+                    "podSecurityContext": {
+                        "enabled": True,
+                        "fsGroup": 1000,
+                        "runAsUser": 1000,
+                        "runAsGroup": 1000,
+                        "runAsNonRoot": True,
+                        "seccompProfile": {
+                            "type": "RuntimeDefault",
+                        },
+                    },
+                    "containerSecurityContext": {
+                        "enabled": True,
+                        "allowPrivilegeEscalation": False,
+                        "capabilities": {"drop": ["ALL"]},
+                    },
+                },
+                "volume": {
+                    "replicas": 1,
+                    "dataDirs": [
+                        {
+                            "name": "data",
+                            "type": "persistentVolumeClaim",
+                            "storageClass": args.storage_classes.encrypted_storage_class.metadata.name,
+                            "size": seaweedfs_pool_size,
+                            "maxVolumes": 0,
+                        }
                     ],
+                    "logs": {
+                        "type": "emptyDir",
+                    },
+                    "podSecurityContext": {
+                        "enabled": True,
+                        "fsGroup": 1000,
+                        "runAsUser": 1000,
+                        "runAsGroup": 1000,
+                        "runAsNonRoot": True,
+                        "seccompProfile": {
+                            "type": "RuntimeDefault",
+                        },
+                    },
+                    "containerSecurityContext": {
+                        "enabled": True,
+                        "allowPrivilegeEscalation": False,
+                        "capabilities": {"drop": ["ALL"]},
+                    },
+                },
+                "filer": {
+                    "replicas": 1,
+                    "logs": {
+                        "type": "emptyDir",
+                    },
+                    "data": {
+                        "type": "persistentVolumeClaim",
+                        "size": "5Gi",
+                        "storageClass": args.storage_classes.encrypted_storage_class.metadata.name,
+                    },
+                    "podSecurityContext": {
+                        "enabled": True,
+                        "fsGroup": 1000,
+                        "runAsUser": 1000,
+                        "runAsGroup": 1000,
+                        "runAsNonRoot": True,
+                        "seccompProfile": {
+                            "type": "RuntimeDefault",
+                        },
+                    },
+                    "containerSecurityContext": {
+                        "enabled": True,
+                        "allowPrivilegeEscalation": False,
+                        "capabilities": {"drop": ["ALL"]},
+                    },
+                },
+                "s3": {
+                    "enabled": True,
+                    "replicas": 1,
+                    "logs": {
+                        "type": "emptyDir",
+                    },
+                    "httpsPort": 8334,
+                    "enableAuth": True,
+                    "existingConfigSecret": seaweedfs_s3_secret.metadata.name,
+                    "tlsSecret": "seaweedfs-tls",
+                    # createBuckets is disabled due to https://github.com/seaweedfs/seaweedfs/issues/10502; renable it once fixed upstream
+                    # "createBuckets": [
+                    #     {"name": "ingress", "anonymousRead": False},
+                    #     {"name": "egress", "anonymousRead": True},
+                    # ],
+                    "podSecurityContext": {
+                        "enabled": True,
+                        "fsGroup": 1000,
+                        "runAsUser": 1000,
+                        "runAsGroup": 1000,
+                        "runAsNonRoot": True,
+                        "seccompProfile": {
+                            "type": "RuntimeDefault",
+                        },
+                    },
+                    "containerSecurityContext": {
+                        "enabled": True,
+                        "allowPrivilegeEscalation": False,
+                        "capabilities": {"drop": ["ALL"]},
+                    },
                 },
             },
             opts=ResourceOptions.merge(
                 child_opts,
                 ResourceOptions(
                     depends_on=[
-                        minio_env_secret,
-                        self.minio_operator,
-                        self.minio_tenant_ns,
+                        seaweedfs_s3_secret,
+                        self.seaweedfs_certificate,
+                        self.seaweedfs_ns,
                     ]
                 ),
             ),
         )
 
+        self.seaweedfs_s3_endpoint = Output.concat(
+            "seaweedfs-s3.", self.seaweedfs_ns.metadata.name, ".svc.cluster.local:8334"
+        )
+
         self.register_outputs(
             {
-                "minio_tenant": self.minio_tenant,
-                "minio_operator": self.minio_operator,
-                "minio_env_secret": minio_env_secret,
-                "minio_tenant_ns": self.minio_tenant_ns,
-                "minio_operator_ns": self.minio_operator_ns,
+                "seaweedfs": self.seaweedfs,
+                "seaweedfs_ns": self.seaweedfs_ns,
+                "seaweedfs_s3_secret": seaweedfs_s3_secret,
+                "seaweedfs_endpoint": self.seaweedfs_s3_endpoint,
             }
         )

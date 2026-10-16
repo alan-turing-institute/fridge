@@ -1,11 +1,10 @@
 import logging
-import os
 import requests
+from botocore.exceptions import ClientError
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
-from minio import S3Error
 from urllib3.exceptions import HTTPError
-from .config import ARGO_SERVER, argo_token, minio_client, VERIFY_TLS
+from .config import ARGO_SERVER, argo_token, s3_client, VERIFY_TLS
 
 logger = logging.getLogger("fridge.health")
 
@@ -25,9 +24,9 @@ async def liveness() -> dict:
 async def readiness() -> dict:
     """
     Readiness probe endpoint.
-    Confirms Argo and MinIO are reachable and returns a JSON indicating when ready.
+    Confirms Argo and S3 are reachable and returns a JSON indicating when ready.
     """
-    checks = {"argo": _check_argo(), "minio": _check_minio()}
+    checks = {"argo": _check_argo(), "s3": _check_s3()}
     healthy = all(checks[service]["status"] == "ok" for service in checks)
     if not healthy:
         logger.warning("Readiness check failed: %s", checks)
@@ -58,15 +57,13 @@ def _check_argo() -> dict:
         return {"status": "unreachable", "error": str(e)}
 
 
-def _check_minio() -> dict:
+def _check_s3() -> dict:
     """
-    Check if MinIO is reachable.
-    Returns a JSON indicating the status of the MinIO service.
+    Check if S3 is reachable.
+    Returns a JSON indicating the status of the S3 service.
     """
     try:
-        if os.path.exists(minio_client.SA_TOKEN_FILE):
-            minio_client._ensure_valid_token()
-        minio_client.client.list_buckets()
+        s3_client.client.list_buckets()
         return {"status": "ok"}
-    except (S3Error, HTTPError, OSError) as e:
+    except (ClientError, HTTPError, OSError) as e:
         return {"status": "unreachable", "error": str(e)}

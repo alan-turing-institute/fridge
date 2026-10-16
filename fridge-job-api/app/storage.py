@@ -5,8 +5,8 @@ from typing import Annotated, Literal
 from .config import (
     argo_token,
     ARGO_SERVER,
-    minio_client,
     parse_argo_error,
+    s3_client,
     verify_request,
     VERIFY_TLS,
 )
@@ -17,12 +17,12 @@ router = APIRouter(tags=["s3"])
 @router.post("/object/{bucket}/upload", tags=["s3"])
 async def upload_object(
     bucket: str,
-    file: UploadFile = File(...),
+    file: UploadFile,
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
     ),
 ):
-    return await minio_client.put_object(bucket, file)
+    return await s3_client.put_object(bucket, file)
 
 
 @router.get("/object/{bucket}/{file_name}", tags=["s3"])
@@ -35,7 +35,7 @@ async def get_object(
         verify_request
     ),
 ):
-    return minio_client.get_object(bucket, file_name, target_file, version)
+    return s3_client.get_object(bucket, file_name, target_file, version)
 
 
 @router.get("/object/list", tags=["s3"])
@@ -47,7 +47,7 @@ async def list_objects(
         verify_request
     ),
 ):
-    return minio_client.list_objects(bucket, prefix, recursive)
+    return s3_client.list_objects(bucket, prefix, recursive)
 
 
 # Trigger Argo workflow
@@ -101,7 +101,7 @@ async def create_bucket(
         verify_request
     ),
 ):
-    return minio_client.create_bucket(bucket_name, versioning)
+    return s3_client.create_bucket(bucket_name)
 
 
 @router.delete("/object/{bucket}/{file_name}", tags=["s3"])
@@ -113,4 +113,4 @@ async def delete_object(
         verify_request
     ),
 ):
-    return minio_client.delete_object(bucket, file_name, version)
+    return s3_client.delete_object(bucket, file_name, version)

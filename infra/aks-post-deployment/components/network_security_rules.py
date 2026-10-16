@@ -48,30 +48,6 @@ class NetworkSecurityRules(ComponentResource):
                 destination_address_prefix="*",
                 description="Allow HTTPS traffic for Harbor",
             ),
-            network.SecurityRuleArgs(
-                name="AllowFridgeApiSSHServerInbound",
-                priority=200,
-                direction=network.SecurityRuleDirection.INBOUND,
-                access=network.SecurityRuleAccess.ALLOW,
-                protocol=network.SecurityRuleProtocol.TCP,
-                source_port_range="*",
-                destination_port_range="2500",
-                source_address_prefixes=args.stack_outputs.admin_ip_allowlist,
-                destination_address_prefix="*",
-                description="Allow SSH traffic to API Proxy SSH server",
-            ),
-            network.SecurityRuleArgs(
-                name="AllowPrivatek8sServerInbound",
-                priority=300,
-                direction=network.SecurityRuleDirection.INBOUND,
-                access=network.SecurityRuleAccess.ALLOW,
-                protocol=network.SecurityRuleProtocol.TCP,
-                source_port_range="*",
-                destination_port_range="2800",
-                source_address_prefixes=args.stack_outputs.admin_ip_allowlist,
-                destination_address_prefix="*",
-                description="Allow SSH traffic to API Proxy SSH server",
-            ),
             # Allow Azure Load Balancer health probes
             network.SecurityRuleArgs(
                 name="AllowAzureLoadBalancerInbound",
@@ -129,6 +105,7 @@ class NetworkSecurityRules(ComponentResource):
                 destination_address_prefix=isolated_cluster_k8s_api_ip,  # isolated_nodes_subnet_cidr,
                 description="Allow API Proxy to access k8s API and FRIDGE API in Isolated cluster",
             ),
+            # A second rule is here to make it explicit tht the FRIDGE API is allowed, even though it is on the same subnet as the k8s API
             network.SecurityRuleArgs(
                 name="AllowFridgeAPIOutBound",
                 priority=200,
@@ -167,7 +144,7 @@ class NetworkSecurityRules(ComponentResource):
                 destination_port_range="443",
                 source_address_prefix=access_nodes_subnet_cidr,
                 destination_address_prefix=fridge_api_ip,
-                description="Allow FRIDGE API access from access cluster API Proxy",
+                description="Allow FRIDGE API access from access cluster",
             ),
             network.SecurityRuleArgs(
                 name="AllowK8sAPIFromAccessInBound",
@@ -179,7 +156,7 @@ class NetworkSecurityRules(ComponentResource):
                 destination_port_range="443",
                 source_address_prefix=access_nodes_subnet_cidr,
                 destination_address_prefix=isolated_cluster_k8s_api_ip,
-                description="Allow k8s API access from access cluster API Proxy",
+                description="Allow k8s API access from access cluster",
             ),
             network.SecurityRuleArgs(
                 name="AllowAzureLoadBalancerInbound",
@@ -282,6 +259,7 @@ class NetworkSecurityRules(ComponentResource):
             ),
             # Allow outbound access to Internet on port 443 for updates and external APIs, but only from the nodes subnet (not the whole cluster subnet) to limit blast radius in case of misconfiguration
             # This is currently required for node bootstrapping. To be addressed for prod.
+            # Allowed destination FQDNs are defined in the Azure Firewall rules
             network.SecurityRuleArgs(
                 name="AllowAccessToInternet443Outbound",
                 priority=300,

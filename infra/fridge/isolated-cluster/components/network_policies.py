@@ -71,7 +71,7 @@ class NetworkPolicies(ComponentResource):
                 "./k8s/cilium/kube-node-lease.yaml",
                 "./k8s/cilium/kube-public.yaml",
                 "./k8s/cilium/kube-system.yaml",
-                "./k8s/cilium/minio-tenant.yaml",
-                "./k8s/cilium/minio-operator.yaml",
+                "./k8s/cilium/seaweedfs.yaml",
             ],
+            opts=child_opts,
         )

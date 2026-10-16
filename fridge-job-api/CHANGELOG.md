@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.7.0]
+
+- Removed MinIO code paths and replaced with generic S3 codepaths
+- STS authentication via K8s API no longer used as not supported by SeaweedFS
+
 ## [0.6.0]
 
 - Allows users to list files in the ingress and egress buckets

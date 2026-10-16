@@ -5,21 +5,9 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from importlib.metadata import PackageNotFoundError, version
 from pydantic import BaseModel
 from secrets import compare_digest
-from app.minio_client import MinioClient
+from app.s3_client import S3Client
 
 load_dotenv()
-
-if os.getenv("KUBERNETES_SERVICE_HOST"):
-    FRIDGE_API_ADMIN = os.getenv("FRIDGE_API_ADMIN")
-    FRIDGE_API_PASSWORD = os.getenv("FRIDGE_API_PASSWORD")
-    ARGO_SERVER_NS = os.getenv("ARGO_SERVER_NS")
-    ARGO_SERVER = (
-        f"https://argo-workflows-server.{ARGO_SERVER_NS}.svc.cluster.local:2746"
-    )
-else:
-    FRIDGE_API_ADMIN = os.getenv("FRIDGE_API_ADMIN")
-    FRIDGE_API_PASSWORD = os.getenv("FRIDGE_API_PASSWORD")
-    ARGO_SERVER = os.getenv("ARGO_SERVER")
 
 VERIFY_TLS = os.getenv("VERIFY_TLS", "False") == "True"
 
@@ -46,7 +34,7 @@ if os.getenv("KUBERNETES_SERVICE_HOST"):
     ARGO_SERVER = (
         f"https://argo-workflows-server.{ARGO_SERVER_NS}.svc.cluster.local:2746"
     )
-    MINIO_CA_BUNDLE = "/etc/ssl/certs/tls-trust-bundle.crt"
+    S3_CA_BUNDLE = "/etc/ssl/certs/tls-trust-bundle.crt"
 else:
     # Load environment variables from .env file
     load_dotenv()
@@ -82,16 +70,12 @@ def argo_token() -> str:
     return ARGO_TOKEN
 
 
-# Init minio client. Will fallback to STS if access/secret key are not set
-minio_client = MinioClient(
-    endpoint=os.getenv("MINIO_URL"),
-    sts_endpoint=os.getenv(
-        "MINIO_STS_URL", "https://sts.minio-operator.svc.cluster.local:4223"
-    ),
-    tenant=os.getenv("MINIO_TENANT_NAME", "argo-artifacts"),
-    access_key=os.getenv("MINIO_ACCESS_KEY", None),
-    secret_key=os.getenv("MINIO_SECRET_KEY", None),
-    secure=os.getenv("MINIO_SECURE", True),
+# Init s3 client. Will fallback to STS if access/secret key are not set
+s3_client = S3Client(
+    endpoint=os.getenv("S3_URL"),
+    access_key=os.getenv("S3_ACCESS_KEY", None),
+    secret_key=os.getenv("S3_SECRET_KEY", None),
+    secure=os.getenv("S3_SECURE", "True") == "True",
 )
 
 

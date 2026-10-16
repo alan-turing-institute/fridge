@@ -21,12 +21,12 @@ For local development, you can set the following variables in a `.env` file:
 
 - `ARGO_SERVER`: The URL of the Argo Workflows server
 - `ARGO_TOKEN`: The access token for authenticating with the Argo Workflows server
-- `MINIO_URL`: The URL of the Minio server
-- `MINIO_ACCESS_KEY`: Access Key to authenticate with Minio server
-- `MINIO_SECRET_KEY`: Secret Key to authenticate with the Minio server
+- `S3_URL`: The URL of the S3 server
+- `S3_ACCESS_KEY`: Access Key to authenticate with S3 server
+- `S3_SECRET_KEY`: Secret Key to authenticate with the S3 server
 - `FRIDGE_API_ADMIN`: The username of the admin user for the FRIDGE API
 - `FRIDGE_API_PASSWORD`: The password for the admin user for the FRIDGE API
-- `VERIFY_TLS`: Set to `False` to disable TLS verification (not recommended for production)
+- `VERIFY_TLS`: Set to `False` to disable TLS verification (not recommended for production). Note that this applies only to the TLS certificate for Argo Workflows, which is self-issued
 
 An appropriate access token can be generated and obtained following the instructions in the [Argo Workflows documentation](https://argo-workflows.readthedocs.io/en/latest/access-token/)
 
