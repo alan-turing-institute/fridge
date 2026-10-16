@@ -53,7 +53,7 @@ class GPUOperator(ComponentResource):
             self.gpu_operator_ns = Namespace(
                 "gpu-operator-ns",
                 metadata=ObjectMetaArgs(
-                    name="amd-device-plugins",
+                    name="kube-amd-gpu",
                 ),
                 opts=child_opts,
             )
@@ -64,19 +64,15 @@ class GPUOperator(ComponentResource):
                 ReleaseArgs(
                     name="amd-gpu-operator",
                     namespace=self.gpu_operator_ns.metadata.name,
-                    chart="amd-gpu-operator",
+                    chart="gpu-operator-charts",
                     version=SoftwareVersion.AMD_GPU_OPERATOR.value,
                     repository_opts=RepositoryOptsArgs(
                         repo="https://rocm.github.io/gpu-operator",
                     ),
                     values={
-                        "tolerations": [
-                            {
-                                "key": "gpu.intel.com/i915",
-                                "operator": "Exists",
-                                "effect": "NoSchedule",
-                            }
-                        ]
+                        "node-feature-discovery": {
+                            "enabled": False,
+                        },
                     },
                 ),
                 opts=ResourceOptions.merge(
