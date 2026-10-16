@@ -16,15 +16,20 @@ project:
         - file: architecture/introduction.md
         - file: architecture/roles.md
         - file: architecture/shared_responsibility.md
+        - file: architecture/shared_gov_model.md
         - file: architecture/architecture.md
         - file: architecture/defence_in_depth.md
         - file: architecture/lifecycle.md
+    - title: Use
+      children:
+        - file: use/api.md
     - title: Deploy
       children:
         - file: deploy/overview.md
         - file: deploy/infrastructure.md
         - file: deploy/netbird.md
         - file: deploy/services.md
+        - file: deploy/configuration.md
     - title: Develop
       children:
         - file: develop/target.md

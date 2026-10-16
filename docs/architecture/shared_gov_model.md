@@ -1,6 +1,7 @@
 ---
 short_title: Shared Governance
 ---
+(arch-shared-gov-model)=
 # Shared Governance Structure
 
 FRIDGE operates a two-tier governance structure adapted from the [UCL Research Data information governance framework](https://isms.arc.ucl.ac.uk/rism02-roles_and_responsibilities/#3-the-information-governance-framework).
@@ -18,7 +19,7 @@ A schematic of the two-tier governance structure for FRIDGE.
 ## FRIDGE Federation Governance
 
 FRIDGE Federation Governance provides strategic oversight.
-{term}`Data Owners` feed their requirements directly into this tier.
+{term}`Data Owners <Data Owner>` feed their requirements directly into this tier.
 It includes three groups:
 
 - The {term}`Resource Allocator`, determines project suitability and approving workspace resource allocation.
@@ -31,5 +32,5 @@ The {term}`Operational Management Group` is responsible for the day-to-day opera
 
 - The [Information Governance](https://glossary.uktre.org/en/stable/#term-information-governance--ig-) Team, responsible for maintaining compliance and governance processes.
 - The {term}`Hosting Administrator`, accountable for the safe operation of the underlying infrastructure.
-- The {term}`Principal Investigators` and {term}`Safe Researchers`, who carry out approved research within the environment ensure the FRIDGE is fit for purpose.
+- The {term}`Principal Investigators <Principal Investigator>` and {term}`Safe Researchers <Safe Researcher>`, who carry out approved research within the environment ensure the FRIDGE is fit for purpose.
 - The {term}`TRE Administrator`, responsible for the technical operation and maintenance of the Trusted Research Environment.
