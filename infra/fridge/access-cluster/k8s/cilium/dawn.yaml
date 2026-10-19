@@ -47,7 +47,7 @@ spec:
       k8s:app.kubernetes.io/component: controller
   ingress:
     - fromEntities:
-        - world
+        - remote-node
       toPorts:
         - ports:
             - port: "10254"
@@ -96,7 +96,7 @@ spec:
       app: webhook
   ingress:
     - fromEntities:
-        - world
+        - remote-node
       toPorts:
         - ports:
             - port: "6080"
