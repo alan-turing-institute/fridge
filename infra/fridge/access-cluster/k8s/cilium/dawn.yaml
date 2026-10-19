@@ -77,6 +77,7 @@ spec:
   egress:
     - toEntities:
         - remote-node
+        - host
       toPorts:
         - ports:
             - port: "6443"
