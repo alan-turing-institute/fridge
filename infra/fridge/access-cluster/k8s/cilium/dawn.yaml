@@ -32,7 +32,7 @@ spec:
         - world
   ingress:
     - fromEntities:
-        - world
+        - cluster
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
@@ -69,14 +69,13 @@ spec:
   # https://kubernetes-sigs.github.io/metrics-server/
   ingress:
     - fromEntities:
-        - world
+        - remote-node
       toPorts:
         - ports:
             - port: "10250"
               protocol: TCP
   egress:
     - toEntities:
-        - host
         - remote-node
       toPorts:
         - ports:
