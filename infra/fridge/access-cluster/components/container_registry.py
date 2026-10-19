@@ -151,7 +151,7 @@ class ContainerRegistry(ComponentResource):
                                 # Images can be re-pushed, so don't replicate them
                                 "storageClass": args.storage_classes.single_replica_storage_name,
                                 "size": args.config.get("harbor_registry_size")
-                                or "50Gi",
+                                or "20Gi",
                             },
                             "jobservice": {
                                 "jobLog": self.harbor_storage_settings,
