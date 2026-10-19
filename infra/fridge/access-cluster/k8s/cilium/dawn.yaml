@@ -107,32 +107,6 @@ spec:
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
 metadata:
-  name: hubble-ui-dawn
-  namespace: kube-system
-spec:
-  endpointSelector:
-    matchLabels:
-      k8s-app: hubble-ui
-  ingress:
-    - fromEntities:
-        - world
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
-  name: hubble-relay-dawn
-  namespace: kube-system
-spec:
-  endpointSelector:
-    matchLabels:
-      k8s-app: hubble-relay
-  ingress:
-    - fromEntities:
-        - world
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
   name: longhorn-allow-manager-kubelets
   namespace: longhorn-system
 spec:
