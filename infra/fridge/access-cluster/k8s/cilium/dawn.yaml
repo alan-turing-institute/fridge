@@ -179,25 +179,6 @@ spec:
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
 metadata:
-  name: harbor-dawn
-  namespace: harbor
-spec:
-  endpointSelector:
-    matchLabels:
-      app: harbor
-  ingress:
-    - fromEntities:
-        - world
-      toPorts:
-        - ports:
-            - port: "8080"
-              protocol: TCP
-            - port: "5000"
-              protocol: TCP
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
   name: harbor-dawn-redis
   namespace: harbor
 spec:
@@ -212,26 +193,6 @@ spec:
         - ports:
             - port: "6379"
               protocol: TCP
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
-  name: harbor-dawn-coredns
-  namespace: harbor
-spec:
-  endpointSelector:
-    matchLabels:
-      app: harbor
-      component: core
-  ingress:
-    - fromEndpoints:
-        - matchLabels:
-            k8s-app: kube-dns
-            k8s:io.kubernetes.pod.namespace: kube-system
-      toPorts:
-        - ports:
-            - port: "53"
-              protocol: ANY
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
