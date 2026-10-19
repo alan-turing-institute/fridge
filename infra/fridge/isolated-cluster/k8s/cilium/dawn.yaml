@@ -355,3 +355,20 @@ spec:
               protocol: TCP
             - port: "5000"
               protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: kube-amd-gpu-operator
+  namespace: kube-amd-gpu
+spec:
+  endpointSelector:
+    matchLabels:
+      daemonset-name: default
+  egress:
+    - toEntities:
+        - kube-apiserver
+      toPorts:
+        - ports:
+            - port: "6443"
+              protocol: TCP
