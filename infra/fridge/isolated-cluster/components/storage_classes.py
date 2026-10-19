@@ -92,18 +92,6 @@ class StorageClasses(ComponentResource):
                     ),
                     # Add a toleration for the GPU node, to allow Longhorn to schedule pods/create volumes there
                     values={
-                        "global": {
-                            "tolerations": [
-                                {
-                                    "key": "gpu.intel.com/i915",
-                                    "operator": "Exists",
-                                    "effect": "NoSchedule",
-                                }
-                            ]
-                        },
-                        "defaultSettings": {
-                            "taintToleration": "gpu.intel.com/i915:NoSchedule"
-                        },
                         "persistence": {"defaultClassReplicaCount": 2},
                     },
                     opts=ResourceOptions.merge(
