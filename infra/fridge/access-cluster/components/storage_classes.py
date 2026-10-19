@@ -51,6 +51,7 @@ class StorageClasses(ComponentResource):
                 )
 
                 standard_storage_name = "azurefile"
+                single_replica_storage_name = standard_storage_name
                 standard_supports_rwm = True
             case K8sEnvironment.DAWN:
                 longhorn_ns = Namespace(
@@ -111,13 +112,37 @@ class StorageClasses(ComponentResource):
                     ),
                 )
 
+                # Single-replica class for bulky, reproducible data (e.g. container images)
+                # where doubling disk usage for redundancy isn't worth it
+                single_replica_storage_class = StorageClass(
+                    "fridge_single_replica_storage_class",
+                    allow_volume_expansion=True,
+                    metadata=ObjectMetaArgs(
+                        name=f"{STORAGE_CLASS_NAME}-single-replica",
+                    ),
+                    parameters={
+                        "dataLocality": "best-effort",
+                        "fsType": "ext4",
+                        "numberOfReplicas": "1",
+                        "staleReplicaTimeout": "2880",
+                    },
+                    provisioner="driver.longhorn.io",
+                    opts=ResourceOptions.merge(
+                        child_opts,
+                        ResourceOptions(depends_on=[longhorn]),
+                    ),
+                )
+
                 standard_storage_name = storage_class.metadata.name
+                single_replica_storage_name = single_replica_storage_class.metadata.name
                 standard_supports_rwm = True
             case K8sEnvironment.K3S:
                 storage_class = StorageClass.get("fridge-storage-class", "local-path")
                 standard_storage_name = storage_class.metadata.name
+                single_replica_storage_name = standard_storage_name
                 standard_supports_rwm = False
 
         self.encrypted_storage_class = storage_class
         self.standard_storage_name = standard_storage_name
+        self.single_replica_storage_name = single_replica_storage_name
         self.standard_supports_rwm = standard_supports_rwm
