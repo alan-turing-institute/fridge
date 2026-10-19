@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: amd-ddp-master
+  namespace: argo-workflows
+spec:
+  clusterIP: None
+  # Rank 0 must be resolvable before its container is ready, so rank 1 can start waiting for it
+  publishNotReadyAddresses: true
+  selector:
+    ddp-job: amd-resnet50-ddp
+    ddp-rank: "0"
+  ports:
+    - name: rendezvous
+      port: 29500
+      protocol: TCP
