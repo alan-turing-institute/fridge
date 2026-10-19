@@ -162,41 +162,6 @@ spec:
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
 metadata:
-  name: cert-manager-controller
-  namespace: cert-manager
-spec:
-  endpointSelector:
-    matchLabels:
-      app: cert-manager
-  ingress:
-    - fromEntities:
-        - world
-      toPorts:
-        - ports:
-            - port: "9403"
-              protocol: TCP
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
-  name: harbor-dawn-redis
-  namespace: harbor
-spec:
-  endpointSelector:
-    matchLabels:
-      app: harbor
-      component: redis
-  ingress:
-    - fromEntities:
-        - world
-      toPorts:
-        - ports:
-            - port: "6379"
-              protocol: TCP
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
   name: local-path-provisioner
   namespace: kube-system
 spec:
