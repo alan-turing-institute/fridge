@@ -107,61 +107,6 @@ spec:
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
 metadata:
-  name: longhorn-allow-manager-kubelets
-  namespace: longhorn-system
-spec:
-  endpointSelector:
-    matchLabels:
-      app: longhorn-manager
-  ingress:
-    - fromEntities:
-        - world
-      toPorts:
-        - ports:
-            - port: "9501"
-              protocol: TCP
-            - port: "9502"
-              protocol: TCP
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
-  name: longhorn-allow-managed-by
-  namespace: longhorn-system
-spec:
-  endpointSelector:
-    matchLabels:
-      longhorn.io/managed-by: longhorn-manager
-  ingress:
-    - fromEntities:
-        - world
-      toPorts:
-        - ports:
-            - port: "3260"
-              protocol: TCP
-            - port: "2049"
-              protocol: TCP
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
-  name: longhorn-allow-csiplugin
-  namespace: longhorn-system
-spec:
-  endpointSelector:
-    matchLabels:
-      app: longhorn-csi-plugin
-  ingress:
-    - fromEntities:
-        - world
-      toPorts:
-        - ports:
-            - port: "9808"
-              protocol: TCP
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
   name: local-path-provisioner
   namespace: kube-system
 spec:
