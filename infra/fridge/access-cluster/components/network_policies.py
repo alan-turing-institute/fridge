@@ -56,16 +56,9 @@ class NetworkPolicies(ComponentResource):
                 }
             case K8sEnvironment.DAWN:
                 # Dawn uses a different external DNS server to AKS, and also runs regular jobs that do not run on AKS
-                ConfigFile(
+                self.dawn_cnp = ConfigFile(
                     "network_policy_dawn",
                     file="./k8s/cilium/dawn.yaml",
-                    opts=child_opts,
-                )
-                # Add network policy to allow Prometheus monitoring for resources already deployed on Dawn
-                # On Dawn, Prometheus is also already deployed
-                ConfigFile(
-                    "network_policy_prometheus",
-                    file="./k8s/cilium/prometheus.yaml",
                     opts=child_opts,
                 )
                 # Longhorn is used on Dawn for RWX volume provision
@@ -145,6 +138,7 @@ class NetworkPolicies(ComponentResource):
                 "./k8s/cilium/kube-system.yaml",
                 "./k8s/cilium/prometheus.yaml",
             ],
+            opts=child_opts,
         )
 
         # Configure NetBird network policies
@@ -213,6 +207,10 @@ class NetworkPolicies(ComponentResource):
                     {"matchPattern": f"*.{netbird_hosts['relay']}"},
                 ],
                 "toPorts": [{"ports": [{"port": "443", "protocol": "TCP"}]}],
+            },
+            {
+                "toFQDNs": [{"matchName": netbird_hosts["relay"]}],
+                "toPorts": [{"ports": [{"port": "443", "protocol": "UDP"}]}],
             },
             {
                 "toFQDNs": [{"matchName": netbird_hosts["stun"]}],

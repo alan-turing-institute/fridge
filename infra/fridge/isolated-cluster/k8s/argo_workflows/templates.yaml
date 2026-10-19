@@ -5,10 +5,10 @@ metadata:
   name: data-copy
   namespace: argo-workflows
 spec:
-  entrypoint: pull-data-from-minio
+  entrypoint: pull-data-from-seaweedfs
   serviceAccountName: argo-workflow
   templates:
-    - name: pull-data-from-minio
+    - name: pull-data-from-seaweedfs
       inputs:
         parameters:
           - name: bucket
@@ -35,7 +35,7 @@ spec:
                 (
                   tmp_out=$(mktemp)
                   http_code=$(curl -s \
-                    https://minio.argo-artifacts.svc.cluster.local/{{inputs.parameters.bucket}}/$file \
+                    https://seaweedfs-s3.seaweedfs.svc.cluster.local:8334/{{inputs.parameters.bucket}}/$file \
                     -o $tmp_out \
                     -w "%{http_code}")
                   if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
@@ -63,7 +63,7 @@ spec:
 
                   http_code=$(curl -sS \
                     -T "/data/$file" \
-                    "https://minio.argo-artifacts.svc.cluster.local/{{inputs.parameters.bucket}}/$file" \
+                    "https://seaweedfs-s3.seaweedfs.svc.cluster.local:8334/{{inputs.parameters.bucket}}/$file" \
                     -o "$tmp_out" \
                     -w "%{http_code}")
                   if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then

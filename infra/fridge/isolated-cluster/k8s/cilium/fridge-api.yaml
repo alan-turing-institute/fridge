@@ -28,14 +28,6 @@ spec:
         - ports:
           - port: "2746"
             protocol: TCP
-    - fromEndpoints:
-      - matchLabels:
-          v1.min.io/tenant: argo-artifacts
-          k8s:io.kubernetes.pod.namespace: argo-artifacts
-      toPorts:
-        - ports:
-          - port: "9000"
-            protocol: TCP
     - fromEntities:
       - remote-node
       toPorts:
@@ -53,18 +45,11 @@ spec:
             protocol: TCP
     - toEndpoints:
       - matchLabels:
-          v1.min.io/tenant: argo-artifacts
-          k8s:io.kubernetes.pod.namespace: argo-artifacts
+          k8s:io.kubernetes.pod.namespace: seaweedfs
+          app.kubernetes.io/component: s3
       toPorts:
         - ports:
-          - port: "9000"
-            protocol: TCP
-    - toEndpoints:
-      - matchLabels:
-          k8s:io.kubernetes.pod.namespace: minio-operator
-      toPorts:
-        - ports:
-          - port: "4223"
+          - port: "8334"
             protocol: TCP
     - toEndpoints:
       - matchLabels:
@@ -77,9 +62,7 @@ spec:
           rules:
             dns:
               - matchPattern: "argo-workflows-server.argo-server.svc.cluster.local"
-              - matchPattern: "minio.argo-artifacts.svc.cluster.local"
-              - matchPattern: "sts.minio-operator.svc.cluster.local"
+              - matchPattern: "seaweedfs-s3.seaweedfs.svc.cluster.local"
     - toFQDNs:
       - matchPattern: "argo-workflows-server.argo-server.svc.cluster.local"
-      - matchPattern: "minio.argo-artifacts.svc.cluster.local"
-      - matchPattern: "sts.minio-operator.svc.cluster.local"
+      - matchPattern: "seaweedfs-s3.seaweedfs.svc.cluster.local"

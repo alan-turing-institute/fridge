@@ -14,7 +14,7 @@ function main() {
 
     # Create remote registries
     make_remote_registry "DockerHub" "docker-hub" "https://hub.docker.com"
-    make_remote_registry "QuayIO" "quay" "https://quay.io"
+    make_remote_registry "QuayIO" "docker-registry" "https://quay.io"
     make_remote_registry "GitHubCR" "github-ghcr" "https://ghcr.io"
     make_remote_registry "RegistryK8sCR" "docker-registry" "https://registry.k8s.io"
 
