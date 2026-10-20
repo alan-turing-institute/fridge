@@ -118,6 +118,22 @@ class ObjectStorage(ComponentResource):
                         "credentials": [self.argo_s3_credentials],
                         "actions": ["Read", "List", "Write:egress"],
                     },
+                    {
+                        # Admin identity for bucket creation and other admin operations. Not given to the API:
+                        # admins supply these credentials to it per request in the X-S3-* headers.
+                        "name": "fridge-admin",
+                        "credentials": [
+                            {
+                                "accessKey": args.config.require_secret(
+                                    "s3_admin_access_key"
+                                ),
+                                "secretKey": args.config.require_secret(
+                                    "s3_admin_secret_key"
+                                ),
+                            }
+                        ],
+                        "actions": ["Admin", "Read", "List", "Write"],
+                    },
                 ]
             },
         )
