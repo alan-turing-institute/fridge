@@ -135,16 +135,17 @@ class SeaweedConfigJob(ComponentResource):
                                             args.seaweedfs.seaweedfs_s3_endpoint,
                                         ),
                                     ),
+                                    # Creating buckets needs S3 admin rights
                                     EnvVarArgs(
                                         name="S3_ACCESS_KEY",
                                         value=args.config.require_secret(
-                                            "s3_access_key"
+                                            "s3_admin_access_key"
                                         ),
                                     ),
                                     EnvVarArgs(
                                         name="S3_SECRET_KEY",
                                         value=args.config.require_secret(
-                                            "s3_secret_key"
+                                            "s3_admin_secret_key"
                                         ),
                                     ),
                                 ],
