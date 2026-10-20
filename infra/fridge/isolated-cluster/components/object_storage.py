@@ -1,3 +1,4 @@
+import hashlib
 import re
 import pulumi
 from pulumi import ComponentResource, Output, ResourceOptions
@@ -325,6 +326,12 @@ class ObjectStorage(ComponentResource):
                     "httpsPort": 8334,
                     "enableAuth": True,
                     "existingConfigSecret": seaweedfs_s3_secret.metadata.name,
+                    # The S3 gateway only reads its identities at startup, so roll the pod whenever they change
+                    "podAnnotations": {
+                        "checksum/s3-config": seaweedfs_s3_config.apply(
+                            lambda config: hashlib.sha256(config.encode()).hexdigest()
+                        ),
+                    },
                     "tlsSecret": "seaweedfs-tls",
                     # createBuckets is disabled due to https://github.com/seaweedfs/seaweedfs/issues/10502; renable it once fixed upstream
                     # "createBuckets": [
