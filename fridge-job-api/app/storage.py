@@ -61,15 +61,12 @@ async def get_object(
     bucket: Bucket,
     file_name: str,
     target_file: str | None = None,
-    version: str | None = None,
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
     ),
     credentials: tuple = Depends(s3_credentials),
 ):
-    return s3_for_bucket(bucket, credentials).get_object(
-        bucket, file_name, target_file, version
-    )
+    return s3_for_bucket(bucket, credentials).get_object(bucket, file_name, target_file)
 
 
 @router.get("/object/list", tags=["s3"])
@@ -97,7 +94,6 @@ async def move_object(
         "Bucket to copy from when direction is ingress (defaults to 'ingress'). "
         "Must be 'egress' (the default) when direction is egress.",
     ] = None,
-    version: str | None = None,
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
     ),
@@ -126,7 +122,7 @@ async def move_object(
         # early if a file is missing rather than after the workflow has started.
         source_s3 = s3_for_bucket(bucket, credentials)
         for name in file_names:
-            if not source_s3.check_object_exists(bucket, name, version):
+            if not source_s3.check_object_exists(bucket, name):
                 raise HTTPException(
                     status_code=404, detail=f"{name} not found in bucket {bucket}"
                 )
@@ -167,7 +163,6 @@ async def move_object(
 @router.post("/object/bucket", tags=["s3"])
 async def create_bucket(
     bucket_name: Annotated[str, Query(pattern=BUCKET_PATTERN)],
-    versioning: bool = False,
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
     ),
@@ -181,10 +176,9 @@ async def create_bucket(
 async def delete_object(
     bucket: Bucket,
     file_name: str,
-    version: str | None = None,
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
     ),
     credentials: tuple = Depends(s3_credentials),
 ):
-    return s3_for_bucket(bucket, credentials).delete_object(bucket, file_name, version)
+    return s3_for_bucket(bucket, credentials).delete_object(bucket, file_name)

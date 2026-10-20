@@ -7,6 +7,7 @@
 - `/object/bucket` (bucket creation) takes the admin's S3 credentials in the same headers, so the API itself no longer holds S3 admin rights
 - `/object/move` accepts a `bucket` for ingress copies, checks the files exist, and rejects empty names, absolute paths and `..`
 - Object keys containing `/` can now be downloaded and deleted
+- Removed unused object versioning support: the `versioning` parameter on `/object/bucket`, the `version` parameter on object get, delete and move, and the `version` field in upload responses
 - The `data-copy` workflow passes its parameters through environment variables and authenticates to S3 with the `fridge-argo` identity (the anonymous S3 identity is removed)
 
 ## [0.7.0]
