@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.8.0]
 
 - Object endpoints (`upload`, `get`, `list`, `delete`, `/object/move`) accept the caller's own S3 credentials in the optional `X-S3-Access-Key` and `X-S3-Secret-Key` headers, so S3 enforces what they may do (e.g. that only the owner can use a user-specific bucket). If omitted, the API's generic S3 credentials are used
 - The API's generic S3 identity is limited to the shared `ingress` and `egress` buckets and has no admin rights
