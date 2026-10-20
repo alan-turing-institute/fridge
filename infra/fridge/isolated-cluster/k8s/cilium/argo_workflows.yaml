@@ -20,10 +20,14 @@ spec:
             dns:
               - matchPattern: seaweedfs-s3.seaweedfs.svc.cluster.local
     # Outbound to seaweedfs-s3 service for data I/O
-    - toServices:
-        - k8sService:
-            namespace: seaweedfs
-            serviceName: seaweedfs-s3
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/component: s3
+            io.kubernetes.pod.namespace: seaweedfs
+      toPorts:
+        - ports:
+            - port: "8334"
+              protocol: TCP
     # Outbound to k8s API
     # For informing that a job has completed
     - toEntities:
