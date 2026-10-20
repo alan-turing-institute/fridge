@@ -1,9 +1,9 @@
-import base64
+from pathlib import Path
 from string import Template
 
 import pulumi
-from pulumi import ComponentResource, Output, ResourceOptions
-
+from pulumi import ComponentResource, Input, Output, ResourceOptions
+from pulumi_kubernetes.apiextensions import CustomResource
 from pulumi_kubernetes.batch.v1 import (
     Job,
     JobSpecArgs,
@@ -55,10 +55,12 @@ class ContainerRegistryArgs:
         config: pulumi.config.Config,
         storage_classes: StorageClasses,
         tls_environment: TlsEnvironment,
+        dev_ca_cert: Input[str] | None = None,
     ) -> None:
         self.config = config
-        self.tls_environment = tls_environment
+        self.dev_ca_cert = dev_ca_cert
         self.storage_classes = storage_classes
+        self.tls_environment = tls_environment
 
 
 class ContainerRegistry(ComponentResource):
@@ -97,6 +99,29 @@ class ContainerRegistry(ComponentResource):
             else "ReadWriteOnce",
         }
 
+        self.harbor_certificate = CustomResource(
+            "harbor-certificate",
+            api_version="cert-manager.io/v1",
+            kind="Certificate",
+            metadata=ObjectMetaArgs(
+                name="harbor-certificate",
+                namespace=self.harbor_ns.metadata.name,
+            ),
+            spec={
+                "secretName": "harbor-tls-secret",
+                "issuerRef": {
+                    "name": tls_issuer_names[args.tls_environment],
+                    "kind": "ClusterIssuer",
+                },
+                "commonName": self.harbor_fqdn,
+                "dnsNames": [self.harbor_fqdn],
+            },
+            opts=ResourceOptions.merge(
+                child_opts,
+                ResourceOptions(depends_on=[self.harbor_ns]),
+            ),
+        )
+
         self.harbor = Release(
             "harbor",
             ReleaseArgs(
@@ -121,7 +146,13 @@ class ContainerRegistry(ComponentResource):
                     ),
                     "persistence": {
                         "persistentVolumeClaim": {
-                            "registry": self.harbor_storage_settings,
+                            "registry": {
+                                **self.harbor_storage_settings,
+                                # Images can be re-pushed, so don't replicate them
+                                "storageClass": args.storage_classes.single_replica_storage_name,
+                                "size": args.config.get("harbor_registry_size")
+                                or "20Gi",
+                            },
                             "jobservice": {
                                 "jobLog": self.harbor_storage_settings,
                             },
@@ -131,7 +162,7 @@ class ContainerRegistry(ComponentResource):
             ),
             opts=ResourceOptions.merge(
                 child_opts,
-                ResourceOptions(depends_on=[self.harbor_ns]),
+                ResourceOptions(depends_on=[self.harbor_ns, self.harbor_certificate]),
             ),
         )
 
@@ -143,9 +174,6 @@ class ContainerRegistry(ComponentResource):
                 annotations={
                     "nginx.ingress.kubernetes.io/force-ssl-redirect": "true",
                     "nginx.ingress.kubernetes.io/proxy-body-size": "0",
-                    "cert-manager.io/cluster-issuer": tls_issuer_names[
-                        args.tls_environment
-                    ],
                 },
             ),
             spec=IngressSpecArgs(
@@ -153,7 +181,7 @@ class ContainerRegistry(ComponentResource):
                 tls=[
                     IngressTLSArgs(
                         hosts=[self.harbor_fqdn],
-                        secret_name="harbor-ingress-tls",
+                        secret_name="harbor-tls-secret",
                     )
                 ],
                 rules=[
@@ -183,46 +211,30 @@ class ContainerRegistry(ComponentResource):
                 ResourceOptions(
                     depends_on=[
                         self.harbor,
+                        self.harbor_certificate,
                     ]
                 ),
             ),
         )
 
-        if args.tls_environment != TlsEnvironment.PRODUCTION:
-
-            def _extract_ca_bundle(tls_crt_b64: str) -> str:
-                tls_crt = base64.b64decode(tls_crt_b64).decode("utf-8")
-                certs = tls_crt.split("-----BEGIN CERTIFICATE-----")
-                # certs[0] is empty, certs[1] is the leaf; everything after is the issuing chain
-                chain = certs[2:]
-                if not chain:
-                    # Self-signed / CA issuers only have one cert - it *is* the CA
-                    return tls_crt
-                return (
-                    "-----BEGIN CERTIFICATE-----"
-                    + "-----BEGIN CERTIFICATE-----".join(chain)
+        # CA bundle that clients (e.g. containerd on the isolated cluster) need in
+        # order to verify Harbor's certificate. None means the system trust store
+        # is sufficient.
+        self.harbor_ca_bundle: Output[str] | None = None
+        match args.tls_environment:
+            case TlsEnvironment.DEVELOPMENT:
+                self.harbor_ca_bundle = Output.from_input(args.dev_ca_cert)
+            case TlsEnvironment.STAGING:
+                # cert-manager does not populate ca.crt for ACME certificates, so
+                # use the published Let's Encrypt staging roots instead
+                self.harbor_ca_bundle = Output.from_input(
+                    "".join(
+                        Path(path).read_text()
+                        for path in sorted(
+                            Path("certs/letsencrypt-staging").glob("*.pem")
+                        )
+                    )
                 )
-
-            self.harbor_tls_secret = Secret.get(
-                "harbor-ingress-tls-secret",
-                Output.concat(self.harbor_ns.metadata.name, "/harbor-ingress-tls"),
-                opts=ResourceOptions.merge(
-                    child_opts,
-                    ResourceOptions(
-                        depends_on=[
-                            self.harbor_ingress,
-                        ]
-                    ),
-                ),
-            )
-
-            self.harbor_ca_cert = self.harbor_tls_secret.data.apply(
-                lambda data: _extract_ca_bundle(data["tls.crt"])
-            )
-
-            self.harbor_uses_custom_ca = Output.from_input(True)
-        else:
-            self.harbor_uses_custom_ca = Output.from_input(False)
 
         if k8s_environment == K8sEnvironment.AKS:
             self.harbor_internal_loadbalancer = Service(
@@ -277,15 +289,14 @@ class ContainerRegistry(ComponentResource):
             ),
         )
 
-        self.skip_harbor_tls = Template(
-            open("k8s/harbor/skip_harbor_tls_verification.yaml", "r").read()
-        ).substitute(
-            namespace="containerd-config",
-            harbor_fqdn=self.harbor_fqdn,
-            harbor_url=self.harbor_external_url,
-            harbor_ip=args.config.require("harbor_ip"),
-            harbor_internal_url="http://" + args.config.require("harbor_ip"),
-        )
+        with open("k8s/harbor/skip_harbor_tls_verification.yaml", "r") as f:
+            self.skip_harbor_tls = Template(f.read()).substitute(
+                namespace="containerd-config",
+                harbor_fqdn=self.harbor_fqdn,
+                harbor_url=self.harbor_external_url,
+                harbor_ip=args.config.require("harbor_ip"),
+                harbor_internal_url="http://" + args.config.require("harbor_ip"),
+            )
 
         self.configure_containerd_daemonset = ConfigGroup(
             "configure-containerd-daemon",
@@ -406,11 +417,7 @@ class ContainerRegistry(ComponentResource):
             "harbor_ingress": self.harbor_ingress,
             "harbor_ns": self.harbor_ns,
         }
-        if args.tls_environment != TlsEnvironment.PRODUCTION:
-            outputs["harbor_ca_cert"] = self.harbor_ca_cert
-            outputs["harbor_tls_secret"] = self.harbor_tls_secret
-            outputs["harbor_uses_custom_ca"] = self.harbor_uses_custom_ca
-        else:
-            outputs["harbor_uses_custom_ca"] = self.harbor_uses_custom_ca
+        if self.harbor_ca_bundle is not None:
+            outputs["harbor_ca_bundle"] = self.harbor_ca_bundle
 
         self.register_outputs(outputs)
