@@ -100,17 +100,39 @@ class ObjectStorage(ComponentResource):
                                 ),
                             }
                         ],
-                        "actions": ["Admin", "Read", "Write"],
+                        # Generic identity for the API: limited to the shared buckets and no Admin.
+                        # User-specific buckets and admin operations use credentials supplied by the caller.
+                        "actions": [
+                            "Read:ingress",
+                            "List:ingress",
+                            "Write:ingress",
+                            "Read:egress",
+                            "List:egress",
+                            "Write:egress",
+                        ],
                     },
                     {
-                        "name": "anonymous",
-                        "credentials": [],
-                        "actions": ["Read:ingress", "Write:egress"],
-                    },
-                    {
+                        # Used by the data-copy workflow. Read is unscoped so that it can copy
+                        # from any (including per-user) ingress bucket; write is limited to egress.
                         "name": "fridge-argo",
                         "credentials": [self.argo_s3_credentials],
-                        "actions": ["Read:ingress", "Write:egress"],
+                        "actions": ["Read", "List", "Write:egress"],
+                    },
+                    {
+                        # Admin identity for bucket creation and other admin operations. Not given to the API:
+                        # admins supply these credentials to it per request in the X-S3-* headers.
+                        "name": "fridge-admin",
+                        "credentials": [
+                            {
+                                "accessKey": args.config.require_secret(
+                                    "s3_admin_access_key"
+                                ),
+                                "secretKey": args.config.require_secret(
+                                    "s3_admin_secret_key"
+                                ),
+                            }
+                        ],
+                        "actions": ["Admin", "Read", "List", "Write"],
                     },
                 ]
             },
