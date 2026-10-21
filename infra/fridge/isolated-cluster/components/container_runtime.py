@@ -115,7 +115,7 @@ class ContainerRuntimeConfig(ComponentResource):
                     )
                 )
 
-            case K8sEnvironment.DAWN:
+            case K8sEnvironment.DAWN | K8sEnvironment.ZENITH:
                 with open("k8s/containerd/dawn_registries.yaml", "r") as file:
                     yaml_template = file.read()
 

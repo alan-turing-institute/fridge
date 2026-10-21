@@ -33,7 +33,7 @@ class NetworkPolicies(ComponentResource):
                     file="./k8s/cilium/aks.yaml",
                     opts=child_opts,
                 )
-            case K8sEnvironment.DAWN:
+            case K8sEnvironment.DAWN | K8sEnvironment.ZENITH:
                 # Dawn uses a different external DNS server to AKS, and also runs regular jobs that do not run on AKS
                 ConfigFile(
                     "network_policy_dawn",

@@ -53,7 +53,7 @@ class StorageClasses(ComponentResource):
 
                 standard_storage_name = "azurefile"
                 standard_supports_rwm = True
-            case K8sEnvironment.DAWN:
+            case K8sEnvironment.DAWN | K8sEnvironment.ZENITH:
                 longhorn_ns = Namespace(
                     "longhorn-system",
                     metadata=ObjectMetaArgs(

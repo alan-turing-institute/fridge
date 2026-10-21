@@ -48,7 +48,7 @@ class GPUOperator(ComponentResource):
             opts=child_opts,
         )
 
-        if args.k8s_environment == K8sEnvironment.DAWN:
+        if args.k8s_environment == K8sEnvironment.ZENITH:
 
             self.gpu_operator_ns = Namespace(
                 "gpu-operator-ns",
