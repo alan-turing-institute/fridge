@@ -1,0 +1,53 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: amd-batched-matmul
+  namespace: argo-workflows
+spec:
+  entrypoint: amd-batched-matmul
+  securityContext:
+    supplementalGroups:
+      - 992
+  templates:
+    - name: amd-batched-matmul
+      container:
+        resources:
+          limits:
+            amd.com/gpu: 1
+        image: rocm/pytorch:rocm10.1.0_ubuntu26.04_py3.14_pytorch_release_2.14.0
+        command: ["bash", "-c"]
+        args:
+          - |
+            echo "Checking GPU devices"
+            ls -l /dev/kfd /dev/dri || true
+
+            echo "Running PyTorch GPU test"
+            python3 -c "
+            import time
+            import torch
+            print('GPU available:', torch.cuda.is_available())
+            print('GPU count:', torch.cuda.device_count())
+
+            device = torch.device('cuda')
+            print('Running batched GEMM benchmark on', torch.cuda.get_device_name(0))
+
+            batch = 64
+            size = 2048
+
+            a = torch.randn((batch, size, size), device=device)
+            b = torch.randn((batch, size, size), device=device)
+
+            torch.cuda.synchronize()
+            # Warmup run to trigger kernel selection
+            c = torch.bmm(a, b)
+            torch.cuda.synchronize()
+
+            start = time.time()
+            for _ in range(20):
+                c = torch.bmm(a, b)
+            torch.cuda.synchronize()
+            end = time.time()
+
+            print('20 batched matmuls took:', end - start, 'seconds')
+            print('Average per batch:', (end - start) / 20, 'seconds')"
+  serviceAccountName: argo-workflow

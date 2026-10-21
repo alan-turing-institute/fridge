@@ -1,0 +1,49 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: amd-conv1d
+  namespace: argo-workflows
+spec:
+  entrypoint: amd-conv1d
+  securityContext:
+    supplementalGroups:
+      - 992
+  templates:
+    - name: amd-conv1d
+      container:
+        resources:
+          limits:
+            amd.com/gpu: 1
+        image: rocm/pytorch:rocm10.1.0_ubuntu26.04_py3.14_pytorch_release_2.14.0
+        command: ["bash", "-c"]
+        args:
+          - |
+            echo "Checking GPU devices"
+            ls -l /dev/kfd /dev/dri || true
+
+            echo "Running PyTorch GPU test"
+            python3 -c "
+            import time
+            import torch
+            import torch.nn as nn
+            print('GPU available:', torch.cuda.is_available())
+            print('GPU count:', torch.cuda.device_count())
+
+            device = torch.device('cuda')
+            conv = nn.Conv1d(512, 512, kernel_size=3, padding=1).to(device)
+            x = torch.randn(32, 512, 2048, device=device)
+
+            # Warmup
+            for _ in range(10):
+                y = conv(x)
+            torch.cuda.synchronize()
+
+            start = time.time()
+            for _ in range(50):
+                y = conv(x)
+            torch.cuda.synchronize()
+            end = time.time()
+
+            print('50 conv1d ops took:', end - start, 'seconds')
+            print('Average per conv:', (end - start) / 50, 'seconds')"
+  serviceAccountName: argo-workflow
