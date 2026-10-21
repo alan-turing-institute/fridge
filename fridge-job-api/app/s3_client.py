@@ -161,14 +161,16 @@ class S3Client:
         :param file_name: Name of the object to check
         :return: True if the object exists, False otherwise
         """
+        # Uses a listing rather than head_object so that only List permission is needed,
+        # as the API's generic identity cannot read the ingress bucket
         try:
-            self.client.head_object(Bucket=bucket, Key=file_name)
-            return True
+            response = self.client.list_objects_v2(
+                Bucket=bucket, Prefix=file_name, MaxKeys=1
+            )
         except ClientError as error:
-            if error.response["Error"]["Code"] in ("NoSuchKey", "404"):
-                return False
             self.handle_s3_error(error)
             return False
+        return any(obj["Key"] == file_name for obj in response.get("Contents", []))
 
     def delete_object(self, bucket, file_name):
         """
