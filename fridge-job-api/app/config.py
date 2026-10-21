@@ -75,8 +75,9 @@ def argo_token() -> str:
 S3_URL = os.getenv("S3_URL")
 S3_SECURE = os.getenv("S3_SECURE", "True") == "True"
 
-# Generic S3 client used by the API for reading, listing, deleting and readiness checks.
-# It has no S3 admin rights: uploads and admin operations (bucket creation) use credentials supplied by the caller.
+# Generic S3 client, used when the caller does not supply their own S3 credentials.
+# Its S3 identity can upload to, list and delete from ingress, and read and list egress. It has no S3 admin rights:
+# admin operations (bucket creation) use credentials supplied by the caller.
 # Exit if the keys are not available
 if os.getenv("S3_ACCESS_KEY") is None or os.getenv("S3_SECRET_KEY") is None:
     print("Failed to initialise S3 client")
