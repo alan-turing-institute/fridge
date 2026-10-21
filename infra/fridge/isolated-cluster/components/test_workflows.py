@@ -27,13 +27,20 @@ class TestWorkflows(ComponentResource):
                     intel_examples = ConfigGroup(
                         "intel-examples",
                         files=[
-                            "./k8s/argo_workflows/examples/intel_gpu_attention.yaml",
-                            "./k8s/argo_workflows/examples/intel_gpu_batched_matmul.yaml",
-                            "./k8s/argo_workflows/examples/intel_gpu_cifar10.yaml",
-                            "./k8s/argo_workflows/examples/intel_gpu_check.yaml",
+                            "./k8s/argo_workflows/examples/intel_pvc_attention.yaml",
+                            "./k8s/argo_workflows/examples/intel_pvc_batched_matmul.yaml",
+                            "./k8s/argo_workflows/examples/intel_pvc_cifar10.yaml",
+                            "./k8s/argo_workflows/examples/intel_pvc_cifar10_ddp.yaml",
+                            "./k8s/argo_workflows/examples/intel_pvc_check.yaml",
+                            "./k8s/argo_workflows/examples/intel_pvc_conv1d.yaml",
+                            "./k8s/argo_workflows/examples/intel_pvc_simulate.yaml",
+                            "./k8s/argo_workflows/examples/intel_pvc_simulate_dual.yaml",
+                            "./k8s/argo_workflows/examples/intel_pvc_resnet50.yaml",
+                            "./k8s/argo_workflows/examples/intel_pvc_resnet50_ddp.yaml",
                         ],
                         opts=child_opts,
                     )
+
                     self.register_outputs(
                         {
                             "intel_examples": intel_examples,
