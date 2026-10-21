@@ -101,15 +101,14 @@ class ObjectStorage(ComponentResource):
                                 ),
                             }
                         ],
-                        # Generic identity for the API: limited to the shared buckets and no Admin.
+                        # Generic identity for the API: data only flows in through ingress and out through egress,
+                        # so it can write (upload and delete) but not read ingress, and read but not write egress. No Admin.
                         # User-specific buckets and admin operations use credentials supplied by the caller.
                         "actions": [
-                            "Read:ingress",
-                            "List:ingress",
                             "Write:ingress",
+                            "List:ingress",
                             "Read:egress",
                             "List:egress",
-                            "Write:egress",
                         ],
                     },
                     {
