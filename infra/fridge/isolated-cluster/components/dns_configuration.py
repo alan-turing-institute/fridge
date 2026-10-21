@@ -1,4 +1,3 @@
-import pulumi
 from pulumi import ComponentResource, Output, ResourceOptions
 from pulumi_kubernetes.core.v1 import Namespace
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
