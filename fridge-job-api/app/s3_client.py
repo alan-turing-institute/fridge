@@ -1,6 +1,5 @@
 import boto3
 import os
-import sys
 from botocore.client import Config
 from botocore.exceptions import ClientError
 from boto3.s3.transfer import TransferConfig
@@ -25,11 +24,6 @@ class S3Client:
     def __init__(self, endpoint, access_key, secret_key, secure=True):
         scheme = "https" if secure else "http"
 
-        # Exit if s3 client keys are not available
-        if access_key is None or secret_key is None:
-            print("Failed to initialise S3 client")
-            sys.exit(1)
-
         self.client = boto3.client(
             "s3",
             endpoint_url=f"{scheme}://{endpoint}",
@@ -42,13 +36,18 @@ class S3Client:
             ),
             verify=self.S3_CA_CRT if os.path.exists(self.S3_CA_CRT) else True,
         )
-        print("Successfully configured S3 client")
 
     def handle_s3_error(self, error: ClientError):
         code = error.response["Error"]["Code"]
-        status = {"NoSuchBucket": 404, "NoSuchKey": 404, "AccessDenied": 403}.get(
-            code, 500
-        )
+        status = {
+            "NoSuchBucket": 404,
+            "NoSuchKey": 404,
+            "404": 404,
+            "403": 403,
+            "AccessDenied": 403,
+            "InvalidAccessKeyId": 401,
+            "SignatureDoesNotMatch": 401,
+        }.get(code, 500)
         raise HTTPException(
             status_code=status, detail=error.response["Error"]["Message"]
         )
@@ -100,32 +99,21 @@ class S3Client:
                 status_code=500, detail=f"Unable to upload object: {error}"
             )
 
-        try:
-            head = self.client.head_object(Bucket=bucket, Key=file.filename)
-        except ClientError:
-            head = {}
-
         return {
             "status": 201,
             "response": file.filename,
-            "version": head.get("VersionId", "None"),
         }
 
-    def get_object(self, bucket, file_name, target_file=None, version=None):
+    def get_object(self, bucket, file_name, target_file=None):
         """
         Retrieves an object from the specified S3 bucket.
 
         :param bucket: S3 bucket to retrieve the object from
         :param file_name: Name of the object to retrieve
         :param target_file: Optional file to save the retrieved object to
-        :param version: Optional version of the object to retrieve
         """
         try:
-            get_object_params = {"Bucket": bucket, "Key": file_name}
-            if version:
-                get_object_params["VersionId"] = version
-
-            response = self.client.get_object(**get_object_params)
+            response = self.client.get_object(Bucket=bucket, Key=file_name)
             if not target_file:
                 target_file = file_name
             return StreamingResponse(
@@ -165,42 +153,34 @@ class S3Client:
         except ClientError as error:
             self.handle_s3_error(error)
 
-    def check_object_exists(self, bucket, file_name, version=None):
+    def check_object_exists(self, bucket, file_name):
         """
         Checks if an object exists in the specified S3 bucket.
 
         :param bucket: S3 bucket to check the object in
         :param file_name: Name of the object to check
-        :param version: Optional version of the object to check
         :return: True if the object exists, False otherwise
         """
+        # Uses a listing rather than head_object so that only List permission is needed,
+        # as the API's generic identity cannot read the ingress bucket
         try:
-            head_params = {"Bucket": bucket, "Key": file_name}
-            if version:
-                head_params["VersionId"] = version
-
-            self.client.head_object(**head_params)
-            return True
+            response = self.client.list_objects_v2(
+                Bucket=bucket, Prefix=file_name, MaxKeys=1
+            )
         except ClientError as error:
-            if error.response["Error"]["Code"] == "NoSuchKey":
-                return False
             self.handle_s3_error(error)
             return False
+        return any(obj["Key"] == file_name for obj in response.get("Contents", []))
 
-    def delete_object(self, bucket, file_name, version=None):
+    def delete_object(self, bucket, file_name):
         """
         Deletes an object from the specified S3 bucket.
 
         :param bucket: S3 bucket to delete the object from
         :param file_name: Name of the object to delete
-        :param version: Optional version of the object to delete
         """
         try:
-            delete_object_params = {"Bucket": bucket, "Key": file_name}
-            if version:
-                delete_object_params["VersionId"] = version
-
-            self.client.delete_object(**delete_object_params)
+            self.client.delete_object(Bucket=bucket, Key=file_name)
             return {
                 "status": 200,
                 "response": f"Object {file_name} deleted from {bucket}",
