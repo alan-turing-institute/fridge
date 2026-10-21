@@ -67,19 +67,3 @@ class TestWorkflows(ComponentResource):
                         file="./k8s/argo_workflows/examples/amd_mi355x_resnet50.yaml",
                         opts=child_opts,
                     )
-
-                    # to test DDP, we deploy a service so that the ranks can rendezvous and communicate with each other
-                    amd_ddp_service = ConfigFile(
-                        "amd-ddp-service",
-                        file="./k8s/argo_workflows/examples/amd_mi355x_ddp_service.yaml",
-                        opts=child_opts,
-                    )
-
-                    amd_resnet50_ddp = ConfigFile(
-                        "amd-resnet50-ddp",
-                        file="./k8s/argo_workflows/examples/amd_mi355x_resnet50_ddp.yaml",
-                        opts=ResourceOptions.merge(
-                            child_opts,
-                            ResourceOptions(depends_on=[amd_ddp_service]),
-                        ),
-                    )
