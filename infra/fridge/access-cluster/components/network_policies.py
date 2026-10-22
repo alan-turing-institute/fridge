@@ -136,6 +136,7 @@ class NetworkPolicies(ComponentResource):
                 "./k8s/cilium/kube-node-lease.yaml",
                 "./k8s/cilium/kube-public.yaml",
                 "./k8s/cilium/kube-system.yaml",
+                "./k8s/cilium/prometheus.yaml",
             ],
             opts=child_opts,
         )

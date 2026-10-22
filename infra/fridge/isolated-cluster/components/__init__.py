@@ -4,6 +4,7 @@ from .cert_manager import CertManager, CertManagerArgs
 from .container_runtime import ContainerRuntimeConfig, ContainerRuntimeConfigArgs
 from .dns_configuration import DNSConfig, DNSConfigArgs
 from .gpu_operator import GPUOperator, GPUOperatorArgs
+from .monitoring import Monitoring, MonitoringArgs
 from .network_policies import NetworkPolicies, NetworkPoliciesArgs
 from .object_storage import ObjectStorage, ObjectStorageArgs
 from .seaweed_config import SeaweedConfigJob, SeaweedConfigArgs
