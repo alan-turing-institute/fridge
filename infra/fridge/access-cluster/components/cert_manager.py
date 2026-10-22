@@ -232,7 +232,7 @@ class CertManager(ComponentResource):
                         ),
                     ),
                 )
-            case K8sEnvironment.DAWN:
+            case K8sEnvironment.DAWN | K8sEnvironment.ZENITH:
                 cert_manager_ns = Namespace.get(
                     "cert-manager-ns",
                     "cert-manager",

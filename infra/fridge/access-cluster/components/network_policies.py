@@ -54,7 +54,7 @@ class NetworkPolicies(ComponentResource):
                     "toCIDR": [args.config.require("fridge_api_ip_address")],
                     "toPorts": [{"ports": [{"port": "443", "protocol": "TCP"}]}],
                 }
-            case K8sEnvironment.DAWN:
+            case K8sEnvironment.DAWN | K8sEnvironment.ZENITH:
                 # Dawn uses a different external DNS server to AKS, and also runs regular jobs that do not run on AKS
                 self.dawn_cnp = ConfigFile(
                     "network_policy_dawn",
