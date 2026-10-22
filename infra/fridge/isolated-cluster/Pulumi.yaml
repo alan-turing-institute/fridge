@@ -80,14 +80,6 @@ config:
     type: boolean
     default: false
     description: Deploy the example GPU test workflows. Only used on Dawn
-  s3_access_key:
-    type: string
-    description: Access key of the S3 admin identity used by the FRIDGE API
-    secret: true
-  s3_secret_key:
-    type: string
-    description: Secret key of the S3 admin identity used by the FRIDGE API
-    secret: true
   kubernetes:context:
     value: ""
     description: Kubernetes context for the FRIDGE deployment
