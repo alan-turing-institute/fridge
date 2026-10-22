@@ -6,6 +6,7 @@ class K8sEnvironment(Enum):
     AKS = "AKS"
     DAWN = "Dawn"
     K3S = "K3s"
+    ZENITH = "Zenith"
 
 
 @unique
@@ -29,6 +30,7 @@ tls_issuer_names = {
 
 
 class SoftwareVersion(Enum):
+    AMD_GPU_OPERATOR = "1.5.1"
     ARGO_WORKFLOWS = "2.0.6"  # Corresponds to Argo Workflows v4.1.3
     CERT_MANAGER = "1.21.2"
     CURL = "8.22.0"

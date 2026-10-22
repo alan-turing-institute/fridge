@@ -19,6 +19,13 @@ spec:
           rules:
             dns:
               - matchPattern: seaweedfs-s3.seaweedfs.svc.cluster.local
+              - matchName: amd-ddp-master.argo-workflows.svc.cluster.local
+    # Pod-to-pod traffic between DDP ranks (rendezvous and RCCL)
+    # Applies to any workflow pod labelled with ddp-job
+    - toEndpoints:
+        - matchExpressions:
+            - key: ddp-job
+              operator: Exists
     # Outbound to seaweedfs-s3 service for data I/O
     - toEndpoints:
         - matchLabels:
@@ -32,6 +39,9 @@ spec:
     # For informing that a job has completed
     - toEntities:
         - kube-apiserver
-  # Allow no ingress
+  # Allow no ingress, except between DDP ranks
   ingress:
-    - {}
+    - fromEndpoints:
+        - matchExpressions:
+            - key: ddp-job
+              operator: Exists
