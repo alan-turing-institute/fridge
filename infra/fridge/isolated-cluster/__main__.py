@@ -242,7 +242,7 @@ container_runtime_config = components.ContainerRuntimeConfig(
     ),
 )
 
-# Run argo workflow to check Intel GPU availability on nodes (if enabled)
+# Deploy Argo Workflow templates to validate GPU operator and other components are working correctly
 test_workflows = components.TestWorkflows(
     "test-workflows",
     args=components.TestWorkflowsArgs(
