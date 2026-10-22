@@ -58,19 +58,20 @@ class VpnServer(ComponentResource):
 
         fridge_api_ip_raw = args.config.require("fridge_api_ip_address").strip()
         fridge_api_ip = fridge_api_ip_raw.split("/", 1)[0]
-        if k8s_environment == K8sEnvironment.AKS:
-            fridge_api_endpoint = f"{fridge_api_ip}:443"
-            isolated_k8s_api_endpoint = (
-                f"{args.config.require('isolated_cluster_api_endpoint')}:443"
-            )
-        elif k8s_environment == K8sEnvironment.DAWN:
-            fridge_api_endpoint = f"{fridge_api_ip}:30180"
-            isolated_k8s_api_endpoint_raw = args.config.require(
-                "isolated_cluster_api_endpoint"
-            ).strip()
-            isolated_k8s_api_endpoint = (
-                f"{isolated_k8s_api_endpoint_raw.split('/', 1)[0]}:6443"
-            )
+        match k8s_environment:
+            case K8sEnvironment.AKS:
+                fridge_api_endpoint = f"{fridge_api_ip}:443"
+                isolated_k8s_api_endpoint = (
+                    f"{args.config.require('isolated_cluster_api_endpoint')}:443"
+                )
+            case K8sEnvironment.DAWN | K8sEnvironment.ZENITH:
+                fridge_api_endpoint = f"{fridge_api_ip}:30180"
+                isolated_k8s_api_endpoint_raw = args.config.require(
+                    "isolated_cluster_api_endpoint"
+                ).strip()
+                isolated_k8s_api_endpoint = (
+                    f"{isolated_k8s_api_endpoint_raw.split('/', 1)[0]}:6443"
+                )
 
         with open("./k8s/haproxy/haproxy.cfg", "r") as f:
             haproxy_cfg_file = Template(f.read()).substitute(

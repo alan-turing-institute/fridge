@@ -33,7 +33,7 @@ class NetworkPolicies(ComponentResource):
                     file="./k8s/cilium/aks.yaml",
                     opts=child_opts,
                 )
-            case K8sEnvironment.DAWN:
+            case K8sEnvironment.DAWN | K8sEnvironment.ZENITH:
                 # Dawn uses a different external DNS server to AKS, and also runs regular jobs that do not run on AKS
                 ConfigFile(
                     "network_policy_dawn",
@@ -49,6 +49,13 @@ class NetworkPolicies(ComponentResource):
                 ConfigFile(
                     "network_policy_longhorn",
                     file="./k8s/cilium/longhorn.yaml",
+                    opts=child_opts,
+                )
+                self.gpu_operator_cnp = ConfigFile(
+                    "gpu_operator_network_policies",
+                    file="./k8s/cilium/gpu_dawn.yaml"
+                    if args.k8s_environment == K8sEnvironment.DAWN
+                    else "./k8s/cilium/gpu_zenith.yaml",
                     opts=child_opts,
                 )
             case K8sEnvironment.K3S:
@@ -73,4 +80,5 @@ class NetworkPolicies(ComponentResource):
                 "./k8s/cilium/kube-system.yaml",
                 "./k8s/cilium/seaweedfs.yaml",
             ],
+            opts=child_opts,
         )

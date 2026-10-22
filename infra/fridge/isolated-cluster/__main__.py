@@ -48,7 +48,6 @@ cert_manager = components.CertManager(
     "cert-manager",
     args=components.CertManagerArgs(
         config=config,
-        k8s_environment=k8s_environment,
     ),
 )
 
@@ -173,6 +172,7 @@ api_server = components.ApiServer(
         cluster_issuer=cert_manager.cert_manager_dev_issuer,
         config=config,
         fridge_api_ip=access_stack.get_output("fridge_api_ip_address"),
+        k8s_environment=k8s_environment,
         s3_url=seaweedfs.seaweedfs_s3_endpoint,
         verify_tls=False,  # This is only relevant for Argo Workflows, which uses a self-signed certificate in the isolated cluster. The API server will use the MinIO trust bundle to verify MinIO's certificate.
     ),
@@ -183,17 +183,19 @@ api_server = components.ApiServer(
 
 # DNS configuration: writes harbor FQDN -> internal IP into /etc/hosts on each node
 # so that containerd can resolve harbor for image pulls.
-if k8s_environment == K8sEnvironment.DAWN:
-    dns_config = components.DNSConfig(
-        "dns-config",
-        args=components.DNSConfigArgs(
-            harbor_fqdn=access_stack.get_output("harbor_fqdn"),
-            harbor_ip=config.require("access_cluster_load_balancer_ip"),
-        ),
-        opts=ResourceOptions(
-            depends_on=[api_server],
-        ),
-    )
+match k8s_environment:
+    case K8sEnvironment.DAWN | K8sEnvironment.ZENITH:
+        dns_config = components.DNSConfig(
+            "dns-config",
+            args=components.DNSConfigArgs(
+                harbor_fqdn=access_stack.get_output("harbor_fqdn"),
+                harbor_ip=config.require("access_cluster_load_balancer_ip"),
+            ),
+            opts=ResourceOptions(
+                depends_on=[api_server],
+            ),
+        )
+
 
 gpu_operator = components.GPUOperator(
     "gpu-operator",
@@ -231,9 +233,8 @@ container_runtime_config = components.ContainerRuntimeConfig(
     "container-runtime-config",
     args=components.ContainerRuntimeConfigArgs(
         config=config,
-        harbor_ca_cert=access_stack.get_output("harbor_ca_cert"),
+        harbor_ca_bundle=access_stack.get_output("harbor_ca_bundle"),
         harbor_fqdn=access_stack.get_output("harbor_fqdn"),
-        harbor_uses_custom_ca=access_stack.get_output("harbor_uses_custom_ca"),
         k8s_environment=k8s_environment,
     ),
     opts=ResourceOptions(
@@ -241,7 +242,7 @@ container_runtime_config = components.ContainerRuntimeConfig(
     ),
 )
 
-# Run argo workflow to check Intel GPU availability on nodes (if enabled)
+# Deploy Argo Workflow templates to validate GPU operator and other components are working correctly
 test_workflows = components.TestWorkflows(
     "test-workflows",
     args=components.TestWorkflowsArgs(
@@ -254,5 +255,5 @@ test_workflows = components.TestWorkflows(
 )
 
 # Pulumi stack outputs
-if k8s_environment != K8sEnvironment.DAWN:
+if k8s_environment == K8sEnvironment.AKS:
     pulumi.export("fridge_api_ip", config.require("fridge_api_ip"))

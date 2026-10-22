@@ -41,6 +41,22 @@ config:
   project_name:
     type: string
     description: The Pulumi project name for the access cluster deployment
+  s3_access_key:
+    type: string
+    description: Access key for the FRIDGE API's generic S3 identity (shared ingress and egress buckets only)
+    secret: true
+  s3_secret_key:
+    type: string
+    description: Secret key for the FRIDGE API's generic S3 identity
+    secret: true
+  s3_admin_access_key:
+    type: string
+    description: Access key for the S3 admin identity. Used by the bucket setup job and supplied by admins to the FRIDGE API per request; never given to the API itself
+    secret: true
+  s3_admin_secret_key:
+    type: string
+    description: Secret key for the S3 admin identity
+    secret: true
   seaweedfs:
     value:
       root_user:
