@@ -1,0 +1,146 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: amd-cifar10-s3
+  namespace: argo-workflows
+spec:
+  entrypoint: amd-cifar10-s3
+  securityContext:
+    supplementalGroups:
+      - 992
+  templates:
+    - name: amd-cifar10-s3
+      inputs:
+        artifacts:
+          - name: pydata
+            path: /scratch/cifar-10-batches-py
+            s3:
+              key: cifar-10-python.tar.gz
+      container:
+        volumeMounts:
+        - name: scratch
+          mountPath: /scratch
+        resources:
+          limits:
+            amd.com/gpu: 1
+        image: rocm/pytorch:rocm10.1.0_ubuntu26.04_py3.14_pytorch_release_2.14.0
+        command: ["bash", "-c"]
+        args:
+          - |
+            set -euo pipefail
+
+            echo "Scratch filesystem:"
+            df -h /scratch
+
+            echo "Contents:"
+            find /scratch -maxdepth 3 -type f | head -30
+
+            echo "Running PyTorch GPU test: CIFAR-10"
+            python3 - <<'PY'
+            import time
+            import torch
+            import torch.nn as nn
+            import torch.optim as optim
+            import torchvision
+            import torchvision.transforms as transforms
+
+            print("GPU available:", torch.cuda.is_available())
+            print("GPU count:", torch.cuda.device_count())
+
+            device = torch.device("cuda")
+
+            transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize((0.5,), (0.5,))
+            ])
+
+            trainset = torchvision.datasets.CIFAR10(
+                root="/scratch",
+                train=True,
+                download=False,
+                transform=transform
+            )
+
+            trainloader = torch.utils.data.DataLoader(
+                trainset,
+                batch_size=256,
+                shuffle=True,
+                num_workers=4
+            )
+
+            class SmallCNN(nn.Module):
+                def __init__(self):
+                    super().__init__()
+                    self.conv1 = nn.Conv2d(3, 32, 3, padding=1)
+                    self.conv2 = nn.Conv2d(32, 64, 3, padding=1)
+                    self.pool = nn.MaxPool2d(2, 2)
+                    self.fc1 = nn.Linear(64 * 8 * 8, 256)
+                    self.fc2 = nn.Linear(256, 10)
+
+                def forward(self, x):
+                    x = self.pool(torch.relu(self.conv1(x)))
+                    x = self.pool(torch.relu(self.conv2(x)))
+                    x = x.view(-1, 64 * 8 * 8)
+                    x = torch.relu(self.fc1(x))
+                    return self.fc2(x)
+
+            model = SmallCNN().to(device)
+            criterion = nn.CrossEntropyLoss()
+            optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+            print("Warming up...")
+            warmup_inputs, warmup_labels = next(iter(trainloader))
+            warmup_inputs = warmup_inputs.to(device)
+            warmup_labels = warmup_labels.to(device)
+
+            for _ in range(3):
+                optimizer.zero_grad()
+                outputs = model(warmup_inputs)
+                loss = criterion(outputs, warmup_labels)
+                loss.backward()
+                optimizer.step()
+
+            torch.cuda.synchronize()
+
+            print("Beginning benchmark training epoch...")
+            start = time.time()
+
+            for i, (inputs, labels) in enumerate(trainloader):
+                inputs = inputs.to(device)
+                labels = labels.to(device)
+
+                optimizer.zero_grad()
+                outputs = model(inputs)
+                loss = criterion(outputs, labels)
+                loss.backward()
+                optimizer.step()
+
+                if i % 100 == 0:
+                    _, predicted = outputs.max(1)
+                    acc = predicted.eq(labels).sum().item() / labels.size(0)
+                    print(
+                        f"Batch {i}, "
+                        f"Loss {loss.item():.4f}, "
+                        f"Batch Acc {acc:.2%}"
+                    )
+
+            torch.cuda.synchronize()
+            end = time.time()
+
+            elapsed = end - start
+            print("Training epoch time:", elapsed, "seconds")
+            print("Images/sec:", len(trainset) / elapsed)
+            print(f"Final batch loss: {loss.item():.4f}")
+            PY
+  volumes:
+    - name: scratch
+      ephemeral:
+        volumeClaimTemplate:
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            storageClassName: local-path
+            resources:
+              requests:
+                storage: 20Gi
+  serviceAccountName: argo-workflow

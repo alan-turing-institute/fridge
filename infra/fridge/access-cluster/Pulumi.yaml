@@ -39,7 +39,8 @@ config:
     description: FQDN prefix for Harbor
   harbor_registry_size:
     type: string
-    description: Size of the Harbor registry storage (e.g. 25Gi)
+    description: Size of the Harbor registry storage (e.g. 20Gi)
+    default: "20Gi"
   netbird:
     value:
       hostname:

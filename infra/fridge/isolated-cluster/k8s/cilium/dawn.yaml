@@ -83,7 +83,6 @@ spec:
     - toEntities:
         - host
         - remote-node
-        - world
       toPorts:
         - ports:
             - port: "10250"
@@ -110,7 +109,6 @@ spec:
   ingress:
     - fromEntities:
         - remote-node
-        - world
       toPorts:
         - ports:
             - port: "10250"
@@ -133,23 +131,6 @@ spec:
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
 metadata:
-  name: cert-manager-controller
-  namespace: cert-manager
-spec:
-  endpointSelector:
-    matchLabels:
-      app: cert-manager
-  ingress:
-    - fromEntities:
-        - world
-      toPorts:
-        - ports:
-            - port: "9403"
-              protocol: TCP
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
   name: cert-manager-probes
   namespace: cert-manager
 spec:
@@ -163,103 +144,6 @@ spec:
         - ports:
             - port: "10250"
               protocol: TCP
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
-  name: longhorn-allow-manager-kubelets
-  namespace: longhorn-system
-spec:
-  endpointSelector:
-    matchLabels:
-      app: longhorn-manager
-  ingress:
-    - fromEntities:
-        - world
-      toPorts:
-        - ports:
-            - port: "9501"
-              protocol: TCP
-            - port: "9502"
-              protocol: TCP
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
-  name: longhorn-allow-managed-by
-  namespace: longhorn-system
-spec:
-  endpointSelector:
-    matchLabels:
-      longhorn.io/managed-by: longhorn-manager
-  ingress:
-    - fromEntities:
-        - world
-      toPorts:
-        - ports:
-            - port: "3260"
-              protocol: TCP
-            - port: "2049"
-              protocol: TCP
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
-  name: longhorn-allow-csiplugin
-  namespace: longhorn-system
-spec:
-  endpointSelector:
-    matchLabels:
-      app: longhorn-csi-plugin
-  ingress:
-    - fromEntities:
-        - world
-      toPorts:
-        - ports:
-            - port: "9808"
-              protocol: TCP
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
-  name: hubble-ui-new
-  namespace: kube-system
-spec:
-  endpointSelector:
-    matchLabels:
-      k8s-app: hubble-ui
-  ingress:
-    - fromEntities:
-        - world
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
-  name: hubble-relay-new
-  namespace: kube-system
-spec:
-  endpointSelector:
-    matchLabels:
-      k8s-app: hubble-relay
-  ingress:
-    - fromEntities:
-        - world
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
-  name: coredns-new
-  namespace: kube-system
-spec:
-  endpointSelector:
-    matchLabels:
-      k8s-app: kube-dns
-  ingress:
-    - fromEntities:
-        - world
-  egress:
-    - toEntities:
-        - world
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
@@ -281,22 +165,6 @@ spec:
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
 metadata:
-  name: argo-server-dawn
-  namespace: argo-server
-spec:
-  endpointSelector:
-    matchLabels:
-      app: server
-  ingress:
-    - fromEntities:
-        - world
-      toPorts:
-        - ports:
-            - port: "2746"
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
   name: fridge-api-dawn
   namespace: fridge-api
 spec:
@@ -310,13 +178,6 @@ spec:
         - ports:
             - port: "8443"
               protocol: TCP
-  egress:
-    - toEntities:
-        - world
-      toPorts:
-        - ports:
-            - port: "53"
-              protocol: ANY
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy

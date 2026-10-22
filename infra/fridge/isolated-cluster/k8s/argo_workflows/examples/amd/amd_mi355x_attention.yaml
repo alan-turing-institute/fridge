@@ -1,0 +1,60 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: amd-attention
+  namespace: argo-workflows
+spec:
+  entrypoint: amd-attention
+  securityContext:
+    supplementalGroups:
+      - 992
+  templates:
+    - name: amd-attention
+      container:
+        resources:
+          limits:
+            amd.com/gpu: 1
+        image: rocm/pytorch:rocm10.1.0_ubuntu26.04_py3.14_pytorch_release_2.14.0
+        command: ["bash", "-c"]
+        args:
+          - |
+            echo "Checking GPU devices"
+            ls -l /dev/kfd /dev/dri || true
+
+            echo "Running PyTorch GPU test: attention benchmark"
+            python3 -c "
+            import math
+            import time
+            import torch
+            print('GPU available:', torch.cuda.is_available())
+            print('GPU count:', torch.cuda.device_count())
+
+            device = torch.device('cuda')
+            seq = 512
+            heads = 8
+            dim = 64
+            embed = heads * dim
+
+            q = torch.randn(1, heads, seq, dim, device=device)
+            k = torch.randn(1, heads, seq, dim, device=device)
+            v = torch.randn(1, heads, seq, dim, device=device)
+
+            def attention(q, k, v):
+                scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(dim)
+                weights = torch.softmax(scores, dim=-1)
+                return torch.matmul(weights, v)
+
+            # Warmup
+            for _ in range(5):
+                y = attention(q, k, v)
+            torch.cuda.synchronize()
+
+            start = time.time()
+            for _ in range(20):
+                y = attention(q, k, v)
+            torch.cuda.synchronize()
+            end = time.time()
+
+            print('20 attention ops took:', end - start, 'seconds')
+            print('Average per attention:', (end - start) / 20, 'seconds')"
+  serviceAccountName: argo-workflow

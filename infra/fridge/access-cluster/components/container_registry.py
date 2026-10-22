@@ -235,41 +235,41 @@ class ContainerRegistry(ComponentResource):
                         )
                     )
                 )
-
-        if k8s_environment == K8sEnvironment.AKS:
-            self.harbor_internal_loadbalancer = Service(
-                "harbor-internal-lb",
-                metadata=ObjectMetaArgs(
-                    name="harbor-lb",
-                    namespace=self.harbor_ns.metadata.name,
-                    annotations={
-                        "service.beta.kubernetes.io/azure-load-balancer-internal": "true",
-                        "service.beta.kubernetes.io/azure-load-balancer-internal-subnet": "networking-access-nodes",
-                    },
-                ),
-                spec=ServiceSpecArgs(
-                    type="LoadBalancer",
-                    selector={"app": "harbor", "component": "nginx"},
-                    ports=[ServicePortArgs(port=80, target_port=8080)],
-                ),
-                opts=ResourceOptions.merge(
-                    child_opts,
-                    ResourceOptions(
-                        depends_on=[
-                            self.harbor,
-                        ]
+        match k8s_environment:
+            case K8sEnvironment.AKS:
+                self.harbor_internal_loadbalancer = Service(
+                    "harbor-internal-lb",
+                    metadata=ObjectMetaArgs(
+                        name="harbor-lb",
+                        namespace=self.harbor_ns.metadata.name,
+                        annotations={
+                            "service.beta.kubernetes.io/azure-load-balancer-internal": "true",
+                            "service.beta.kubernetes.io/azure-load-balancer-internal-subnet": "networking-access-nodes",
+                        },
                     ),
-                ),
-            )
-            # Extract the dynamically assigned LoadBalancer IP address
-            self.harbor_ip = self.harbor_internal_loadbalancer.status.apply(
-                lambda status: status.load_balancer.ingress[0].ip
-                if status and status.load_balancer and status.load_balancer.ingress
-                else None
-            )
-        elif k8s_environment == K8sEnvironment.DAWN:
-            # Extract the ClusterIP for DAWN environment
-            self.harbor_ip = args.config.require("dawn_load_balancer_ip")
+                    spec=ServiceSpecArgs(
+                        type="LoadBalancer",
+                        selector={"app": "harbor", "component": "nginx"},
+                        ports=[ServicePortArgs(port=80, target_port=8080)],
+                    ),
+                    opts=ResourceOptions.merge(
+                        child_opts,
+                        ResourceOptions(
+                            depends_on=[
+                                self.harbor,
+                            ]
+                        ),
+                    ),
+                )
+                # Extract the dynamically assigned LoadBalancer IP address
+                self.harbor_ip = self.harbor_internal_loadbalancer.status.apply(
+                    lambda status: status.load_balancer.ingress[0].ip
+                    if status and status.load_balancer and status.load_balancer.ingress
+                    else None
+                )
+            case K8sEnvironment.DAWN | K8sEnvironment.ZENITH:
+                # Extract the ClusterIP for DAWN and ZENITH environments
+                self.harbor_ip = args.config.require("dawn_load_balancer_ip")
 
         # Create a daemonset to skip TLS verification for the harbor registry
         # This is needed while using staging/self-signed certificates for Harbor
