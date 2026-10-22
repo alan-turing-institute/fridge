@@ -51,6 +51,13 @@ class NetworkPolicies(ComponentResource):
                     file="./k8s/cilium/longhorn.yaml",
                     opts=child_opts,
                 )
+                self.gpu_operator_cnp = ConfigFile(
+                    "gpu_operator_network_policies",
+                    file="./k8s/cilium/gpu_dawn.yaml"
+                    if args.k8s_environment == K8sEnvironment.DAWN
+                    else "./k8s/cilium/gpu_zenith.yaml",
+                    opts=child_opts,
+                )
             case K8sEnvironment.K3S:
                 # K3S policies applicable for a local dev environment
                 # These could be used in any vanilla k8s + Cilium local cluster
