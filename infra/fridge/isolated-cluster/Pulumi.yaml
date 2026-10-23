@@ -37,10 +37,12 @@ config:
     description: The Kubernetes environment type (e.g. AKS, Dawn)
   organization_name:
     type: string
-    description: The Pulumi organization name. This is `organization`
+    description: The Pulumi organization name. This is `organization` when using any backend other than Pulumi Cloud
+    default: "organization"
   project_name:
     type: string
-    description: The Pulumi project name for the access cluster deployment
+    description: The Pulumi project name for the access cluster deployment. Typically this will be `fridge-access` but can be changed if the access cluster is deployed under a different project name
+    default: "fridge-access"
   s3_access_key:
     type: string
     description: Access key for the FRIDGE API's generic S3 identity (shared ingress and egress buckets only)
