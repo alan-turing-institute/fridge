@@ -48,54 +48,89 @@ class GPUOperator(ComponentResource):
             opts=child_opts,
         )
 
-        if args.k8s_environment == K8sEnvironment.DAWN:
-
-            self.intel_node_feature_rules = ConfigFile(
-                "intel-node-feature-rules",
-                file="https://raw.githubusercontent.com/intel/intel-device-plugins-for-kubernetes/main/deployments/nfd/overlays/node-feature-rules/node-feature-rules.yaml",
-                opts=ResourceOptions.merge(
-                    child_opts, ResourceOptions(depends_on=self.node_feature_discovery)
-                ),
-            )
-
-            self.gpu_operator_ns = Namespace(
-                "gpu-operator-ns",
-                metadata=ObjectMetaArgs(
-                    name="intel-device-plugins",
-                ),
-                opts=child_opts,
-            )
-
-            # Deploy the Intel GPU Operator using the official Helm chart
-            self.gpu_operator = Release(
-                "intel-gpu-operator",
-                ReleaseArgs(
-                    name="intel-gpu-operator",
-                    namespace=self.gpu_operator_ns.metadata.name,
-                    chart="intel-device-plugins-operator",
-                    version=SoftwareVersion.INTEL_GPU_OPERATOR.value,
-                    repository_opts=RepositoryOptsArgs(
-                        repo="https://intel.github.io/helm-charts/",
+        match args.k8s_environment:
+            case K8sEnvironment.DAWN:
+                self.intel_node_feature_rules = ConfigFile(
+                    "intel-node-feature-rules",
+                    file="https://raw.githubusercontent.com/intel/intel-device-plugins-for-kubernetes/main/deployments/nfd/overlays/node-feature-rules/node-feature-rules.yaml",
+                    opts=ResourceOptions.merge(
+                        child_opts,
+                        ResourceOptions(depends_on=self.node_feature_discovery),
                     ),
-                    values={
-                        "tolerations": [
-                            {
-                                "key": "gpu.intel.com/i915",
-                                "operator": "Exists",
-                                "effect": "NoSchedule",
-                            }
-                        ]
-                    },
-                ),
-                opts=ResourceOptions.merge(
-                    child_opts, ResourceOptions(depends_on=self.node_feature_discovery)
-                ),
-            )
+                )
 
-            self.gpu_device = ConfigFile(
-                "gpu-device",
-                file="./k8s/gpu_operator/intel-gpu-device.yaml",
-                opts=ResourceOptions.merge(
-                    child_opts, ResourceOptions(depends_on=self.gpu_operator)
-                ),
-            )
+                self.gpu_operator_ns = Namespace(
+                    "gpu-operator-ns",
+                    metadata=ObjectMetaArgs(
+                        name="intel-device-plugins",
+                    ),
+                    opts=child_opts,
+                )
+
+                # Deploy the Intel GPU Operator using the official Helm chart
+                self.gpu_operator = Release(
+                    "intel-gpu-operator",
+                    ReleaseArgs(
+                        name="intel-gpu-operator",
+                        namespace=self.gpu_operator_ns.metadata.name,
+                        chart="intel-device-plugins-operator",
+                        version=SoftwareVersion.INTEL_GPU_OPERATOR.value,
+                        repository_opts=RepositoryOptsArgs(
+                            repo="https://intel.github.io/helm-charts/",
+                        ),
+                        values={
+                            "tolerations": [
+                                {
+                                    "key": "gpu.intel.com/i915",
+                                    "operator": "Exists",
+                                    "effect": "NoSchedule",
+                                }
+                            ]
+                        },
+                    ),
+                    opts=ResourceOptions.merge(
+                        child_opts,
+                        ResourceOptions(depends_on=self.node_feature_discovery),
+                    ),
+                )
+
+                self.gpu_device = ConfigFile(
+                    "gpu-device",
+                    file="./k8s/gpu_operator/intel-gpu-device.yaml",
+                    opts=ResourceOptions.merge(
+                        child_opts, ResourceOptions(depends_on=self.gpu_operator)
+                    ),
+                )
+
+            case K8sEnvironment.ZENITH:
+                self.gpu_operator_ns = Namespace(
+                    "gpu-operator-ns",
+                    metadata=ObjectMetaArgs(
+                        name="kube-amd-gpu",
+                    ),
+                    opts=child_opts,
+                )
+
+                # Deploy the AMD GPU Operator using the official Helm chart
+                self.gpu_operator = Release(
+                    "amd-gpu-operator",
+                    ReleaseArgs(
+                        name="amd-gpu-operator",
+                        namespace=self.gpu_operator_ns.metadata.name,
+                        chart="gpu-operator-charts",
+                        version=SoftwareVersion.AMD_GPU_OPERATOR.value,
+                        repository_opts=RepositoryOptsArgs(
+                            repo="https://rocm.github.io/gpu-operator",
+                        ),
+                        values={
+                            # do not install the node-feature-discovery chart, since we already installed it above
+                            "node-feature-discovery": {
+                                "enabled": False,
+                            },
+                        },
+                    ),
+                    opts=ResourceOptions.merge(
+                        child_opts,
+                        ResourceOptions(depends_on=self.node_feature_discovery),
+                    ),
+                )

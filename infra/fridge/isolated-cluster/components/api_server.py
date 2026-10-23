@@ -54,17 +54,17 @@ class ApiServerArgs:
         cluster_issuer: CustomResource,
         config: pulumi.Config,
         fridge_api_ip: Output[str],
-        minio_tenant_name: str,
-        minio_url: Output[str],
+        k8s_environment: K8sEnvironment,
+        s3_url: Output[str],
         verify_tls: bool = True,
     ) -> None:
         self.argo_server_ns = argo_server_ns
         self.argo_workflows_ns = argo_workflows_ns
+        self.cluster_issuer = cluster_issuer
         self.config = config
         self.fridge_api_ip = fridge_api_ip
-        self.minio_tenant_name = minio_tenant_name
-        self.minio_url = minio_url
-        self.cluster_issuer = cluster_issuer
+        self.k8s_environment = k8s_environment
+        self.s3_url = s3_url
         self.verify_tls = verify_tls
 
 
@@ -147,28 +147,6 @@ class ApiServer(ComponentResource):
             opts=child_opts,
         )
 
-        self.minio_policy = CustomResource(
-            resource_name="minio-policy-readwrite",
-            api_version="sts.min.io/v1alpha1",
-            kind="PolicyBinding",
-            metadata=ObjectMetaArgs(
-                name="fridge-api-minio-readwrite",
-                namespace=args.minio_tenant_name,
-            ),
-            spec={
-                "application": {
-                    # The namespace that contains the service account for the application
-                    "namespace": fridge_api_sa.metadata.namespace,
-                    # The service account to use for the application
-                    "serviceaccount": fridge_api_sa.metadata.name,
-                },
-                "policies": ["readwrite"],
-            },
-            opts=ResourceOptions.merge(
-                child_opts, ResourceOptions(depends_on=[fridge_api_sa])
-            ),
-        )
-
         fridge_api_config = Secret(
             "fridge-api-config",
             metadata=ObjectMetaArgs(
@@ -181,8 +159,10 @@ class ApiServer(ComponentResource):
                 "FRIDGE_API_PASSWORD": args.config.require_secret(
                     "fridge_api_password"
                 ),
-                "MINIO_URL": args.minio_url,
-                "MINIO_TENANT_NAME": args.minio_tenant_name,
+                "S3_ACCESS_KEY": args.config.require_secret("s3_access_key"),
+                "S3_SECRET_KEY": args.config.require_secret("s3_secret_key"),
+                "S3_SECURE": str(True),
+                "S3_URL": args.s3_url,
                 "VERIFY_TLS": str(args.verify_tls),
             },
             opts=child_opts,
@@ -360,11 +340,6 @@ class ApiServer(ComponentResource):
                                         read_only=True,
                                     ),
                                     VolumeMountArgs(
-                                        name="minio-sa",
-                                        mount_path="/minio",
-                                        read_only=True,
-                                    ),
-                                    VolumeMountArgs(
                                         name="tls-trust-bundle",
                                         mount_path="/etc/ssl/certs",
                                         read_only=True,
@@ -421,20 +396,6 @@ class ApiServer(ComponentResource):
                                 ),
                             ),
                             VolumeArgs(
-                                name="minio-sa",
-                                projected=ProjectedVolumeSourceArgs(
-                                    sources=[
-                                        VolumeProjectionArgs(
-                                            service_account_token=ServiceAccountTokenProjectionArgs(
-                                                audience="sts.min.io",
-                                                expiration_seconds=3600,
-                                                path="token",
-                                            )
-                                        )
-                                    ]
-                                ),
-                            ),
-                            VolumeArgs(
                                 name="tls-trust-bundle",
                                 secret=SecretVolumeSourceArgs(
                                     secret_name="trusted-certificates",
@@ -471,35 +432,36 @@ class ApiServer(ComponentResource):
                     "fridge_api_ip"
                 ),
             }
-            if K8sEnvironment(args.config.get("k8s_env")) == K8sEnvironment.AKS
+            if args.k8s_environment == K8sEnvironment.AKS
             else {}
         )
 
-        if K8sEnvironment(args.config.get("k8s_env")) == K8sEnvironment.AKS:
-            api_svc_specs = ServiceSpecArgs(
-                type="LoadBalancer",
-                selector=fridge_api_server.spec.template.metadata.labels,
-                ports=[
-                    ServicePortArgs(
-                        protocol="TCP",
-                        port=443,
-                        target_port=8443,
-                    )
-                ],
-            )
-        elif K8sEnvironment(args.config.get("k8s_env")) == K8sEnvironment.DAWN:
-            api_svc_specs = ServiceSpecArgs(
-                type="NodePort",
-                selector=fridge_api_server.spec.template.metadata.labels,
-                ports=[
-                    ServicePortArgs(
-                        protocol="TCP",
-                        node_port=30180,
-                        port=80,
-                        target_port=8443,
-                    )
-                ],
-            )
+        match args.k8s_environment:
+            case K8sEnvironment.AKS:
+                api_svc_specs = ServiceSpecArgs(
+                    type="LoadBalancer",
+                    selector=fridge_api_server.spec.template.metadata.labels,
+                    ports=[
+                        ServicePortArgs(
+                            protocol="TCP",
+                            port=443,
+                            target_port=8443,
+                        )
+                    ],
+                )
+            case K8sEnvironment.DAWN | K8sEnvironment.ZENITH:
+                api_svc_specs = ServiceSpecArgs(
+                    type="NodePort",
+                    selector=fridge_api_server.spec.template.metadata.labels,
+                    ports=[
+                        ServicePortArgs(
+                            protocol="TCP",
+                            node_port=30180,
+                            port=80,
+                            target_port=8443,
+                        )
+                    ],
+                )
 
         self.api_service = Service(
             "fridge-api-service",

@@ -5,12 +5,13 @@ metadata:
   name: data-copy
   namespace: argo-workflows
 spec:
-  entrypoint: pull-data-from-minio
+  entrypoint: pull-data-from-seaweedfs
   serviceAccountName: argo-workflow
   templates:
-    - name: pull-data-from-minio
+    - name: pull-data-from-seaweedfs
       inputs:
         parameters:
+          - name: direction
           - name: bucket
           - name: files
       volumes:
@@ -24,61 +25,86 @@ spec:
         name: copy
         image: buildpack-deps:curl
         command: ["/bin/sh", "-c"]
+        # Parameters are passed as environment variables so that filenames are never
+        # interpolated into the shell script itself.
+        env:
+          - name: DIRECTION
+            value: "{{inputs.parameters.direction}}"
+          - name: BUCKET
+            value: "{{inputs.parameters.bucket}}"
+          - name: FILES
+            value: "{{inputs.parameters.files}}"
+          - name: S3_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: argo-artifacts-s3
+                key: accesskey
+          - name: S3_SECRET_KEY
+            valueFrom:
+              secretKeyRef:
+                name: argo-artifacts-s3
+                key: secretkey
         args:
           - |
+            S3_URL="https://seaweedfs-s3.seaweedfs.svc.cluster.local:8334"
             copy_jobs=""
 
-            if [ "{{inputs.parameters.bucket}}" = "ingress" ]; then
-              # S3 to PVC
-              for file in $(echo "{{inputs.parameters.files}}" | tr ";" " "); do
-                echo "Copying $file"
-                (
-                  tmp_out=$(mktemp)
-                  http_code=$(curl -s \
-                    https://minio.argo-artifacts.svc.cluster.local/{{inputs.parameters.bucket}}/$file \
-                    -o $tmp_out \
-                    -w "%{http_code}")
-                  if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
-                    echo "Failed to copy $file (HTTP $http_code)"
-                    echo "Response: $(cat $tmp_out)"
-                    rm -f $tmp_out
-                    exit 1
-                  fi
-                  mv $tmp_out /data/$file
-                ) &
-                copy_jobs="$copy_jobs $!"
-              done
+            if [ "$DIRECTION" != "ingress" ] && [ "$DIRECTION" != "egress" ]; then
+              echo "Invalid direction parameter: $DIRECTION"
+              exit 1
+            fi
 
-            elif [ "{{inputs.parameters.bucket}}" = "egress" ]; then
-              # PVC to S3
-              for file in $(echo "{{inputs.parameters.files}}" | tr ";" " "); do
-                echo "Copying $file"
-                (
-                  if [ ! -f /data/$file ]; then
+            # Split FILES on ";" only, with globbing disabled, so names containing
+            # spaces or glob characters are preserved.
+            set -f
+            IFS=';'
+            for file in $FILES; do
+              [ -z "$file" ] && continue
+              echo "Copying $file"
+              (
+                tmp_out=$(mktemp)
+                if [ "$DIRECTION" = "ingress" ]; then
+                  # S3 to PVC
+                  http_code=$(curl -s \
+                    --aws-sigv4 "aws:amz:us-east-1:s3" \
+                    --user "$S3_ACCESS_KEY:$S3_SECRET_KEY" \
+                    -H "x-amz-content-sha256: UNSIGNED-PAYLOAD" \
+                    "$S3_URL/$BUCKET/$file" \
+                    -o "$tmp_out" \
+                    -w "%{http_code}")
+                else
+                  # PVC to S3
+                  if [ ! -f "/data/$file" ]; then
                     echo "File /data/$file does not exist"
                     exit 1
                   fi
-
-                  tmp_out=$(mktemp)
-
                   http_code=$(curl -sS \
+                    --aws-sigv4 "aws:amz:us-east-1:s3" \
+                    --user "$S3_ACCESS_KEY:$S3_SECRET_KEY" \
+                    -H "x-amz-content-sha256: UNSIGNED-PAYLOAD" \
                     -T "/data/$file" \
-                    "https://minio.argo-artifacts.svc.cluster.local/{{inputs.parameters.bucket}}/$file" \
+                    "$S3_URL/$BUCKET/$file" \
                     -o "$tmp_out" \
                     -w "%{http_code}")
-                  if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
-                    echo "Failed to copy $file (HTTP $http_code)"
-                    echo "Response: $(cat $tmp_out)"
-                    exit 1
-                  fi
-                ) &
-                copy_jobs="$copy_jobs $!"
-              done
+                fi
 
-            else
-              echo "Invalid bucket parameter: {{inputs.parameters.bucket}}"
-              exit 1
-            fi
+                if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
+                  echo "Failed to copy $file (HTTP $http_code)"
+                  echo "Response: $(cat "$tmp_out")"
+                  rm -f "$tmp_out"
+                  exit 1
+                fi
+
+                if [ "$DIRECTION" = "ingress" ]; then
+                  mkdir -p "$(dirname "/data/$file")"
+                  mv "$tmp_out" "/data/$file"
+                else
+                  rm -f "$tmp_out"
+                fi
+              ) &
+              copy_jobs="$copy_jobs $!"
+            done
+            unset IFS
 
             # Monitor copy job background tasks
             for pid in $copy_jobs; do
@@ -87,7 +113,7 @@ spec:
 
                 if [ "$code" -ne 0 ]; then
                     echo "Copy failed (PID $pid, exit code $code)"
-                    kill $copy_jobs 2>/dev/null   # Stop all remaining downloads
+                    kill $copy_jobs 2>/dev/null   # Stop all remaining copies
                     exit "$code"
                 fi
             done

@@ -20,16 +20,13 @@ config:
     description: Azure Disk Encryption Set resource name for the access cluster - use a dummy value when not deploying to AKS
   tls_environment:
     type: string
-    description: TLS environment for cert-manager (e.g. staging, production)
+    description: TLS environment for cert-manager (development, staging, production)
   base_fqdn:
     type: string
     description: Base FQDN for the access cluster
   dawn_load_balancer_ip:
     type: string
     description: Load balancer IP for Dawn access cluster - use a dummy value when not deploying to Dawn
-  harbor_fqdn_prefix:
-    type: string
-    description: FQDN prefix for Harbor
   lets_encrypt_email:
     type: string
     description: Email for Let's Encrypt registration
@@ -37,6 +34,13 @@ config:
     type: string
     description: Harbor admin password
     secret: true
+  harbor_fqdn_prefix:
+    type: string
+    description: FQDN prefix for Harbor
+  harbor_registry_size:
+    type: string
+    description: Size of the Harbor registry storage (e.g. 20Gi)
+    default: "20Gi"
   netbird:
     value:
       hostname:
@@ -66,6 +70,15 @@ config:
         type: string
         description: Netbird setup key for the access cluster
         secret: true
+  fridge_api_ip_address:
+    type: string
+    description: IP address of the FRIDGE API in the isolated cluster. On AKS this must match fridge_api_ip in the isolated cluster stack
+  harbor_ip:
+    type: string
+    description: IP address of Harbor as seen from the cluster nodes, used to configure containerd to pull from Harbor
+  isolated_cluster_api_endpoint:
+    type: string
+    description: Host name or IP address of the isolated cluster's Kubernetes API server
   kubernetes:context:
     value: ""
     description: Kubernetes context for the FRIDGE deployment

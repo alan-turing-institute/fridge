@@ -35,23 +35,53 @@ config:
   k8s_env:
     type: string
     description: The Kubernetes environment type (e.g. AKS, Dawn)
-  minio_root_user:
-    type: string
-    description: MinIO root user
-    secret: true
-  minio_root_password:
-    type: string
-    description: MinIO root password
-    secret: true
-  minio_pool_size:
-    type: string
-    description: Size of the MinIO storage pool (e.g., 20Gi)
   organization_name:
     type: string
-    description: The Pulumi organization name. This is `organization`
+    description: The Pulumi organization name. This is `organization` when using any backend other than Pulumi Cloud
+    default: "organization"
   project_name:
     type: string
-    description: The Pulumi project name for the access cluster deployment
+    description: The Pulumi project name for the access cluster deployment. Typically this will be `fridge-access` but can be changed if the access cluster is deployed under a different project name
+    default: "fridge-access"
+  s3_access_key:
+    type: string
+    description: Access key for the FRIDGE API's generic S3 identity (shared ingress and egress buckets only)
+    secret: true
+  s3_secret_key:
+    type: string
+    description: Secret key for the FRIDGE API's generic S3 identity
+    secret: true
+  s3_admin_access_key:
+    type: string
+    description: Access key for the S3 admin identity. Used by the bucket setup job and supplied by admins to the FRIDGE API per request; never given to the API itself
+    secret: true
+  s3_admin_secret_key:
+    type: string
+    description: Secret key for the S3 admin identity
+    secret: true
+  seaweedfs:
+    value:
+      root_user:
+        type: string
+        description: SeaweedFS root user
+        secret: true
+      root_password:
+        type: string
+        description: SeaweedFS root password
+        secret: true
+      pool_size:
+        type: string
+        description: Size of the SeaweedFS storage pool (e.g., 40Gi)
+  base_fqdn:
+    type: string
+    description: Base FQDN for the deployment, used for the self-signed CA certificate
+  block_storage_size:
+    type: string
+    description: Size of the block storage volume shared with workflows (e.g. 30Gi)
+  run_tests:
+    type: boolean
+    default: false
+    description: Deploy the example GPU test workflows. Only used on Dawn
   kubernetes:context:
     value: ""
     description: Kubernetes context for the FRIDGE deployment

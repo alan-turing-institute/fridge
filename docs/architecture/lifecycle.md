@@ -23,7 +23,7 @@ sequenceDiagram
   DO ->> PI: approval to use data
   PI ->> TO: request TRE workspace with FRIDGE
   TO ->> RA: request FRIDGE allocation
-  RA ->> FH: allocation apporval
+  RA ->> FH: allocation approval
   FH ->> TO: account and allocation
   TO ->> PI: allocation details
 :::

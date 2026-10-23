@@ -20,10 +20,10 @@ Dotted lines indicate pulls, triggered from the end of the arrow.
 ## Satellite TRE
 
 [](#fig-satellite) demonstrates the high-level concept of a {term}`satellite TRE`.
-It shows the connection of an existing TRE to a {term}`satellite TRE` instance deployed remote infrastructure.
+It shows the connection of an existing TRE to a {term}`satellite TRE` instance deployed on remote infrastructure.
 
 The secure {term}`TRE tenancy` boundary enables the {term}`extension of existing governance to the satellite TRE <Governance Boundary Extension>`.
-On the remote infrastructure, a dashed line indicate the boundary of the {term}`TRE tenancy`.
+On the remote infrastructure, a dashed line indicates the boundary of the {term}`TRE tenancy`.
 All resources within the tenancy are within the governance domain of the {term}`Home TRE`, through the {term}`governance boundary extension` agreed in the {term}`shared responsibility` model.
 
 :::{figure} ../static/satellite_tre.drawio.svg
@@ -111,11 +111,11 @@ Access to the {term}`Access Cluster` Kubernetes API is through the bastion route
 The {term}`Access Cluster` provides a controlled VPN connection to the FRIDGE tenancy using [NetBird](https://netbird.io)
 
 Traffic from authorised peers is received by the {term}`Access Cluster` and forwarded by a reverse proxy to the permitted services in the {term}`Isolated Cluster`.
-This provides access to the FRIDGE API for {term}`Job Submitters <Job Submitter>`, and the to {term}`Isolated Cluster` Kubernetes API for {term}`TRE Administrators`.
+This provides access to the FRIDGE API for {term}`Job Submitters <Job Submitter>`, and the {term}`Isolated Cluster` Kubernetes API for {term}`TRE Administrators <TRE Administrator>`.
 
 NetBird Groups and policies control which users and administrators may access the FRIDGE services.
 The VPN route does not provide general access to either the access or isolated virtual networks.
-Traffic is only to permitted to specific endpoints.
+Traffic is only permitted to specific endpoints.
 
 For {term}`Job Submitters <Job Submitter>`, the FRIDGE API is made available through a local API interface in the {term}`Home TRE`, connected to the FRIDGE through the VPN.
 It presents to them as a service in their {term}`Home TRE` network with endpoints for submitting and managing FRIDGE jobs.
@@ -195,7 +195,7 @@ This provides a convenient way to handle the ingress of inputs and egress of res
 Buckets are created for inputs and results.
 The inputs bucket is read-only to jobs, to prevent the corruption of input data.
 
-The object storage is provided by an instance of [Minio](https://www.min.io/) and uses a volume of the secure storage class for its backend.
+The object storage is provided by an instance of [SeaweedFS](https://github.com/seaweedfs/seaweedfs) and uses a volume of the secure storage class for its backend.
 
 #### Secure volumes
 

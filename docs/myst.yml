@@ -16,6 +16,7 @@ project:
         - file: architecture/introduction.md
         - file: architecture/roles.md
         - file: architecture/shared_responsibility.md
+        - file: architecture/shared_gov_model.md
         - file: architecture/architecture.md
         - file: architecture/defence_in_depth.md
         - file: architecture/lifecycle.md
@@ -26,9 +27,14 @@ project:
         - file: deploy/infrastructure.md
         - file: deploy/netbird.md
         - file: deploy/services.md
+        - file: deploy/configuration.md
+        - file: deploy/workflow_templates.md
     - title: Develop
       children:
         - file: develop/target.md
+    - title: Use
+      children:
+        - file: use/api.md
 site:
   template: book-theme
   options:

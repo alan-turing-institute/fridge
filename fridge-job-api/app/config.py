@@ -1,25 +1,15 @@
 import os
+import sys
+from typing import Annotated
 from dotenv import load_dotenv
 from fastapi import Depends, HTTPException
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.security import APIKeyHeader, HTTPBasic, HTTPBasicCredentials
 from importlib.metadata import PackageNotFoundError, version
 from pydantic import BaseModel
 from secrets import compare_digest
-from app.minio_client import MinioClient
+from app.s3_client import S3Client
 
 load_dotenv()
-
-if os.getenv("KUBERNETES_SERVICE_HOST"):
-    FRIDGE_API_ADMIN = os.getenv("FRIDGE_API_ADMIN")
-    FRIDGE_API_PASSWORD = os.getenv("FRIDGE_API_PASSWORD")
-    ARGO_SERVER_NS = os.getenv("ARGO_SERVER_NS")
-    ARGO_SERVER = (
-        f"https://argo-workflows-server.{ARGO_SERVER_NS}.svc.cluster.local:2746"
-    )
-else:
-    FRIDGE_API_ADMIN = os.getenv("FRIDGE_API_ADMIN")
-    FRIDGE_API_PASSWORD = os.getenv("FRIDGE_API_PASSWORD")
-    ARGO_SERVER = os.getenv("ARGO_SERVER")
 
 VERIFY_TLS = os.getenv("VERIFY_TLS", "False") == "True"
 
@@ -46,7 +36,7 @@ if os.getenv("KUBERNETES_SERVICE_HOST"):
     ARGO_SERVER = (
         f"https://argo-workflows-server.{ARGO_SERVER_NS}.svc.cluster.local:2746"
     )
-    MINIO_CA_BUNDLE = "/etc/ssl/certs/tls-trust-bundle.crt"
+    S3_CA_BUNDLE = "/etc/ssl/certs/tls-trust-bundle.crt"
 else:
     # Load environment variables from .env file
     load_dotenv()
@@ -82,17 +72,63 @@ def argo_token() -> str:
     return ARGO_TOKEN
 
 
-# Init minio client. Will fallback to STS if access/secret key are not set
-minio_client = MinioClient(
-    endpoint=os.getenv("MINIO_URL"),
-    sts_endpoint=os.getenv(
-        "MINIO_STS_URL", "https://sts.minio-operator.svc.cluster.local:4223"
-    ),
-    tenant=os.getenv("MINIO_TENANT_NAME", "argo-artifacts"),
-    access_key=os.getenv("MINIO_ACCESS_KEY", None),
-    secret_key=os.getenv("MINIO_SECRET_KEY", None),
-    secure=os.getenv("MINIO_SECURE", True),
+S3_URL = os.getenv("S3_URL")
+S3_SECURE = os.getenv("S3_SECURE", "True") == "True"
+
+# Generic S3 client, used when the caller does not supply their own S3 credentials.
+# Its S3 identity can upload to, list and delete from ingress, and read and list egress. It has no S3 admin rights:
+# admin operations (bucket creation) use credentials supplied by the caller.
+# Exit if the keys are not available
+if os.getenv("S3_ACCESS_KEY") is None or os.getenv("S3_SECRET_KEY") is None:
+    print("Failed to initialise S3 client")
+    sys.exit(1)
+
+s3_client = S3Client(
+    endpoint=S3_URL,
+    access_key=os.getenv("S3_ACCESS_KEY"),
+    secret_key=os.getenv("S3_SECRET_KEY"),
+    secure=S3_SECURE,
 )
+
+
+# The caller's own S3 credentials. Optional: if omitted the API uses its generic S3 credentials,
+# which can only reach what that identity allows (by default the shared buckets). Supply them for
+# user-specific buckets and for admin operations. These appear in the OpenAPI docs as API key security schemes,
+# so they can be entered once in the "Authorize" dialog.
+s3_access_key_header = APIKeyHeader(
+    name="X-S3-Access-Key",
+    scheme_name="S3AccessKey",
+    description="Optional. Your own S3 access key, for user-specific buckets. If omitted the API's generic credentials are used.",
+    auto_error=False,
+)
+s3_secret_key_header = APIKeyHeader(
+    name="X-S3-Secret-Key",
+    scheme_name="S3SecretKey",
+    description="Optional. Your own S3 secret key. Must be sent together with the access key.",
+    auto_error=False,
+)
+
+
+def caller_s3_client(
+    s3_access_key: Annotated[str | None, Depends(s3_access_key_header)] = None,
+    s3_secret_key: Annotated[str | None, Depends(s3_secret_key_header)] = None,
+) -> S3Client:
+    """
+    Build an S3 client from the caller's own S3 credentials, passed in request headers.
+    Used for uploads (a user's own bucket) and for admin operations (an admin's credentials), so
+    that SeaweedFS enforces what the caller may do. The secret key is never logged.
+    """
+    if not s3_access_key or not s3_secret_key:
+        raise HTTPException(
+            status_code=401,
+            detail="Both the X-S3-Access-Key and X-S3-Secret-Key headers are required.",
+        )
+    return S3Client(
+        endpoint=S3_URL,
+        access_key=s3_access_key,
+        secret_key=s3_secret_key,
+        secure=S3_SECURE,
+    )
 
 
 class Workflow(BaseModel):
