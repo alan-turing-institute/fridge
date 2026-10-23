@@ -34,7 +34,7 @@ As a result:
 
 - the image must work when run as an arbitrary non-root user
 - the container can only write to mounted volumes, `/tmp` and other world-writable locations, not to its home directory or the image's install paths. Setting `HOME` to `/tmp`, as in the example below, fixes most tools that write caches or configuration to the home directory
-- GPU devices may need an extra group, set at pod level with `spec.securityContext.supplementalGroups`. For example, the AMD GPU examples add group `992`
+- GPU devices need an extra group, set at pod level with `spec.securityContext.supplementalGroups` (see [Resources](#workflow-resources))
 
 ### Network
 
@@ -60,6 +60,51 @@ The isolated cluster pulls images through the Harbor registry in the {term}`Acce
 
 Use images from one of these registries, and pin them to a tag or digest so that a template always runs the same code.
 Large images, such as GPU builds of PyTorch, may need a larger `harbor_registry_size` (see [Configuration Reference](../deploy/configuration.md)).
+
+(workflow-resources)=
+## Resources
+
+Set CPU and memory requests on every container.
+The `argo-workflows` namespace has no default requests or limits, so a container without them is scheduled as if it needs no CPU or memory.
+It can then land on a node that is already busy, and is among the first to be evicted when the node runs short of memory.
+Set a memory limit as well, equal to the request, so that a job that uses more memory than expected is stopped rather than starving other workloads.
+A container that goes over its memory limit is killed, and the workflow's log shows `OOMKilled`.
+
+### GPUs
+
+A container only gets a GPU if it requests one.
+Without a GPU request it runs without access to any GPU device, even on a GPU node.
+Request GPUs under `resources.limits`, using the resource name for the cluster's GPUs, and add the group that owns the GPU devices:
+
+| Environment | GPUs | Resource name | Supplemental group |
+| --- | --- | --- | --- |
+| Dawn | Intel | `gpu.intel.com/i915` | `110` |
+| Zenith | AMD | `amd.com/gpu` | `992` |
+
+AKS deployments have no GPU drivers or device plugins, so templates that request GPUs cannot run there.
+
+GPUs are requested in whole numbers and are not shared, so each GPU is given to one container at a time.
+A workflow that requests more GPUs than are free waits in `Pending` until enough are released.
+Request only as many GPUs as the job uses.
+
+For example, on Zenith:
+
+```yaml
+spec:
+  securityContext:
+    supplementalGroups:
+      - 992
+  templates:
+    - name: main
+      container:
+        resources:
+          requests:
+            cpu: "8"
+            memory: 64Gi
+          limits:
+            memory: 64Gi
+            amd.com/gpu: 1
+```
 
 ## Data
 
@@ -162,6 +207,47 @@ The `data-copy` template shows how to pass both the CA and the credentials to a 
 The API lists, and lets Job Submitters set, only the parameters under `spec.arguments.parameters`.
 Give every parameter a sensible default, as parameters a Job Submitter leaves out keep it.
 
+A parameter is not just an input to the container.
+Argo substitutes `{{workflow.parameters.<name>}}` anywhere in the template before the workflow runs, so a parameter can set any part of the workflow, for example:
+
+- the container image, so that one template can run several versions of a tool
+- the object keys of input and output artifacts
+- the command-line arguments or environment variables the container receives
+
+See Argo's documentation on [parameters](https://argo-workflows.readthedocs.io/en/latest/walk-through/parameters/).
+
+```yaml
+spec:
+  arguments:
+    parameters:
+      - name: image
+        value: rocm/pytorch:rocm10.1.0_ubuntu26.04_py3.14_pytorch_release_2.14.0
+      - name: input-key
+        value: input.csv
+  templates:
+    - name: main
+      inputs:
+        artifacts:
+          - name: input-data
+            path: /tmp/input.csv
+            s3:
+              key: "{{workflow.parameters.input-key}}"
+      container:
+        image: "{{workflow.parameters.image}}"
+```
+
+Each parameter widens what Job Submitters can do with the template.
+A parameter for the image, for instance, lets them run any image from the cached registries, so the template no longer fixes what code runs on the FRIDGE.
+To allow only some values, list them under the parameter's `enum`, and Argo rejects any other value:
+
+```yaml
+- name: image
+  value: rocm/pytorch:rocm10.1.0_ubuntu26.04_py3.14_pytorch_release_2.14.0
+  enum:
+    - rocm/pytorch:rocm10.1.0_ubuntu26.04_py3.14_pytorch_release_2.14.0
+    - rocm/pytorch:rocm10.0.0_ubuntu26.04_py3.14_pytorch_release_2.13.0
+```
+
 Treat parameter values as untrusted input.
 Pass them to the container as environment variables, not by substituting them into a shell script, so that a value cannot inject shell commands.
 The `data-copy` template in `infra/fridge/isolated-cluster/k8s/argo_workflows/templates.yaml` shows this pattern.
@@ -199,6 +285,12 @@ spec:
             value: "{{inputs.parameters.script}}"
           - name: HOME
             value: /tmp
+        resources:
+          requests:
+            cpu: "1"
+            memory: 2Gi
+          limits:
+            memory: 2Gi
         command: ["sh", "-c"]
         args:
           - |
