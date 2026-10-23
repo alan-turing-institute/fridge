@@ -70,12 +70,12 @@ When the infrastructure has finished deploying, you should provide the `TRE Admi
 
 ## AIRR
 
-FRIDGE is intended to be deployed to the AI Research Resource supercomputers, Dawn and Isambard-AI.
+FRIDGE is intended to be deployed to the AI Research Resource supercomputers, Zenith and Isambard-AI.
 Deployment of the infrastructure will be performed by the `Hosting Administrators`.
 
-### Dawn
+### Zenith
 
-On Dawn, [K3s](https://k3s.io/) is the Kubernetes distribution of choice.
+On Zenith, [K3s](https://k3s.io/) is the Kubernetes distribution of choice.
 
 The `infra/dawn/` directory contains Pulumi code for the deployment of the initial networking setup and nodes for use by Kubernetes, and for the configuration of the Kubernetes clusters.
 
@@ -107,4 +107,4 @@ The isolated cluster is not isolated from the internet until this is completed.
 For AKS, this involves making changes to the network security groups for the VNets on which the two clusters are hosted, and setting up a private DNS zone with a record for Harbor, pointing its FQDN towards its internal IP address.
 Example Pulumi code for locking down AKS after FRIDGE deployment can be found at `infra/aks-post-deployment`.
 
-On Dawn, a similar process involves removal of the network router allowing the isolated cluster's VNet direct access to the internet, and modifying the security group rules governing traffic between the access and isolated VNets.
+On Zenith, a similar process involves removal of the network router allowing the isolated cluster's VNet direct access to the internet, and modifying the security group rules governing traffic between the access and isolated VNets.
