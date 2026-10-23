@@ -17,7 +17,7 @@ The stacks must be deployed in this order, as each depends on outputs from the p
 3. [Isolated cluster](#config-isolated)
 4. [Network lockdown](#config-lockdown) (`infra/aks-post-deployment`, AKS only)
 
-On Dawn, the clusters are created outside Pulumi and the infrastructure and lockdown stacks do not apply.
+On Dawn and Zenith, the clusters are created outside Pulumi and the infrastructure and lockdown stacks do not apply.
 
 (config-infrastructure)=
 ## Infrastructure (`infra/aks`)
@@ -48,19 +48,20 @@ Deploys ingress, cert-manager, Harbor and the NetBird/HAProxy VPN server.
 
 | Key | Required | Secret | Description |
 |---|---|---|---|
-| `k8s_env` | Yes | | Cluster environment: `AKS` or `Dawn` |
+| `k8s_env` | Yes | | Cluster environment: `AKS`, `Dawn` or `Zenith` |
 | `base_fqdn` | Yes | | Base domain for the deployment. Harbor is served at `<harbor_fqdn_prefix>.<base_fqdn>` |
 | `harbor_fqdn_prefix` | Yes | | Host name prefix for Harbor |
 | `harbor_admin_password` | Yes | Yes | Harbor admin password |
+| `harbor_registry_size` | No | | Size of Harbor's registry storage, for example `50Gi`. Defaults to `20Gi`. Large images, such as GPU builds of PyTorch, may need more |
 | `tls_environment` | Yes | | Certificate issuer: `staging` or `production` (Let's Encrypt), or `development` (self-signed CA) |
 | `lets_encrypt_email` | Yes | | Email address for Let's Encrypt registration. Only read when using Let's Encrypt, but declared as required |
 | `fridge_api_ip_address` | Yes | | IP address of the FRIDGE API in the isolated cluster. Used for the HAProxy backend, the network policies and as an output. On AKS this is the same address as `fridge_api_ip` in the isolated stack |
 | `isolated_cluster_api_endpoint` | Yes | | Host name or IP address of the isolated cluster's Kubernetes API server. On AKS use `isolated_cluster_api_server_fqdn` from the infrastructure stack |
 | `harbor_ip` | Yes | | IP address of Harbor as seen from the cluster nodes. Used to configure containerd to pull from Harbor |
-| `azure_subscription_id` | AKS only | | Azure subscription ID. Use a dummy value on Dawn |
-| `azure_resource_group` | AKS only | | Azure resource group. Use a dummy value on Dawn |
-| `azure_disk_encryption_set` | AKS only | | Name of the disk encryption set used for the storage class. Use a dummy value on Dawn |
-| `dawn_load_balancer_ip` | Dawn only | | Load balancer IP of the Dawn access cluster, used as the Harbor IP. Use a dummy value on AKS |
+| `azure_subscription_id` | AKS only | | Azure subscription ID. Use a dummy value on Dawn and Zenith |
+| `azure_resource_group` | AKS only | | Azure resource group. Use a dummy value on Dawn and Zenith |
+| `azure_disk_encryption_set` | AKS only | | Name of the disk encryption set used for the storage class. Use a dummy value on Dawn and Zenith |
+| `dawn_load_balancer_ip` | Dawn and Zenith only | | Load balancer IP of the access cluster, used as the Harbor IP. Despite the name, it is also read on Zenith. Use a dummy value on AKS |
 | `kubernetes:context` | Yes | | kubectl context of the access cluster |
 | `netbird.*` | Yes | | NetBird settings, described below |
 
@@ -88,8 +89,7 @@ The network policies allow egress to the management host and, if set, the overri
 |---|---|
 | `fridge_api_ip_address` | Echo of the configuration value |
 | `harbor_fqdn` | Fully qualified domain name of Harbor |
-| `harbor_uses_custom_ca` | Whether Harbor's certificate is issued by a custom CA (any `tls_environment` other than `production`) |
-| `harbor_ca_cert` | Harbor CA certificate. Not exported when `tls_environment` is `production` |
+| `harbor_ca_bundle` | CA certificates needed to verify Harbor's certificate: the self-signed CA when `tls_environment` is `development`, or the Let's Encrypt staging roots when it is `staging`. Not exported when `tls_environment` is `production`, as the system trust store is sufficient |
 | `harbor_ip_address`, `ingress_ip`, `ingress_ports` | AKS only |
 
 (config-isolated)=
@@ -101,25 +101,27 @@ It reads outputs from the access cluster stack, so the access cluster must be de
 
 | Key | Required | Secret | Description |
 |---|---|---|---|
-| `k8s_env` | Yes | | Cluster environment: `AKS` or `Dawn` |
+| `k8s_env` | Yes | | Cluster environment: `AKS`, `Dawn` or `Zenith` |
 | `organization_name` | Yes | | Pulumi organisation that owns the access cluster stack |
 | `project_name` | Yes | | Pulumi project name of the access cluster stack (`fridge-access`) |
 | `access_cluster_stack` | Yes | | Name of the access cluster stack |
 | `base_fqdn` | Yes | | Base domain for the deployment. Used for the self-signed CA certificate |
 | `fridge_api_admin` | Yes | Yes | Username for the FRIDGE API |
 | `fridge_api_password` | Yes | Yes | Password for the FRIDGE API |
-| `fridge_api_ip` | AKS only | | Fixed IP address for the FRIDGE API's internal load balancer. Must be in the isolated nodes subnet. Not used on Dawn, where the API is exposed on NodePort 30180 |
-| `s3_access_key` | Yes | Yes | Access key of the S3 admin identity that the FRIDGE API uses |
-| `s3_secret_key` | Yes | Yes | Secret key of the S3 admin identity |
+| `fridge_api_ip` | AKS only | | Fixed IP address for the FRIDGE API's internal load balancer. Must be in the isolated nodes subnet. Not used on Dawn or Zenith, where the API is exposed on NodePort 30180 |
+| `s3_access_key` | Yes | Yes | Access key of the FRIDGE API's generic S3 identity. This identity can only upload to, list and delete from the `ingress` bucket, and read and list the `egress` bucket |
+| `s3_secret_key` | Yes | Yes | Secret key of the FRIDGE API's generic S3 identity |
+| `s3_admin_access_key` | Yes | Yes | Access key of the S3 admin identity (`fridge-admin`). Used by the bucket setup job, and supplied by admins to the FRIDGE API for admin operations such as creating buckets. It is never given to the API itself |
+| `s3_admin_secret_key` | Yes | Yes | Secret key of the S3 admin identity |
 | `block_storage_size` | Yes | | Size of the block storage volume shared with workflows, for example `100Gi` |
 | `seaweedfs.root_user` | Yes | Yes | SeaweedFS root user |
 | `seaweedfs.root_password` | Yes | Yes | SeaweedFS root password |
 | `seaweedfs.pool_size` | Yes | | Size of the SeaweedFS storage pool. Must be a valid Kubernetes quantity, for example `40Gi` |
-| `run_tests` | No | | Set to `true` to deploy the example GPU test workflows. Dawn only. Defaults to `false` |
-| `azure_subscription_id` | AKS only | | Azure subscription ID. Use a dummy value on Dawn |
-| `azure_resource_group` | AKS only | | Azure resource group. Use a dummy value on Dawn |
-| `azure_disk_encryption_set` | AKS only | | Name of the disk encryption set used for the storage class. Use a dummy value on Dawn |
-| `access_cluster_load_balancer_ip` | Dawn only | | Load balancer IP of the access cluster. Used to resolve the Harbor host name on the nodes |
+| `run_tests` | No | | Set to `true` to deploy the example GPU test workflow templates: Intel GPU examples on Dawn, AMD GPU examples on Zenith. Ignored on AKS. Defaults to `false` |
+| `azure_subscription_id` | AKS only | | Azure subscription ID. Use a dummy value on Dawn and Zenith |
+| `azure_resource_group` | AKS only | | Azure resource group. Use a dummy value on Dawn and Zenith |
+| `azure_disk_encryption_set` | AKS only | | Name of the disk encryption set used for the storage class. Use a dummy value on Dawn and Zenith |
+| `access_cluster_load_balancer_ip` | Dawn and Zenith only | | Load balancer IP of the access cluster. Used to resolve the Harbor host name on the nodes |
 | `kubernetes:context` | Yes | | kubectl context of the isolated cluster |
 
 `seaweedfs` is a single object, so set its fields using `--path`:
@@ -131,13 +133,14 @@ pulumi config set --path seaweedfs.pool_size 40Gi
 
 ### Inputs from the access cluster stack
 
-The isolated stack reads these outputs from the access cluster stack: `fridge_api_ip_address`, `harbor_fqdn`, `harbor_ca_cert` and `harbor_uses_custom_ca`.
+The isolated stack reads these outputs from the access cluster stack: `fridge_api_ip_address`, `harbor_fqdn` and `harbor_ca_bundle`.
+If `harbor_ca_bundle` is not exported, containerd on the isolated cluster nodes uses the system trust store to verify Harbor's certificate.
 
 ### Outputs
 
 | Output | Description |
 |---|---|
-| `fridge_api_ip` | Echo of the configuration value. Not exported on Dawn |
+| `fridge_api_ip` | Echo of the configuration value. AKS only |
 
 (config-lockdown)=
 ## Network lockdown (`infra/aks-post-deployment`)
