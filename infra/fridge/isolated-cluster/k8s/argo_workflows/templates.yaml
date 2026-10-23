@@ -127,5 +127,5 @@ spec:
             mountPath: /etc/ssl/certs
             readOnly: true
   ttlStrategy:
-    secondsAfterSuccess: 3600
-    secondsAfterFailure: 604800
+    secondsAfterSuccess: 3600 # 1 hour
+    secondsAfterFailure: 604800 # 1 week
