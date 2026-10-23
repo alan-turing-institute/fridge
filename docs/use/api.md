@@ -56,6 +56,40 @@ It may be replaced in production deployments, so the API does not currently dist
 Until then, treat the credentials as you would any other shared secret.
 :::
 
+(use-api-s3-credentials)=
+### S3 credentials
+
+By default, the API reaches object storage with its own generic S3 identity.
+That identity can only:
+
+- upload to, list and delete from the `ingress` bucket
+- read and list the `egress` bucket
+
+So with the generic identity you cannot download from `ingress` or delete from `egress`.
+This keeps data flowing one way: in through `ingress`, out through `egress`.
+
+The object endpoints also accept your own S3 credentials, in the optional `X-S3-Access-Key` and `X-S3-Secret-Key` headers.
+When you send them, the object storage checks what those credentials are allowed to do instead.
+Both headers must be sent together.
+They are in addition to the HTTP Basic credentials, not a replacement for them.
+
+```console
+curl -k -u "$FRIDGE_AUTH" \
+  -H "X-S3-Access-Key: <access-key>" \
+  -H "X-S3-Secret-Key: <secret-key>" \
+  "$FRIDGE_URL/object/list?bucket=<bucket>"
+```
+
+Most Job Submitters will not need them.
+At present, they are only needed by TRE Administrators for admin operations such as [creating a bucket](#use-api-housekeeping).
+They are intended to support user-specific buckets in future.
+
+In the interactive documentation, the two headers can be entered once in the "Authorize" dialog.
+
+:::{note}
+Like HTTP Basic authentication, this credential model is part of the current development design and may change.
+:::
+
 ### Interactive documentation
 
 The API serves interactive OpenAPI documentation at `$FRIDGE_URL/docs`, where you can read the full request and response schemas and try the endpoints.
@@ -67,14 +101,14 @@ Workflows run in the `argo-workflows` namespace and share a block storage volume
 A typical job has these steps:
 
 1. Upload input data to the `ingress` bucket.
-2. Copy it from `ingress` to the block storage volume.
+2. Copy it from `ingress` to the block storage volume, unless the workflow reads it directly from object storage.
 3. Submit a workflow from a template.
 4. Check the workflow's status and logs.
 5. Copy the results from the volume to the `egress` bucket.
 6. Download the results.
 
-Workflows can read from `ingress` and write to `egress`, but not the reverse.
-This is deliberate: it stops a job from overwriting its own input data.
+Workflows can only write to `egress`, and the API's generic identity cannot read `ingress` back out.
+This is deliberate: it stops a job from overwriting its own input data, and makes `egress` the only way out.
 
 ## Worked example
 
@@ -90,7 +124,7 @@ curl -k -u "$FRIDGE_AUTH" \
 ```
 
 ```json
-{"status": 201, "response": "input.csv", "version": "None"}
+{"status": 201, "response": "input.csv"}
 ```
 
 List what is in a bucket with:
@@ -99,13 +133,16 @@ List what is in a bucket with:
 curl -k -u "$FRIDGE_AUTH" "$FRIDGE_URL/object/list?bucket=ingress"
 ```
 
-`bucket` is either `ingress` (the default) or `egress`.
+`bucket` defaults to `ingress`.
+With the generic identity, only `ingress` and `egress` can be listed; other buckets need your own [S3 credentials](#use-api-s3-credentials).
 Add `prefix=<prefix>` to restrict the listing, and `recursive=true` to include objects below the top level.
 
 ### 2. Copy the data to the volume
 
-Workflows read their input from the shared volume, not directly from object storage.
+Workflows can read their input either from the shared volume or directly from object storage.
+To use the volume, copy the data onto it first.
 The `/object/move` endpoint submits the `data-copy` workflow, which copies files from the bucket onto the volume.
+If your workflow reads from object storage instead, skip this step (see [Reading directly from object storage](#use-api-artifacts)).
 
 ```console
 curl -k -u "$FRIDGE_AUTH" -X POST \
@@ -119,14 +156,42 @@ curl -k -u "$FRIDGE_AUTH" -X POST \
   "$FRIDGE_URL/object/move?direction=ingress&files=a.csv%3Bb.csv"
 ```
 
-The response names the workflow that was started:
+File names must be relative, and must not contain `..`.
+Before starting the copy, the API checks that every file exists in the bucket, and returns `404` naming the first missing file if not.
+
+By default, files are copied from the `ingress` bucket.
+To copy from a different bucket, add `bucket=<bucket>`; the API checks the files exist using your own [S3 credentials](#use-api-s3-credentials) if you send them.
+
+The response names the bucket and the workflow that was started:
 
 ```json
-{"status": 200, "direction": "ingress", "files": ["input.csv"], "workflow": "data-copy-x7k2q"}
+{"status": 200, "direction": "ingress", "bucket": "ingress", "files": ["input.csv"], "workflow": "data-copy-x7k2q"}
 ```
 
 The copy runs asynchronously.
 Check that it has finished before you use the data, as described in [step 4](#use-api-status).
+
+(use-api-artifacts)=
+#### Reading directly from object storage
+
+Argo Workflows is configured with the object storage as its default artifact repository, using the `ingress` bucket.
+A workflow template can declare an S3 input artifact by key, and Argo fetches the object into the container before the step runs:
+
+```yaml
+inputs:
+  artifacts:
+    - name: input-data
+      path: /scratch/input.csv
+      s3:
+        key: input.csv
+```
+
+Argo reads artifacts with its own S3 identity, which can read any bucket but only write to `egress`.
+To read from a bucket other than `ingress`, set `bucket` under `s3`.
+Output artifacts must likewise set `bucket: egress`, as writes to any other bucket are refused.
+
+Whether a template reads from the volume or from object storage is decided by whoever writes the template.
+Ask your TRE Administrators which approach the templates available to you use.
 
 ### 3. Submit a workflow
 
@@ -202,7 +267,8 @@ curl -k -u "$FRIDGE_AUTH" -X POST \
 ```
 
 The file names are relative to `/data`.
-If a file does not exist on the volume, the copy workflow fails and reports this in its log.
+Results can only be copied to `egress`, so `bucket`, if given, must be `egress`.
+The API cannot see the volume, so it does not check these files up front: if a file does not exist on the volume, the copy workflow fails and reports this in its log.
 
 :::{important}
 Like the copy into the FRIDGE, this runs as a workflow.
@@ -217,7 +283,9 @@ curl -k -u "$FRIDGE_AUTH" -OJ "$FRIDGE_URL/object/egress/results.csv"
 
 The file is streamed back as an attachment.
 Use `target_file=<name>` to set a different file name in the download.
+Object names can include `/`, for example `$FRIDGE_URL/object/egress/run-1/results.csv`.
 
+(use-api-housekeeping)=
 ## Housekeeping
 
 Delete an object from a bucket:
@@ -226,14 +294,22 @@ Delete an object from a bucket:
 curl -k -u "$FRIDGE_AUTH" -X DELETE "$FRIDGE_URL/object/ingress/input.csv"
 ```
 
-Create an additional bucket:
+With the generic identity, you can only delete from `ingress`.
+
+Create an additional bucket.
+This needs S3 admin rights, so you must send admin [S3 credentials](#use-api-s3-credentials); without them, the API returns `401`:
 
 ```console
-curl -k -u "$FRIDGE_AUTH" -X POST "$FRIDGE_URL/object/bucket?bucket_name=my-bucket"
+curl -k -u "$FRIDGE_AUTH" -X POST \
+  -H "X-S3-Access-Key: <admin-access-key>" \
+  -H "X-S3-Secret-Key: <admin-secret-key>" \
+  "$FRIDGE_URL/object/bucket?bucket_name=my-bucket"
 ```
 
+Bucket names must follow the S3 rules: 3 to 63 characters, using lowercase letters, numbers, dots and hyphens, and starting and ending with a letter or number.
+
 :::{note}
-Workflows are only granted access to the `ingress` and `egress` buckets, so data in other buckets cannot be copied onto the volume or out of it.
+Data in other buckets can be copied onto the volume with `/object/move`, but results can only be copied out to `egress`.
 :::
 
 ## Endpoint reference
@@ -248,18 +324,22 @@ Workflows are only granted access to the `ingress` and `egress` buckets, so data
 | `POST` | `/workflowevents/from_template/` | Submit a workflow from a template |
 | `POST` | `/object/{bucket}/upload` | Upload a file (multipart form field `file`) |
 | `GET` | `/object/{bucket}/{file_name}` | Download an object |
-| `GET` | `/object/list` | List objects in `ingress` or `egress` |
+| `GET` | `/object/list` | List objects in a bucket |
 | `POST` | `/object/move` | Copy files between a bucket and the shared volume |
-| `POST` | `/object/bucket` | Create a bucket |
+| `POST` | `/object/bucket` | Create a bucket. Requires admin S3 credentials |
 | `DELETE` | `/object/{bucket}/{file_name}` | Delete an object |
+
+`{file_name}` may contain `/`.
+All of the `/object` endpoints accept the optional `X-S3-Access-Key` and `X-S3-Secret-Key` headers described in [S3 credentials](#use-api-s3-credentials).
 
 ## Errors
 
 | Status | Meaning |
 |---|---|
-| `401` | Missing or incorrect credentials |
-| `403` | The object storage refused access to the bucket |
+| `401` | Missing or incorrect credentials, or only one of the two S3 credential headers was sent. Also returned by `/object/bucket` when no S3 credentials are sent |
+| `403` | The object storage refused access, for example downloading from `ingress` with the generic identity |
 | `404` | The bucket, object, workflow or workflow template does not exist |
+| `422` | Invalid request, for example an invalid bucket name, an absolute or `..` file path, or an empty file list |
 | `500` | Another error, for example an upload that failed. The `detail` field gives the reason |
 
 Errors from Argo Workflows are passed through with their original status code and a `detail` field.
