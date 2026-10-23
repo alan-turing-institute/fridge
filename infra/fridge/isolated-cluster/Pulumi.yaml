@@ -37,10 +37,12 @@ config:
     description: The Kubernetes environment type (e.g. AKS, Dawn)
   organization_name:
     type: string
-    description: The Pulumi organization name. This is `organization`
+    description: The Pulumi organization name. This is `organization` when using any backend other than Pulumi Cloud
+    default: "organization"
   project_name:
     type: string
-    description: The Pulumi project name for the access cluster deployment
+    description: The Pulumi project name for the access cluster deployment. Typically this will be `fridge-access` but can be changed if the access cluster is deployed under a different project name
+    default: "fridge-access"
   s3_access_key:
     type: string
     description: Access key for the FRIDGE API's generic S3 identity (shared ingress and egress buckets only)
@@ -70,6 +72,16 @@ config:
       pool_size:
         type: string
         description: Size of the SeaweedFS storage pool (e.g., 40Gi)
+  base_fqdn:
+    type: string
+    description: Base FQDN for the deployment, used for the self-signed CA certificate
+  block_storage_size:
+    type: string
+    description: Size of the block storage volume shared with workflows (e.g. 30Gi)
+  run_tests:
+    type: boolean
+    default: false
+    description: Deploy the example GPU test workflows. Only used on Dawn
   kubernetes:context:
     value: ""
     description: Kubernetes context for the FRIDGE deployment
