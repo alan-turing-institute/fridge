@@ -20,9 +20,6 @@ project:
         - file: architecture/architecture.md
         - file: architecture/defence_in_depth.md
         - file: architecture/lifecycle.md
-    - title: Use
-      children:
-        - file: use/api.md
     - title: Deploy
       children:
         - file: deploy/overview.md
@@ -33,6 +30,9 @@ project:
     - title: Develop
       children:
         - file: develop/target.md
+    - title: Use
+      children:
+        - file: use/api.md
 site:
   template: book-theme
   options:
