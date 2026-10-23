@@ -162,7 +162,6 @@ All of the keys below are required.
 | `isolated_cluster_stack_name` | Name of the isolated cluster stack |
 
 The access and isolated cluster project names are fixed in the code as `fridge-access` and `fridge-isolated`, so the stacks must belong to projects with those names.
-Other keys that may appear in an existing stack file, such as `k8s_env`, `azure_subscription_id`, `access_cluster_project_name` and `isolated_cluster_project_name`, are not read.
 
 :::{warning}
 The private DNS zone created by this project is currently fixed to `aks-dual.fridge.develop.turingsafehaven.ac.uk`.
