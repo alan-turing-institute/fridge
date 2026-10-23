@@ -129,5 +129,3 @@ spec:
   ttlStrategy:
     secondsAfterSuccess: 300
     secondsAfterFailure: 86400
-  podGC:
-      strategy: OnWorkflowSuccess
