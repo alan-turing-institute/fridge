@@ -27,6 +27,7 @@ project:
         - file: deploy/netbird.md
         - file: deploy/services.md
         - file: deploy/configuration.md
+        - file: deploy/workflow_templates.md
     - title: Develop
       children:
         - file: develop/target.md
