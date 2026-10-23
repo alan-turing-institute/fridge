@@ -102,8 +102,8 @@ It reads outputs from the access cluster stack, so the access cluster must be de
 | Key | Required | Secret | Description |
 |---|---|---|---|
 | `k8s_env` | Yes | | Cluster environment: `AKS`, `Dawn` or `Zenith` |
-| `organization_name` | Yes | | Pulumi organisation that owns the access cluster stack |
-| `project_name` | Yes | | Pulumi project name of the access cluster stack (`fridge-access`) |
+| `organization_name` | No | | Pulumi organisation that owns the access cluster stack. Defaults to `organization`, which is correct for any backend other than Pulumi Cloud. On Pulumi Cloud, set it to your organisation name |
+| `project_name` | No | | Pulumi project name of the access cluster stack. Defaults to `fridge-access`. Only change it if the access cluster was deployed under a different project name |
 | `access_cluster_stack` | Yes | | Name of the access cluster stack |
 | `base_fqdn` | Yes | | Base domain for the deployment. Used for the self-signed CA certificate |
 | `fridge_api_admin` | Yes | Yes | Username for the FRIDGE API |
