@@ -78,8 +78,8 @@ Write results to the volume too, so that Job Submitters can copy them to `egress
 ### Object storage artifacts
 
 Argo's default artifact repository is the `ingress` bucket.
-Declare input artifacts by key, and Argo fetches them before the step runs.
-Output artifacts must set `bucket: egress`, as Argo can only write to `egress`.
+Declare input artifacts from `ingress` by key, and Argo fetches them before the step runs.
+The default repository also supplies the endpoint, credentials and internal CA, so these artifacts need no extra configuration.
 
 ```yaml
 inputs:
@@ -88,16 +88,35 @@ inputs:
       path: /tmp/input.csv
       s3:
         key: input.csv
+```
+
+Output artifacts must go to the `egress` bucket, as Argo can only write to `egress`.
+An artifact in any bucket other than `ingress` does not use the default repository, so setting `bucket: egress` alone is not enough.
+It must give the full S3 configuration: the endpoint, region, credentials and the internal CA.
+
+```yaml
 outputs:
   artifacts:
     - name: results
       path: /tmp/results.csv
       s3:
+        endpoint: seaweedfs-s3.seaweedfs.svc.cluster.local:8334
+        region: eu-west-2
         bucket: egress
         key: results.csv
+        accessKeySecret:
+          name: argo-artifacts-s3
+          key: accesskey
+        secretKeySecret:
+          name: argo-artifacts-s3
+          key: secretkey
+        caSecret:
+          name: trusted-certificates
+          key: ca-certificates.crt
 ```
 
-Argo already trusts the object storage's certificate when it fetches and stores artifacts, so artifacts need no extra configuration.
+The region is not a real region, only a placeholder needed for S3 compatibility.
+The same applies to input artifacts read from `egress` or any other bucket.
 
 ### Object storage from inside a container
 
