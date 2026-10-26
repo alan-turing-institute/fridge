@@ -119,12 +119,15 @@ class SeaweedConfigJob(ComponentResource):
             ),
             spec=JobSpecArgs(
                 backoff_limit=2,
+                ttl_seconds_after_finished=3600,
                 template=PodTemplateSpecArgs(
                     metadata=ObjectMetaArgs(
                         # This ensures the generated Pods actually get the label
                         labels={"app": "seaweedfs-config-job"},
                     ),
                     spec=PodSpecArgs(
+                        # Only talks to the S3 gateway, never the Kubernetes API
+                        automount_service_account_token=False,
                         containers=[
                             ContainerArgs(
                                 name="seaweedfs-config-job",
