@@ -292,6 +292,8 @@ class ObjectStorage(ComponentResource):
                 },
                 "filer": {
                     "replicas": 1,
+                    # Encrypt each chunk on the volume servers with its own key, kept in the filer metadata
+                    "encryptVolumeData": True,
                     "logs": {
                         "type": "emptyDir",
                     },
