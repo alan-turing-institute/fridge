@@ -120,3 +120,41 @@ spec:
         - ports:
             - port: "6443"
               protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: cinder-csi-cambs
+  namespace: kube-system
+spec:
+  endpointSelector:
+    matchLabels:
+      app: csi-cinder-controllerplugin
+  egress:
+    - toEntities:
+        - kube-apiserver
+      toPorts:
+        - ports:
+          - port: "6443"
+            protocol: ANY
+    - toEndpoints:
+        - matchLabels:
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+    - toCIDR:
+        # Hardcoded Cinder IP address
+        - 128.232.222.1/32
+      toPorts:
+        - ports:
+            # Cinder API endpoints
+            # 8774 allows pods to mount volumes from Cinder
+            - port: "8774"
+              protocol: TCP
+            # 8776 and 5000 allow pods to create volumes in Cinder
+            - port: "8776"
+              protocol: TCP
+            - port: "5000"
+              protocol: TCP
