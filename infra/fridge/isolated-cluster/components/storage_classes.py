@@ -82,6 +82,7 @@ class StorageClasses(ComponentResource):
                     ),
                 )
 
+                # Longhorn uses Helm hooks for pre-install and post-delete, which don't work with Pulumi Chart resources, so we use a Release
                 longhorn = Release(
                     "longhorn",
                     namespace=longhorn_ns.metadata.name,
