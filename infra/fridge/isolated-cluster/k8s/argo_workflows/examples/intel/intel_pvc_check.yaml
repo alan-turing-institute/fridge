@@ -48,3 +48,5 @@ spec:
             print('10 matmul ops took:', end - start, 'seconds')
             print('Average per matmul:', (end - start) / 10, 'seconds')"
   serviceAccountName: argo-workflow
+  ttlStrategy:
+    secondsAfterCompletion: 3600 # 1 hour
