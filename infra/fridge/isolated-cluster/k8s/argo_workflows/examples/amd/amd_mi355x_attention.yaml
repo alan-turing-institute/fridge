@@ -58,3 +58,5 @@ spec:
             print('20 attention ops took:', end - start, 'seconds')
             print('Average per attention:', (end - start) / 20, 'seconds')"
   serviceAccountName: argo-workflow
+  ttlStrategy:
+    secondsAfterCompletion: 3600 # 1 hour

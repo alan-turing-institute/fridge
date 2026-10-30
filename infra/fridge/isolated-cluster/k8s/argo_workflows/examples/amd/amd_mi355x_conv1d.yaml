@@ -47,3 +47,5 @@ spec:
             print('50 conv1d ops took:', end - start, 'seconds')
             print('Average per conv:', (end - start) / 50, 'seconds')"
   serviceAccountName: argo-workflow
+  ttlStrategy:
+    secondsAfterCompletion: 3600 # 1 hour
