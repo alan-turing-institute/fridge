@@ -206,8 +206,8 @@ class ObjectStorage(ComponentResource):
             values={
                 "admin": {
                     "enabled": True,
-                    "port": 23646,
-                    "grpcPort": 33646,
+                    "port": 12535,  # default port, shown here for transparency
+                    "grpcPort": 22535,  # default port, shown here for transparency
                     "secret": {
                         "existingSecret": seaweedfs_admin_secret.metadata.name,
                         "userKey": "adminUser",
@@ -327,6 +327,9 @@ class ObjectStorage(ComponentResource):
                     "httpsPort": 8334,
                     "enableAuth": True,
                     "existingConfigSecret": seaweedfs_s3_secret.metadata.name,
+                    # The S3 gateway uploads chunks straight to the volume servers, so it needs its own
+                    # encryption flag; filer.encryptVolumeData only covers writes that go through the filer
+                    "extraArgs": ["-encryptVolumeData"],
                     # The S3 gateway only reads its identities at startup, so roll the pod whenever they change
                     "podAnnotations": {
                         "checksum/s3-config": seaweedfs_s3_config.apply(
@@ -334,11 +337,6 @@ class ObjectStorage(ComponentResource):
                         ),
                     },
                     "tlsSecret": "seaweedfs-tls",
-                    # createBuckets is disabled due to https://github.com/seaweedfs/seaweedfs/issues/10502; renable it once fixed upstream
-                    # "createBuckets": [
-                    #     {"name": "ingress", "anonymousRead": False},
-                    #     {"name": "egress", "anonymousRead": True},
-                    # ],
                     "podSecurityContext": {
                         "enabled": True,
                         "fsGroup": 1000,
