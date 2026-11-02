@@ -122,6 +122,16 @@ class ContainerRegistry(ComponentResource):
             ),
         )
 
+        match k8s_environment:
+            case K8sEnvironment.K3S:
+                registry_storage_class = (
+                    args.storage_classes.single_replica_storage_name
+                )
+            case K8sEnvironment.DAWN | K8sEnvironment.ZENITH:
+                registry_storage_class = args.storage_classes.cinder_storage_class_name
+            case _:
+                registry_storage_class = args.storage_classes.standard_storage_name
+
         self.harbor = Release(
             "harbor",
             ReleaseArgs(
@@ -149,7 +159,7 @@ class ContainerRegistry(ComponentResource):
                             "registry": {
                                 **self.harbor_storage_settings,
                                 # Images can be re-pushed, so don't replicate them
-                                "storageClass": args.storage_classes.single_replica_storage_name,
+                                "storageClass": registry_storage_class,
                                 "size": args.config.get("harbor_registry_size")
                                 or "20Gi",
                             },

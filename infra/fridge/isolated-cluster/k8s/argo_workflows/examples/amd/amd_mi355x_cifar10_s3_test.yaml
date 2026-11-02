@@ -144,3 +144,5 @@ spec:
               requests:
                 storage: 20Gi
   serviceAccountName: argo-workflow
+  ttlStrategy:
+    secondsAfterCompletion: 3600 # 1 hour

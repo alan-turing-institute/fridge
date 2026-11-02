@@ -86,3 +86,5 @@ spec:
             echo "Running ResNet-50 benchmark on a single GPU"
             python3 /tmp/resnet50_bench.py
   serviceAccountName: argo-workflow
+  ttlStrategy:
+    secondsAfterCompletion: 3600 # 1 hour

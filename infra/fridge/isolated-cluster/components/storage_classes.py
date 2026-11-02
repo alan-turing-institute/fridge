@@ -33,6 +33,7 @@ class StorageClasses(ComponentResource):
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
         k8s_environment = args.k8s_environment
+        object_data_storage_class = None
 
         match k8s_environment:
             case K8sEnvironment.AKS:
@@ -82,6 +83,7 @@ class StorageClasses(ComponentResource):
                     ),
                 )
 
+                # Longhorn uses Helm hooks for pre-install and post-delete, which don't work with Pulumi Chart resources, so we use a Release
                 longhorn = Release(
                     "longhorn",
                     namespace=longhorn_ns.metadata.name,
@@ -126,6 +128,22 @@ class StorageClasses(ComponentResource):
                     ),
                 )
 
+                # On Zenith, SeaweedFS keeps its object data on Cinder volumes.
+                # This class does not encrypt the volumes. SeaweedFS encrypts each chunk itself,
+                # and the keys stay in the filer metadata on Longhorn
+                if k8s_environment is K8sEnvironment.ZENITH:
+                    object_data_storage_class = StorageClass(
+                        "fridge_cinder_storage_class",
+                        allow_volume_expansion=True,
+                        metadata=ObjectMetaArgs(
+                            name=f"{STORAGE_CLASS_NAME}-cinder",
+                        ),
+                        provisioner="cinder.csi.openstack.org",
+                        reclaim_policy="Delete",
+                        volume_binding_mode="WaitForFirstConsumer",
+                        opts=child_opts,
+                    )
+
                 standard_storage_name = storage_class.metadata.name
                 standard_supports_rwm = True
             case K8sEnvironment.K3S:
@@ -136,3 +154,7 @@ class StorageClasses(ComponentResource):
         self.encrypted_storage_class = storage_class
         self.standard_storage_name = standard_storage_name
         self.standard_supports_rwm = standard_supports_rwm
+        # Backs the SeaweedFS volume servers; falls back to the encrypted class where there is no separate bulk storage
+        self.object_data_storage_name = (
+            object_data_storage_class or storage_class
+        ).metadata.name

@@ -9,8 +9,11 @@ from pulumi_kubernetes.core.v1 import (
     ConfigMapVolumeSourceArgs,
     ContainerArgs,
     EnvVarArgs,
+    EnvVarSourceArgs,
     PodSpecArgs,
     PodTemplateSpecArgs,
+    Secret,
+    SecretKeySelectorArgs,
     SecurityContextArgs,
     VolumeMountArgs,
     VolumeArgs,
@@ -90,6 +93,22 @@ class SeaweedConfigJob(ComponentResource):
             opts=child_opts,
         )
 
+        # Creating buckets needs S3 admin rights. Keep the keys in a Secret so they
+        # are not written in plain text into the Job and Pod specs.
+        seaweed_admin_credentials = Secret(
+            "seaweedfs-config-job-credentials",
+            metadata=ObjectMetaArgs(
+                name="seaweedfs-config-job-credentials",
+                namespace=args.seaweedfs.seaweedfs_ns.metadata.name,
+            ),
+            type="Opaque",
+            string_data={
+                "accessKey": args.config.require_secret("s3_admin_access_key"),
+                "secretKey": args.config.require_secret("s3_admin_secret_key"),
+            },
+            opts=child_opts,
+        )
+
         # Create a Job to configure SeaweedFS
         seaweed_config_job = Job(
             "seaweedfs-config-job",
@@ -100,12 +119,15 @@ class SeaweedConfigJob(ComponentResource):
             ),
             spec=JobSpecArgs(
                 backoff_limit=2,
+                ttl_seconds_after_finished=3600,
                 template=PodTemplateSpecArgs(
                     metadata=ObjectMetaArgs(
                         # This ensures the generated Pods actually get the label
                         labels={"app": "seaweedfs-config-job"},
                     ),
                     spec=PodSpecArgs(
+                        # Only talks to the S3 gateway, never the Kubernetes API
+                        automount_service_account_token=False,
                         containers=[
                             ContainerArgs(
                                 name="seaweedfs-config-job",
@@ -135,17 +157,22 @@ class SeaweedConfigJob(ComponentResource):
                                             args.seaweedfs.seaweedfs_s3_endpoint,
                                         ),
                                     ),
-                                    # Creating buckets needs S3 admin rights
                                     EnvVarArgs(
                                         name="S3_ACCESS_KEY",
-                                        value=args.config.require_secret(
-                                            "s3_admin_access_key"
+                                        value_from=EnvVarSourceArgs(
+                                            secret_key_ref=SecretKeySelectorArgs(
+                                                name=seaweed_admin_credentials.metadata.name,
+                                                key="accessKey",
+                                            ),
                                         ),
                                     ),
                                     EnvVarArgs(
                                         name="S3_SECRET_KEY",
-                                        value=args.config.require_secret(
-                                            "s3_admin_secret_key"
+                                        value_from=EnvVarSourceArgs(
+                                            secret_key_ref=SecretKeySelectorArgs(
+                                                name=seaweed_admin_credentials.metadata.name,
+                                                key="secretKey",
+                                            ),
                                         ),
                                     ),
                                 ],
@@ -175,7 +202,7 @@ class SeaweedConfigJob(ComponentResource):
                                 name="seaweedfs-config-volume",
                                 config_map=ConfigMapVolumeSourceArgs(
                                     name=seaweed_config_map.metadata.name,
-                                    default_mode=0o777,
+                                    default_mode=0o555,
                                 ),
                             ),
                             VolumeArgs(

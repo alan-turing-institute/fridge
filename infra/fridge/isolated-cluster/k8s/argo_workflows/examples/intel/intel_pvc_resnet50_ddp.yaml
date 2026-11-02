@@ -105,3 +105,5 @@ spec:
             echo "Running ResNet-50 DDP benchmark across 2 XPU tiles"
             torchrun --nproc_per_node=2 --master_addr=127.0.0.1 --master_port=29500 /tmp/resnet50_ddp.py
   serviceAccountName: argo-workflow
+  ttlStrategy:
+    secondsAfterCompletion: 3600 # 1 hour

@@ -39,5 +39,5 @@ class SoftwareVersion(Enum):
     INTEL_GPU_OPERATOR = "0.35.0"
     LONGHORN = "1.9.0"
     NODE_FEATURE_DISCOVERY = "0.18.3"
-    SEAWEEDFS = "4.47.0"
+    SEAWEEDFS = "4.51.0"
     TRUST_MANAGER = "0.25.0"

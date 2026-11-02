@@ -121,9 +121,25 @@ class StorageClasses(ComponentResource):
                     ),
                 )
 
+                cinder_storage_class = StorageClass(
+                    "fridge_cinder_storage_class",
+                    allow_volume_expansion=True,
+                    metadata=ObjectMetaArgs(
+                        name=f"{STORAGE_CLASS_NAME}-cinder",
+                    ),
+                    provisioner="cinder.csi.openstack.org",
+                    reclaim_policy="Delete",
+                    volume_binding_mode="WaitForFirstConsumer",
+                    opts=ResourceOptions.merge(
+                        child_opts,
+                        ResourceOptions(depends_on=[longhorn]),
+                    ),
+                )
+
                 standard_storage_name = storage_class.metadata.name
                 single_replica_storage_name = single_replica_storage_class.metadata.name
                 standard_supports_rwm = True
+                self.cinder_storage_class_name = cinder_storage_class.metadata.name
             case K8sEnvironment.K3S:
                 storage_class = StorageClass.get("fridge-storage-class", "local-path")
                 standard_storage_name = storage_class.metadata.name

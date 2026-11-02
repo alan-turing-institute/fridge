@@ -7,11 +7,11 @@ Deploying a FRIDGE is a multi-stage process.
 1. Deploy FRIDGE services into the isolated cluster
 1. Perform a final networking lockdown
 
-The `Hosting Provider Administrators` are responsible for the first and final steps.
+The `Hosting Administrators` are responsible for the first and final steps.
 
 The `TRE Administrators` are responsible for the second and third steps.
 
-For `Hosting Provider Administrators`, follow the guide in [Deploy Infrastructure](./infrastructure.md)
+For `Hosting Administrators`, follow the guide in [Deploy Infrastructure](./infrastructure.md)
 
 For `TRE Administrators`, follow the guide in [Deploy Services](./services.md)
 
@@ -30,7 +30,7 @@ Additionally, if deploying to Azure, you will need the following:
 
 ### NetBird
 
-Access to a deployed FRIDGE, either for `TRE Administrators` or `TRE Users`, is through a Virtual Private Network managed using [NetBird](https://netbird.io)
+Access to a deployed FRIDGE, either for `TRE Administrators` or `Job Submitters`, is through a Virtual Private Network managed using [NetBird](https://netbird.io)
 
 You will require access to a NetBird Management server.
 For testing and development, the free NetBird cloud management server is sufficient.

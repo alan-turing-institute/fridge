@@ -6,6 +6,24 @@ runtime:
     toolchain: pip
     virtualenv: venv
 config:
+  azure_resource_group:
+    type: string
+    description: The resource group containing the clusters, as set in the infrastructure stack
+  organization_name:
+    type: string
+    description: The Pulumi organization that owns the other stacks
+  project_name:
+    type: string
+    description: The Pulumi project name of the infrastructure stack (e.g. fridge_aks)
+  infrastructure_stack_name:
+    type: string
+    description: The Pulumi stack name of the infrastructure deployment
+  access_cluster_stack_name:
+    type: string
+    description: The Pulumi stack name of the access cluster deployment (project fridge-access)
+  isolated_cluster_stack_name:
+    type: string
+    description: The Pulumi stack name of the isolated cluster deployment (project fridge-isolated)
   pulumi:tags:
     value:
       pulumi:template: python

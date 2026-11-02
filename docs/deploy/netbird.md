@@ -18,14 +18,14 @@ Access Policies can be used to determine which Groups can connect to each other,
 
 We recommend creating three Groups, into each of which you will place one or more peers:
 1. A Group for the NetBird peer in the access cluster (e.g. `fridge-access`)
-2. A Group for TRE Operator administrator devices (e.g. `tre-admins`)
-3. A Group for TRE User access (e.g. `tre-users`)
+2. A Group for TRE Administrator devices (e.g. `tre-admins`)
+3. A Group for Job Submitter access (e.g. `tre-users`)
 
 Peers can be manually allocated to these groups after creation, or automatically allocated using setup keys.
 
-Any `TRE Operator` administrator devices that are intended to be used for communication with the Kubernetes API of the isolated cluster should be allocated to the `tre-admins` Group.
+Any `TRE Administrators`' devices that are intended to be used for communication with the Kubernetes API of the isolated cluster should be allocated to the `tre-admins` Group.
 
-Any device through which `TRE Users` connect to the FRIDGE API should be allocated to the `tre-users` Group.
+Any device through which `Job Submitters` connect to the FRIDGE API should be allocated to the `tre-users` Group.
 
 Inside the access cluster, traffic over NetBird is routed to its destination in the isolated cluster using HAProxy.
 Traffic on port 6443 will be routed to the Kubernetes API of the isolated cluster.
@@ -71,7 +71,7 @@ Additional NetBird-specific configuration fields are required in the Pulumi conf
 - `setup_key`
 - `endpoint_overrides`
 
-Non-secret values can be added to the configuration file manually or using `pulumi config set --path "netbird.<field_name>" "<value>".
+Non-secret values can be added to the configuration file manually or using `pulumi config set --path "netbird.<field_name>" "<value>"`.
 
 `hostname` should be a stable, descriptive name to be used for the peer in the access cluster (e.g. `fridge-access-prod`).
 
