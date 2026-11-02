@@ -4,33 +4,80 @@ import os
 from botocore.client import Config
 from botocore.exceptions import ClientError
 from collections.abc import AsyncIterator
+from contextlib import contextmanager
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 from starlette.concurrency import run_in_threadpool
 
 
 MiB = 1024 * 1024
+GiB = 1024 * MiB
+TiB = 1024 * GiB
+# The largest object that can be uploaded, either in a single request or part by part
+MAX_OBJECT_SIZE = 1 * TiB
 # S3 allows at most 10,000 parts in a multipart upload
 MAX_PART_COUNT = 10_000
-# Part size for files sent in a single request. Small enough that mid-sized files are still
-# sent to S3 as several parts in parallel
+# Smallest part size for files sent in a single request. Small enough that mid-sized files
+# are still sent to S3 as several parts in parallel
 STREAM_PART_SIZE = 16 * MiB
 STREAM_CONCURRENCY = 4
-# Part size for uploads the client sends part by part. The API holds each part in memory,
-# so parts are capped, which limits an object to 2.5TiB
+# Smallest part size for uploads the client sends part by part
 UPLOAD_PART_SIZE = 64 * MiB
-MAX_PART_SIZE = 256 * MiB
+# Total upload data the API holds in memory at once, across all requests
+UPLOAD_MEMORY_BUDGET = 1 * GiB
 
 
-def part_size_for(size: int | None, minimum: int) -> int:
+def part_size_for(size: int, minimum: int) -> int:
     """
     The part size to use for an object of `size` bytes: at least `minimum`, and large enough,
     in whole MiB, for the object to fit in MAX_PART_COUNT parts.
     """
-    if not size:
-        return minimum
     needed = -(-size // MAX_PART_COUNT)
     return max(minimum, -(-needed // MiB) * MiB)
+
+
+# The largest part needed for an object of MAX_OBJECT_SIZE (105MiB)
+MAX_PART_SIZE = part_size_for(MAX_OBJECT_SIZE, UPLOAD_PART_SIZE)
+
+
+def check_object_size(size: int) -> None:
+    if size > MAX_OBJECT_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Files larger than {MAX_OBJECT_SIZE // GiB}GiB are not supported.",
+        )
+
+
+class MemoryBudget:
+    """
+    Limits the upload data held in memory across all requests, so that concurrent uploads
+    cannot exhaust the pod's memory. A request that would go over the budget is refused
+    straight away with a 503, rather than queued, as a queued upload would hold its
+    connection open with nothing happening until the proxy timed it out.
+
+    Only use from the event loop, not from a thread pool, as the count is not locked.
+    """
+
+    def __init__(self, limit: int):
+        self.limit = limit
+        self.used = 0
+
+    @contextmanager
+    def reserve(self, size: int):
+        if self.used + size > self.limit:
+            raise HTTPException(
+                status_code=503,
+                detail="The API is busy with other uploads. Try again shortly.",
+                headers={"Retry-After": "10"},
+            )
+        self.used += size
+        try:
+            yield
+        finally:
+            self.used -= size
+
+
+upload_memory = MemoryBudget(UPLOAD_MEMORY_BUDGET)
 
 
 def _completed_part(number: int, part: dict) -> dict:
@@ -110,20 +157,28 @@ class S3Client:
         key,
         content_type,
         chunks: AsyncIterator[bytes],
-        size=None,
+        size: int,
     ):
         """
         Uploads a file to the specified S3 bucket as its data arrives. Small files are sent in a
         single PUT. Larger files are sent as a multipart upload, with parts sent in parallel
         while the rest of the file is still arriving.
 
+        The memory the upload can use, up to STREAM_CONCURRENCY + 1 parts, is reserved before
+        any data is read, so that a long upload is never refused partway through.
+
         :param bucket: S3 bucket to upload to
         :param key: Name of the object
         :param content_type: Content type of the object, if known
         :param chunks: The file's contents
-        :param size: Approximate size of the file in bytes, if known, used to choose the part size
+        :param size: Size of the file in bytes, used to choose the part size
         """
-        part_size = part_size_for(size, STREAM_PART_SIZE) if size else UPLOAD_PART_SIZE
+        check_object_size(size)
+        part_size = part_size_for(size, STREAM_PART_SIZE)
+        with upload_memory.reserve(min(size, part_size * (STREAM_CONCURRENCY + 1))):
+            return await self._put_object(bucket, key, content_type, chunks, part_size)
+
+    async def _put_object(self, bucket, key, content_type, chunks, part_size):
         extra_args = {"ContentType": content_type} if content_type else {}
         buffer = bytearray()
         upload_id = None
@@ -173,12 +228,12 @@ class S3Client:
                     self.client.put_object,
                     Bucket=bucket,
                     Key=key,
-                    Body=bytes(buffer),
+                    Body=buffer,
                     **extra_args,
                 )
             else:
                 if buffer:
-                    await start_part(bytes(buffer))
+                    await start_part(buffer)
                 parts = await asyncio.gather(*uploads)
                 await run_in_threadpool(
                     self.client.complete_multipart_upload,
@@ -215,7 +270,7 @@ class S3Client:
         except ClientError:
             pass
 
-    def create_multipart_upload(self, bucket, key, content_type=None, size=None):
+    def create_multipart_upload(self, bucket, key, size, content_type=None):
         """
         Starts a multipart upload that the client sends part by part, so that it can send parts
         in parallel and resume after an interruption.
@@ -223,15 +278,11 @@ class S3Client:
         :param bucket: S3 bucket to upload to
         :param key: Name of the object
         :param content_type: Content type of the object, if known
-        :param size: Size of the file in bytes, if known, used to choose the part size
+        :param size: Size of the file in bytes, used to choose the part size
         :return: The upload ID and the part size the client should use
         """
+        check_object_size(size)
         part_size = part_size_for(size, UPLOAD_PART_SIZE)
-        if part_size > MAX_PART_SIZE:
-            raise HTTPException(
-                status_code=413,
-                detail=f"Files larger than {MAX_PART_SIZE * MAX_PART_COUNT} bytes are not supported.",
-            )
         extra_args = {"ContentType": content_type} if content_type else {}
         try:
             response = self.client.create_multipart_upload(
@@ -245,7 +296,7 @@ class S3Client:
             "part_size": part_size,
         }
 
-    def upload_part(self, bucket, key, upload_id, part_number, body: bytes):
+    def upload_part(self, bucket, key, upload_id, part_number, body: bytes | bytearray):
         """
         Uploads one part of a multipart upload. Uploading a part number again replaces it.
 

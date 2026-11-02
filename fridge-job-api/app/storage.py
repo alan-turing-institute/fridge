@@ -15,8 +15,7 @@ from .config import (
     verify_request,
     VERIFY_TLS,
 )
-from .multipart_stream import MultipartFileStream
-from .s3_client import MAX_PART_COUNT, MAX_PART_SIZE, S3Client
+from .s3_client import MAX_PART_COUNT, MAX_PART_SIZE, S3Client, upload_memory
 
 # S3 bucket naming rules: 3-63 characters, lowercase letters, numbers, dots and hyphens
 BUCKET_PATTERN = r"^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$"
@@ -47,9 +46,7 @@ def s3_for_bucket(bucket: str, credentials: tuple[str | None, str | None]) -> S3
     return caller_s3_client(access_key, secret_key)
 
 
-def object_key(
-    key: Annotated[str, Query(min_length=1, description="Name of the object")],
-) -> str:
+def check_key(key: str) -> str:
     if key.startswith("/") or ".." in key.split("/"):
         raise HTTPException(
             status_code=422,
@@ -58,22 +55,37 @@ def object_key(
     return key
 
 
-# The file is read from the request body as it arrives rather than through an UploadFile
-# parameter, which would spool the whole body to disk before the upload to S3 could start.
+def object_key(
+    key: Annotated[str, Query(min_length=1, description="Name of the object")],
+) -> str:
+    return check_key(key)
+
+
+def content_length(request: Request) -> int:
+    """
+    The size of the request body. Uploads must give it, so that the size limit can be checked
+    and memory reserved before any of the body is read.
+    """
+    value = request.headers.get("content-length")
+    if not (value and value.isdigit()):
+        raise HTTPException(
+            status_code=411, detail="Uploads must have a Content-Length header."
+        )
+    return int(value)
+
+
+# The request body is the file itself, read as it arrives and sent on to S3, rather than a
+# multipart/form-data UploadFile, which would spool the whole body to disk first.
 # The request body is described here so that it still appears in the OpenAPI docs.
-@router.post(
-    "/object/{bucket}/upload",
+@router.put(
+    "/object/{bucket}/{key:path}",
     tags=["s3"],
     openapi_extra={
         "requestBody": {
             "required": True,
             "content": {
-                "multipart/form-data": {
-                    "schema": {
-                        "type": "object",
-                        "properties": {"file": {"type": "string", "format": "binary"}},
-                        "required": ["file"],
-                    }
+                "application/octet-stream": {
+                    "schema": {"type": "string", "format": "binary"}
                 }
             },
         }
@@ -81,6 +93,7 @@ def object_key(
 )
 async def upload_object(
     bucket: Bucket,
+    key: str,
     request: Request,
     verified: Annotated[bool, "Verify the request with basic auth"] = Depends(
         verify_request
@@ -88,21 +101,17 @@ async def upload_object(
     credentials: tuple = Depends(s3_credentials),
 ):
     """
-    Upload a file in a single request. For large files, use the multipart upload endpoints
-    under `/uploads/{bucket}`, which can send parts in parallel and resume after an interruption.
+    Upload a file of up to 1TiB as the raw request body, e.g.
+    `curl -T data.csv .../object/ingress/data.csv`. The object's content type is taken from
+    the `Content-Type` header, if given. To be able to resume an interrupted upload, use the
+    multipart upload endpoints under `/uploads/{bucket}` instead.
     """
-    s3 = s3_for_bucket(bucket, credentials)
-    form = MultipartFileStream(request)
-    await form.open()
-    content_length = request.headers.get("content-length")
-    return await s3.put_object(
+    return await s3_for_bucket(bucket, credentials).put_object(
         bucket,
-        object_key(form.filename),
-        form.content_type,
-        form.chunks(),
-        size=int(content_length)
-        if content_length and content_length.isdigit()
-        else None,
+        check_key(key),
+        request.headers.get("content-type"),
+        request.stream(),
+        size=content_length(request),
     )
 
 
@@ -114,11 +123,11 @@ def create_multipart_upload(
     bucket: Bucket,
     key: Annotated[str, Depends(object_key)],
     size: Annotated[
-        int | None,
+        int,
         Query(
             ge=0, description="Size of the file in bytes, used to choose the part size"
         ),
-    ] = None,
+    ],
     content_type: Annotated[
         str | None, Query(description="Content type of the object")
     ] = None,
@@ -128,11 +137,12 @@ def create_multipart_upload(
     credentials: tuple = Depends(s3_credentials),
 ):
     """
-    Start a multipart upload. Returns the `upload_id` and the `part_size` to split the file
-    into. Every part except the last must be exactly `part_size` bytes.
+    Start a multipart upload of a file of up to 1TiB. Returns the `upload_id` and the
+    `part_size` to split the file into. Every part except the last must be exactly
+    `part_size` bytes.
     """
     return s3_for_bucket(bucket, credentials).create_multipart_upload(
-        bucket, key, content_type, size
+        bucket, key, size, content_type
     )
 
 
@@ -165,23 +175,27 @@ async def upload_part(
     Upload one part of a multipart upload, as the raw request body. Sending a part number
     again replaces that part.
     """
-    body = bytearray()
-    async for chunk in request.stream():
-        body += chunk
-        if len(body) > MAX_PART_SIZE:
-            raise HTTPException(
-                status_code=413,
-                detail=f"Parts must be at most {MAX_PART_SIZE} bytes.",
-            )
-    # Run in a thread so that the event loop can take other parts while this one is sent
-    return await run_in_threadpool(
-        s3_for_bucket(bucket, credentials).upload_part,
-        bucket,
-        key,
-        upload_id,
-        part_number,
-        bytes(body),
-    )
+    size = content_length(request)
+    if size > MAX_PART_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Parts must be at most {MAX_PART_SIZE} bytes.",
+        )
+    # The part is held in memory until S3 has it
+    with upload_memory.reserve(size):
+        body = bytearray()
+        async for chunk in request.stream():
+            body += chunk
+        # Run in a thread so that the event loop can take other parts while this one is sent.
+        # The bytearray is passed as it is, as copying it to bytes would double the memory used
+        return await run_in_threadpool(
+            s3_for_bucket(bucket, credentials).upload_part,
+            bucket,
+            key,
+            upload_id,
+            part_number,
+            body,
+        )
 
 
 @router.get("/uploads/{bucket}/{upload_id}", tags=["s3"])
