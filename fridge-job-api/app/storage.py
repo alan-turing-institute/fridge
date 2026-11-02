@@ -47,6 +47,12 @@ def s3_for_bucket(bucket: str, credentials: tuple[str | None, str | None]) -> S3
 
 
 def check_key(key: str) -> str:
+    if not key or key.endswith("/"):
+        raise HTTPException(
+            status_code=422,
+            detail="The URL must end with the object's name. With `curl -T`, end the URL "
+            "with '/' and curl adds the file's name.",
+        )
     if key.startswith("/") or ".." in key.split("/"):
         raise HTTPException(
             status_code=422,
@@ -102,7 +108,8 @@ async def upload_object(
 ):
     """
     Upload a file of up to 1TiB as the raw request body, e.g.
-    `curl -T data.csv .../object/ingress/data.csv`. The object's content type is taken from
+    `curl -T data.csv .../object/ingress/`, where curl adds the file's name to a URL ending in
+    `/`, or `.../object/ingress/other-name.csv` to name it yourself. The object's content type is taken from
     the `Content-Type` header, if given. To be able to resume an interrupted upload, use the
     multipart upload endpoints under `/uploads/{bucket}` instead.
     """

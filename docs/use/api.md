@@ -115,13 +115,16 @@ This is deliberate: it stops a job from overwriting its own input data, and make
 ### 1. Upload data
 
 Upload a file to the `ingress` bucket by sending it as the body of a `PUT` request.
-The object is stored under the name at the end of the URL, which may contain `/`.
+When the URL ends with `/`, curl adds the file's name to it, so this stores the object as `input.csv`:
 
 ```console
 curl -k -u "$FRIDGE_AUTH" \
   -T input.csv \
-  "$FRIDGE_URL/object/ingress/input.csv"
+  "$FRIDGE_URL/object/ingress/"
 ```
+
+To store it under another name, or under a prefix, put the name at the end of the URL instead, such as `"$FRIDGE_URL/object/ingress/run1/data.csv"`.
+A URL ending with a prefix and `/`, such as `.../object/ingress/run1/`, stores the file under that prefix with its own name.
 
 The file is passed on to object storage as it arrives, so it is never stored on the API's own disk.
 To set the object's content type, add a header such as `-H "Content-Type: text/csv"`.

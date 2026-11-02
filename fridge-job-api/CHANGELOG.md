@@ -2,7 +2,7 @@
 
 ## [0.9.0]
 
-- **Breaking:** `POST /object/{bucket}/upload`, which took the file as a multipart form field, is replaced by `PUT /object/{bucket}/{file_name}`, which takes the file as the raw request body (e.g. `curl -T data.csv .../object/ingress/data.csv`). The object's content type is taken from the `Content-Type` header, and the request must have a `Content-Length` header
+- **Breaking:** `POST /object/{bucket}/upload`, which took the file as a multipart form field, is replaced by `PUT /object/{bucket}/{file_name}`, which takes the file as the raw request body (e.g. `curl -T data.csv .../object/ingress/`, where curl adds the file's name to a URL ending in `/`). The object's content type is taken from the `Content-Type` header, and the request must have a `Content-Length` header
 - Uploads are streamed to S3 as they arrive, instead of saving the whole request to disk before the upload to S3 starts. Files over 16MB are sent to S3 as a multipart upload with several parts in parallel, and smaller files in a single request
 - Uploads reject object names that are absolute or contain `..`
 - New multipart upload endpoints under `/uploads/{bucket}`: the client sends the file in numbered parts, in parallel if it likes, and can resume an interrupted upload by listing the parts already uploaded and sending the rest
