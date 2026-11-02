@@ -34,6 +34,10 @@ config:
     type: string
     description: Harbor admin password
     secret: true
+  grafana_admin_password:
+    type: string
+    description: Grafana admin password
+    secret: true
   harbor_fqdn_prefix:
     type: string
     description: FQDN prefix for Harbor

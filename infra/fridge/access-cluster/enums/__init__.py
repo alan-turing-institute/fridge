@@ -39,5 +39,6 @@ class SoftwareVersion(Enum):
     HAPROXY = "3.4.6"
     HARBOR = "1.19.2"
     INGRESS_NGINX = "4.13.2"
+    KUBE_PROMETHEUS_STACK = "82.0.0"
     LONGHORN = "1.9.0"
     NETBIRD = "0.80.0"

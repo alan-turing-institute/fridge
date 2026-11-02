@@ -1,0 +1,62 @@
+# FRIDGE-specific alerts, on top of the default rules shipped with
+# kube-prometheus-stack (crash looping pods, nodes not ready, PVCs and node
+# disks almost full, etc.)
+# The `release` label is needed for Prometheus to pick up these rules
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: fridge-access-cluster
+  namespace: monitoring-system
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: fridge.components
+      rules:
+        - alert: FridgeDeploymentUnavailable
+          expr: |
+            kube_deployment_status_replicas_available{namespace=~"cert-manager|harbor|ingress-nginx|vpn-server"} == 0
+            and
+            kube_deployment_spec_replicas{namespace=~"cert-manager|harbor|ingress-nginx|vpn-server"} > 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "{{ $labels.namespace }}/{{ $labels.deployment }} has no available replicas"
+            description: "A FRIDGE access cluster component has had no available replicas for 5 minutes."
+        - alert: FridgeStatefulSetUnavailable
+          expr: |
+            kube_statefulset_status_replicas_ready{namespace=~"harbor|vpn-server"} == 0
+            and
+            kube_statefulset_replicas{namespace=~"harbor|vpn-server"} > 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "{{ $labels.namespace }}/{{ $labels.statefulset }} has no ready replicas"
+            description: "A FRIDGE access cluster component has had no ready replicas for 5 minutes."
+    - name: fridge.storage
+      rules:
+        # The default rules only fire when a volume is nearly full (97%) or predicted to
+        # fill within hours. Warn earlier, as running out of space has blocked deployments before
+        - alert: FridgeVolumeFillingUp
+          expr: |
+            kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes > 0.8
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} is {{ $value | humanizePercentage }} full"
+            description: "A persistent volume in the access cluster is more than 80% full."
+        - alert: FridgeNodeDiskFillingUp
+          expr: |
+            (
+              1 - node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs", mountpoint!~"/run.*|/boot.*"}
+                / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs", mountpoint!~"/run.*|/boot.*"}
+            ) > 0.8
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.instance }}:{{ $labels.mountpoint }} is {{ $value | humanizePercentage }} full"
+            description: "A node filesystem in the access cluster is more than 80% full. On Dawn and Zenith this includes the disks used by Longhorn."
