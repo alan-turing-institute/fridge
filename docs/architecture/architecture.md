@@ -195,7 +195,10 @@ This provides a convenient way to handle the ingress of inputs and egress of res
 Buckets are created for inputs and results.
 The inputs bucket is read-only to jobs, to prevent the corruption of input data.
 
-The object storage is provided by an instance of [SeaweedFS](https://github.com/seaweedfs/seaweedfs) and uses a volume of the secure storage class for its backend.
+Object storage is provided by an instance of [SeaweedFS](https://github.com/seaweedfs/seaweedfs).
+Its metadata (master and filer) is kept on volumes of the secure storage class.
+SeaweedFS encrypts each chunk of object data itself, with the keys held in the filer metadata.
+On Zenith, the object data is kept on Cinder volumes; elsewhere, it is kept on the secure storage class too.
 
 #### Secure volumes
 
