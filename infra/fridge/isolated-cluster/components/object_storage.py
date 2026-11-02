@@ -266,7 +266,7 @@ class ObjectStorage(ComponentResource):
                         {
                             "name": "data",
                             "type": "persistentVolumeClaim",
-                            "storageClass": args.storage_classes.encrypted_storage_class.metadata.name,
+                            "storageClass": args.storage_classes.object_data_storage_name,
                             "size": seaweedfs_pool_size,
                             "maxVolumes": 0,
                         }

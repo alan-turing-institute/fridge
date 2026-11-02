@@ -116,7 +116,7 @@ It reads outputs from the access cluster stack, so the access cluster must be de
 | `block_storage_size` | Yes | | Size of the block storage volume shared with workflows, for example `100Gi` |
 | `seaweedfs.root_user` | Yes | Yes | SeaweedFS root user |
 | `seaweedfs.root_password` | Yes | Yes | SeaweedFS root password |
-| `seaweedfs.pool_size` | Yes | | Size of the SeaweedFS storage pool. Must be a valid Kubernetes quantity, for example `40Gi` |
+| `seaweedfs.pool_size` | Yes | | Size of the SeaweedFS storage pool. Must be a valid Kubernetes quantity, for example `40Gi`. On Zenith this is a Cinder volume, so it must fit within the project's Cinder quota |
 | `run_tests` | No | | Set to `true` to deploy the example GPU test workflow templates: Intel GPU examples on Dawn, AMD GPU examples on Zenith. Ignored on AKS. Defaults to `false` |
 | `azure_subscription_id` | AKS only | | Azure subscription ID. Use a dummy value on Dawn and Zenith |
 | `azure_resource_group` | AKS only | | Azure resource group. Use a dummy value on Dawn and Zenith |
