@@ -7,10 +7,6 @@ from pulumi_kubernetes.yaml import ConfigFile
 
 from enums import PodSecurityStandard, SoftwareVersion
 
-# The release name is fixed because kube-prometheus-stack only picks up
-# ServiceMonitors and PrometheusRules labelled with `release: <release name>`
-RELEASE_NAME = "kube-prometheus-stack"
-
 
 class MonitoringArgs:
     def __init__(
@@ -54,7 +50,7 @@ class Monitoring(ComponentResource):
         self.kube_prometheus_stack = Release(
             "kube-prometheus-stack",
             ReleaseArgs(
-                name=RELEASE_NAME,
+                name="kube-prometheus-stack",
                 chart="kube-prometheus-stack",
                 version=SoftwareVersion.KUBE_PROMETHEUS_STACK.value,
                 repository_opts={
