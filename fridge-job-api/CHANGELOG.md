@@ -2,9 +2,12 @@
 
 ## [0.9.0]
 
-- `/object/{bucket}/upload` streams the file to S3 as it arrives, instead of saving the whole request to disk before the upload to S3 starts. Files over 16MB are sent to S3 as a multipart upload with several parts in parallel, and smaller files in a single request
-- `/object/{bucket}/upload` rejects file names that are absolute or contain `..`
-- New multipart upload endpoints under `/uploads/{bucket}` for large files: the client sends the file in numbered parts, in parallel if it likes, and can resume an interrupted upload by listing the parts already uploaded and sending the rest. Objects can be up to 2.5TiB
+- **Breaking:** `POST /object/{bucket}/upload`, which took the file as a multipart form field, is replaced by `PUT /object/{bucket}/{file_name}`, which takes the file as the raw request body (e.g. `curl -T data.csv .../object/ingress/data.csv`). The object's content type is taken from the `Content-Type` header, and the request must have a `Content-Length` header
+- Uploads are streamed to S3 as they arrive, instead of saving the whole request to disk before the upload to S3 starts. Files over 16MB are sent to S3 as a multipart upload with several parts in parallel, and smaller files in a single request
+- Uploads reject object names that are absolute or contain `..`
+- New multipart upload endpoints under `/uploads/{bucket}`: the client sends the file in numbered parts, in parallel if it likes, and can resume an interrupted upload by listing the parts already uploaded and sending the rest
+- Objects can be up to 1TiB, whichever way they are uploaded
+- The upload data held in memory across all requests is limited to 1GiB. An upload that would go over this is refused with a 503 and a `Retry-After` header before any of it is read
 - Added `examples/upload.py`, an example client for the multipart upload endpoints
 - Endpoints that make blocking calls to Argo or S3, and the readiness probe, now run in a thread pool, so they no longer hold up other requests (such as uploads in progress) while they wait
 

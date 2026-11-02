@@ -114,22 +114,31 @@ This is deliberate: it stops a job from overwriting its own input data, and make
 
 ### 1. Upload data
 
-Upload a file to the `ingress` bucket.
-The object is stored under the file's name.
+Upload a file to the `ingress` bucket by sending it as the body of a `PUT` request.
+The object is stored under the name at the end of the URL, which may contain `/`.
 
 ```console
 curl -k -u "$FRIDGE_AUTH" \
-  -F "file=@input.csv" \
-  "$FRIDGE_URL/object/ingress/upload"
+  -T input.csv \
+  "$FRIDGE_URL/object/ingress/input.csv"
 ```
+
+The file is passed on to object storage as it arrives, so it is never stored on the API's own disk.
+To set the object's content type, add a header such as `-H "Content-Type: text/csv"`.
+Files can be up to 1 TiB.
+The request must have a `Content-Length` header, which `curl -T` sends.
 
 ```json
 {"status": 201, "response": "input.csv"}
 ```
 
-#### Large files
+If the API is already busy with other uploads, it replies `503` with a `Retry-After` header.
+Wait and send the file again.
 
-For large files, use the multipart upload endpoints under `/uploads/{bucket}` instead.
+#### Resumable uploads
+
+A single `PUT` has to start again from the beginning if it is interrupted, which is costly for a large file over an unreliable connection.
+The multipart upload endpoints under `/uploads/{bucket}` avoid this.
 The file is sent in numbered parts, which can be sent several at a time, and an interrupted upload can be resumed by sending only the parts that are missing.
 
 1. Start the upload with `POST /uploads/{bucket}?key=<name>&size=<bytes>`.
@@ -142,7 +151,7 @@ The file is sent in numbered parts, which can be sent several at a time, and an 
    This fails, leaving the upload open, unless exactly parts 1 to `part_count` have been uploaded.
 
 To abandon an upload and discard its parts, use `DELETE /uploads/{bucket}/{upload_id}?key=<name>`.
-Objects can be up to 2.5 TiB.
+Objects can be up to 1 TiB.
 
 `fridge-job-api/examples/upload.py` in the FRIDGE repository is an example client that does all of this, and resumes an interrupted upload when it is run again:
 
@@ -347,7 +356,7 @@ Data in other buckets can be copied onto the volume with `/object/move`, but res
 | `GET` | `/workflowtemplates/{namespace}` | List workflow templates and their parameters |
 | `GET` | `/workflowtemplates/{namespace}/{template_name}` | Get one workflow template |
 | `POST` | `/workflowevents/from_template/` | Submit a workflow from a template |
-| `POST` | `/object/{bucket}/upload` | Upload a file (multipart form field `file`) |
+| `PUT` | `/object/{bucket}/{file_name}` | Upload a file, sent as the request body |
 | `POST` | `/uploads/{bucket}` | Start a multipart upload of a large file |
 | `PUT` | `/uploads/{bucket}/{upload_id}/{part_number}` | Upload one part |
 | `GET` | `/uploads/{bucket}/{upload_id}` | List the parts already uploaded |
