@@ -7,6 +7,37 @@ from pulumi_kubernetes.yaml import ConfigFile
 
 from enums import PodSecurityStandard, SoftwareVersion
 
+# The kube-state-metrics chart's default collectors, without secrets
+KUBE_STATE_METRICS_COLLECTORS = [
+    "certificatesigningrequests",
+    "configmaps",
+    "cronjobs",
+    "daemonsets",
+    "deployments",
+    "endpointslices",
+    "horizontalpodautoscalers",
+    "ingresses",
+    "jobs",
+    "leases",
+    "limitranges",
+    "mutatingwebhookconfigurations",
+    "namespaces",
+    "networkpolicies",
+    "nodes",
+    "persistentvolumeclaims",
+    "persistentvolumes",
+    "poddisruptionbudgets",
+    "pods",
+    "replicasets",
+    "replicationcontrollers",
+    "resourcequotas",
+    "services",
+    "statefulsets",
+    "storageclasses",
+    "validatingwebhookconfigurations",
+    "volumeattachments",
+]
+
 
 class MonitoringArgs:
     def __init__(
@@ -70,7 +101,26 @@ class Monitoring(ComponentResource):
                             "grafana_admin_password"
                         ),
                         "testFramework": {"enabled": False},
+                        # By default the dashboard and datasource sidecars can read
+                        # Secrets and ConfigMaps in every namespace. Limit them to this
+                        # namespace, which holds all the stack's dashboards
+                        "rbac": {"namespaced": True},
+                        "sidecar": {"dashboards": {"searchNamespace": None}},
+                        # Don't try to contact grafana.com (update checks, usage
+                        # statistics, news feed). The network policies block it anyway
+                        "grafana.ini": {
+                            "analytics": {
+                                "check_for_updates": False,
+                                "check_for_plugin_updates": False,
+                                "reporting_enabled": False,
+                            },
+                            "news": {"news_feed_enabled": False},
+                        },
                     },
+                    # The default collector list includes secrets, which gives
+                    # kube-state-metrics permission to list (and so read) every Secret
+                    # in the cluster. It only exports their names, which we don't need
+                    "kube-state-metrics": {"collectors": KUBE_STATE_METRICS_COLLECTORS},
                     "prometheus": {
                         "prometheusSpec": {
                             # Keep retentionSize below the volume size so Prometheus
