@@ -179,3 +179,21 @@ spec:
               protocol: TCP
             - port: "9100"
               protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: webhook-prometheus-operator
+  namespace: monitoring-system
+  # Webhook calls from the API server arrive from the remote-node entity on Dawn
+spec:
+  endpointSelector:
+    matchLabels:
+      app: kube-prometheus-stack-operator
+  ingress:
+    - fromEntities:
+        - remote-node
+      toPorts:
+        - ports:
+            - port: "10250"
+              protocol: TCP

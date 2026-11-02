@@ -80,11 +80,6 @@ class Monitoring(ComponentResource):
                             "storageSpec": volume_claim("10Gi"),
                         }
                     },
-                    # The admission webhook only validates PrometheusRules. Disabling it
-                    # avoids opening a route from the API server into this namespace
-                    "prometheusOperator": {
-                        "admissionWebhooks": {"enabled": False},
-                    },
                     # Control plane components are either managed by the provider (AKS)
                     # or not reachable from pods, so scraping them only produces
                     # permanently firing TargetDown alerts. Cilium replaces kube-proxy

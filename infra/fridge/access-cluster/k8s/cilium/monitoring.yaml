@@ -69,3 +69,22 @@ spec:
         - ports:
             - port: "9153"
               protocol: ANY
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: prometheus-operator-webhook
+  namespace: monitoring-system
+  # Allow the Kubernetes API server to call the operator's admission webhook,
+  # which validates PrometheusRules and AlertmanagerConfigs
+spec:
+  endpointSelector:
+    matchLabels:
+      app: kube-prometheus-stack-operator
+  ingress:
+    - fromEntities:
+        - kube-apiserver
+      toPorts:
+        - ports:
+            - port: "10250"
+              protocol: TCP
