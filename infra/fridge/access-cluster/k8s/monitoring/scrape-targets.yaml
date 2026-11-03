@@ -1,0 +1,42 @@
+# Scrape the metrics of FRIDGE components that kube-prometheus-stack doesn't cover.
+# These are defined here rather than in each component's chart because the
+# monitoring CRDs are installed after those components, and on Dawn and Zenith
+# cert-manager and ingress-nginx are installed by the platform
+# The `release` label is needed for Prometheus to pick up these monitors
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: cert-manager
+  namespace: monitoring-system
+  labels:
+    release: kube-prometheus-stack
+spec:
+  namespaceSelector:
+    matchNames:
+      - cert-manager
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cert-manager
+      app.kubernetes.io/component: controller
+  podMetricsEndpoints:
+    - port: http-metrics
+---
+# The controller only declares the metrics port when `controller.metrics.enabled`
+# is set in the ingress-nginx chart
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: ingress-nginx
+  namespace: monitoring-system
+  labels:
+    release: kube-prometheus-stack
+spec:
+  namespaceSelector:
+    matchNames:
+      - ingress-nginx
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ingress-nginx
+      app.kubernetes.io/component: controller
+  podMetricsEndpoints:
+    - port: metrics
