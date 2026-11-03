@@ -107,9 +107,16 @@ class Monitoring(ComponentResource):
                         # Secrets and ConfigMaps in every namespace. Limit them to this
                         # namespace, which holds all the stack's dashboards
                         "rbac": {"namespaced": True},
-                        "sidecar": {"dashboards": {"searchNamespace": None}},
+                        # (Pulumi drops None values, so this has to name the
+                        # namespace to override the stack's default of ALL)
+                        "sidecar": {
+                            "dashboards": {
+                                "searchNamespace": self.monitoring_ns.metadata.name
+                            }
+                        },
                         # Don't try to contact grafana.com (update checks, usage
-                        # statistics, news feed). The network policies block it anyway
+                        # statistics, news feed, downloading the default plugins).
+                        # The network policies block it anyway
                         "grafana.ini": {
                             "analytics": {
                                 "check_for_updates": False,
@@ -117,6 +124,7 @@ class Monitoring(ComponentResource):
                                 "reporting_enabled": False,
                             },
                             "news": {"news_feed_enabled": False},
+                            "plugins": {"preinstall_disabled": True},
                         },
                     },
                     # The default collector list includes secrets, which gives
