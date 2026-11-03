@@ -102,6 +102,7 @@ monitoring = components.Monitoring(
     "monitoring",
     components.MonitoringArgs(
         config=config,
+        k8s_environment=k8s_environment,
         storage_class_name=(
             storage_classes.cinder_storage_class_name
             if k8s_environment in (K8sEnvironment.DAWN, K8sEnvironment.ZENITH)
