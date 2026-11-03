@@ -40,3 +40,21 @@ spec:
       app.kubernetes.io/component: controller
   podMetricsEndpoints:
     - port: metrics
+---
+# HAProxy's built-in exporter in the VPN proxy pod
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: vpn-proxy
+  namespace: monitoring-system
+  labels:
+    release: kube-prometheus-stack
+spec:
+  namespaceSelector:
+    matchNames:
+      - vpn-server
+  selector:
+    matchLabels:
+      app: netbird-proxy
+  podMetricsEndpoints:
+    - port: metrics
