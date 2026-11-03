@@ -21,6 +21,26 @@ spec:
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
 metadata:
+  name: allow-prometheus
+  namespace: cert-manager
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s:app.kubernetes.io/name: cert-manager
+      k8s:app.kubernetes.io/component: controller
+  ingress:
+    - fromEndpoints:
+      - matchLabels:
+          k8s:io.kubernetes.pod.namespace: monitoring-system
+          k8s:app.kubernetes.io/name: prometheus
+      toPorts:
+        - ports:
+          - port: "9402"
+            protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
   name: allow-prometheus-dns
   namespace: kube-system
 spec:

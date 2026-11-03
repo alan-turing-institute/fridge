@@ -95,6 +95,25 @@ harbor = components.ContainerRegistry(
     ),
 )
 
+# Monitoring
+# On Dawn and Zenith, keep the monitoring volumes on Cinder rather than Longhorn,
+# which replicates them onto the nodes' local disks
+monitoring = components.Monitoring(
+    "monitoring",
+    components.MonitoringArgs(
+        config=config,
+        k8s_environment=k8s_environment,
+        storage_class_name=(
+            storage_classes.cinder_storage_class_name
+            if k8s_environment in (K8sEnvironment.DAWN, K8sEnvironment.ZENITH)
+            else storage_classes.standard_storage_name
+        ),
+    ),
+    opts=ResourceOptions(
+        depends_on=[storage_classes],
+    ),
+)
+
 vpn_server = components.VpnServer(
     "vpn-server",
     components.VpnServerArgs(
@@ -109,6 +128,7 @@ resources = [
     harbor.configure_containerd_daemonset,
     harbor,
     ingress_nginx,
+    monitoring,
     storage_classes,
     vpn_server,
 ]

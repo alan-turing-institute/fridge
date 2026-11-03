@@ -44,12 +44,13 @@ The stack outputs the kubeconfig for each cluster, the network CIDRs, names and 
 ## Access cluster (`infra/fridge/access-cluster`)
 
 Project `fridge-access`.
-Deploys ingress, cert-manager, Harbor and the NetBird/HAProxy VPN server.
+Deploys ingress, cert-manager, Harbor, the NetBird/HAProxy VPN server and the Prometheus monitoring stack.
 
 | Key | Required | Secret | Description |
 |---|---|---|---|
 | `k8s_env` | Yes | | Cluster environment: `AKS`, `Dawn` or `Zenith` |
 | `base_fqdn` | Yes | | Base domain for the deployment. Harbor is served at `<harbor_fqdn_prefix>.<base_fqdn>` |
+| `grafana_admin_password` | Yes | Yes | Password for the `admin` user of Grafana in the monitoring stack |
 | `harbor_fqdn_prefix` | Yes | | Host name prefix for Harbor |
 | `harbor_admin_password` | Yes | Yes | Harbor admin password |
 | `harbor_registry_size` | No | | Size of Harbor's registry storage, for example `50Gi`. Defaults to `20Gi`. Large images, such as GPU builds of PyTorch, may need more |
