@@ -138,6 +138,7 @@ class NetworkPolicies(ComponentResource):
                 "./k8s/cilium/kube-system.yaml",
                 "./k8s/cilium/monitoring.yaml",
                 "./k8s/cilium/prometheus.yaml",
+                "./k8s/cilium/vpn-server.yaml",
             ],
             opts=child_opts,
         )
