@@ -1,0 +1,38 @@
+# The netbird-proxy pod's egress is set in network_policies.py (vpn-server-custom),
+# because it depends on the NetBird and isolated cluster configuration
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: vpn-server
+spec:
+  endpointSelector: {}
+  ingress:
+    - {}
+  egress:
+    - {}
+---
+# TRE users' traffic to HAProxy (ports 8000 and 6443) arrives through the WireGuard
+# tunnel and is decrypted inside the pod, so Cilium never sees it and it needs no
+# rule here. Cilium only sees the encrypted WireGuard packets.
+# Connections that the NetBird client starts (to the management, signal and relay
+# servers) are allowed back in automatically
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: netbird-proxy-ingress
+  namespace: vpn-server
+spec:
+  endpointSelector:
+    matchLabels:
+      app: netbird-proxy
+  ingress:
+    # HAProxy metrics
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring-system
+            k8s:app.kubernetes.io/name: prometheus
+      toPorts:
+        - ports:
+            - port: "8404"
+              protocol: TCP
