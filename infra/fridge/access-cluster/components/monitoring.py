@@ -3,9 +3,9 @@ from pulumi import ComponentResource, Input, ResourceOptions
 from pulumi_kubernetes.core.v1 import Namespace
 from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
-from pulumi_kubernetes.yaml import ConfigFile
+from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
 
-from enums import PodSecurityStandard, SoftwareVersion
+from enums import K8sEnvironment, PodSecurityStandard, SoftwareVersion
 
 # The kube-state-metrics chart's default collectors, without secrets
 KUBE_STATE_METRICS_COLLECTORS = [
@@ -43,9 +43,11 @@ class MonitoringArgs:
     def __init__(
         self,
         config: pulumi.config.Config,
+        k8s_environment: K8sEnvironment,
         storage_class_name: Input[str],
     ):
         self.config = config
+        self.k8s_environment = k8s_environment
         self.storage_class_name = storage_class_name
 
 
@@ -142,13 +144,26 @@ class Monitoring(ComponentResource):
             opts=child_opts,
         )
 
+        # These need the CRDs installed by the chart
+        after_stack_opts = ResourceOptions.merge(
+            child_opts,
+            ResourceOptions(depends_on=[self.kube_prometheus_stack]),
+        )
+
         self.alerting_rules = ConfigFile(
             "fridge-alerting-rules",
             file="./k8s/monitoring/alerting-rules.yaml",
-            opts=ResourceOptions.merge(
-                child_opts,
-                ResourceOptions(depends_on=[self.kube_prometheus_stack]),
-            ),
+            opts=after_stack_opts,
+        )
+
+        scrape_target_files = ["./k8s/monitoring/scrape-targets.yaml"]
+        if args.k8s_environment in (K8sEnvironment.DAWN, K8sEnvironment.ZENITH):
+            scrape_target_files.append("./k8s/monitoring/longhorn.yaml")
+
+        self.scrape_targets = ConfigGroup(
+            "fridge-scrape-targets",
+            files=scrape_target_files,
+            opts=after_stack_opts,
         )
 
         self.register_outputs(
@@ -156,5 +171,6 @@ class Monitoring(ComponentResource):
                 "namespace": self.monitoring_ns.metadata.name,
                 "kube_prometheus_stack": self.kube_prometheus_stack,
                 "alerting_rules": self.alerting_rules,
+                "scrape_targets": self.scrape_targets,
             }
         )
