@@ -60,3 +60,68 @@ spec:
           annotations:
             summary: "{{ $labels.instance }}:{{ $labels.mountpoint }} is {{ $value | humanizePercentage }} full"
             description: "A node filesystem in the access cluster is more than 80% full. On Dawn and Zenith this includes the disks used by Longhorn."
+        # Only Dawn and Zenith use Longhorn, so these never fire on AKS
+        - alert: FridgeLonghornVolumeDegraded
+          expr: |
+            longhorn_volume_robustness == 2
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Longhorn volume {{ $labels.volume }} is degraded"
+            description: "A Longhorn volume has fewer healthy replicas than it should. It still works, but another failure could lose data."
+        - alert: FridgeLonghornVolumeFaulted
+          expr: |
+            longhorn_volume_robustness == 3
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Longhorn volume {{ $labels.volume }} is faulted"
+            description: "A Longhorn volume has no healthy replicas and is unusable."
+    - name: fridge.certificates
+      rules:
+        # cert-manager renews Let's Encrypt certificates 30 days before they expire,
+        # so less than 14 days left means renewal has been failing for over two weeks
+        - alert: FridgeCertificateExpiringSoon
+          expr: |
+            certmanager_certificate_expiration_timestamp_seconds - time() < 14 * 24 * 3600
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: "Certificate {{ $labels.namespace }}/{{ $labels.name }} expires in {{ $value | humanizeDuration }}"
+            description: "cert-manager has not renewed a TLS certificate. Check the Certificate and CertificateRequest resources and the cert-manager logs."
+        - alert: FridgeCertificateNotReady
+          expr: |
+            certmanager_certificate_ready_status{condition="False"} == 1
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Certificate {{ $labels.namespace }}/{{ $labels.name }} is not ready"
+            description: "cert-manager has failed to issue or renew a TLS certificate for 30 minutes."
+    - name: fridge.monitoring
+      rules:
+        # The default TargetDown alert only covers targets that Prometheus has found.
+        # If the metrics port isn't declared (e.g. ingress-nginx metrics are turned off
+        # on a platform-managed cluster) there is no target, and these alerts are the
+        # only sign that the certificate and ingress metrics are missing
+        - alert: FridgeMetricsMissing
+          expr: |
+            absent(up{job="monitoring-system/cert-manager"})
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Prometheus is not scraping cert-manager"
+            description: "No cert-manager metrics, so certificate expiry alerts cannot fire."
+        - alert: FridgeMetricsMissing
+          expr: |
+            absent(up{job="monitoring-system/ingress-nginx"})
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Prometheus is not scraping ingress-nginx"
+            description: "No ingress-nginx metrics. Check that controller metrics are enabled in the ingress-nginx chart."
