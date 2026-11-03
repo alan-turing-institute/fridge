@@ -88,6 +88,15 @@ spec:
         - ports:
             - port: "10254"
               protocol: TCP
+    # HAProxy metrics in the VPN proxy pod, allowed on the receiving side in vpn-server.yaml
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: vpn-server
+            app: netbird-proxy
+      toPorts:
+        - ports:
+            - port: "8404"
+              protocol: TCP
     # Longhorn manager metrics (Dawn and Zenith only), allowed on the receiving side in longhorn.yaml
     - toEndpoints:
         - matchLabels:
@@ -103,8 +112,6 @@ kind: CiliumNetworkPolicy
 metadata:
   name: prometheus-operator-webhook
   namespace: monitoring-system
-  # Allow the Kubernetes API server to call the operator's admission webhook,
-  # which validates PrometheusRules and AlertmanagerConfigs
 spec:
   endpointSelector:
     matchLabels:
