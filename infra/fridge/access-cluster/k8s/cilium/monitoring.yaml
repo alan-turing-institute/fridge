@@ -69,6 +69,34 @@ spec:
         - ports:
             - port: "9153"
               protocol: ANY
+    # cert-manager and ingress-nginx metrics, allowed on the receiving side in prometheus.yaml
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: cert-manager
+            app.kubernetes.io/name: cert-manager
+            app.kubernetes.io/component: controller
+      toPorts:
+        - ports:
+            - port: "9402"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: ingress-nginx
+            app.kubernetes.io/name: ingress-nginx
+            app.kubernetes.io/component: controller
+      toPorts:
+        - ports:
+            - port: "10254"
+              protocol: TCP
+    # Longhorn manager metrics (Dawn and Zenith only), allowed on the receiving side in longhorn.yaml
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: longhorn-system
+            app: longhorn-manager
+      toPorts:
+        - ports:
+            - port: "9500"
+              protocol: TCP
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
