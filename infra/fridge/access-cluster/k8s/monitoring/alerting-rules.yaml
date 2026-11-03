@@ -35,6 +35,19 @@ spec:
           annotations:
             summary: "{{ $labels.namespace }}/{{ $labels.statefulset }} has no ready replicas"
             description: "A FRIDGE access cluster component has had no ready replicas for 5 minutes."
+    - name: fridge.vpn-proxy
+      rules:
+        # HAProxy health checks each backend every 10s. If a backend has no healthy
+        # servers, TRE users on the VPN can't reach FRIDGE through the proxy
+        - alert: FridgeProxyBackendDown
+          expr: |
+            haproxy_backend_active_servers{namespace="vpn-server", proxy=~"out_fridge_api|out_k8s_api"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "The VPN proxy can't reach its {{ $labels.proxy }} backend"
+            description: "HAProxy's health checks have failed for 2 minutes. out_fridge_api is the FRIDGE API and out_k8s_api is the isolated cluster's API server. Check that the isolated cluster is up and that the access cluster can reach it."
     - name: fridge.storage
       rules:
         # The default rules only fire when a volume is nearly full (97%) or predicted to
@@ -125,3 +138,12 @@ spec:
           annotations:
             summary: "Prometheus is not scraping ingress-nginx"
             description: "No ingress-nginx metrics. Check that controller metrics are enabled in the ingress-nginx chart."
+        - alert: FridgeMetricsMissing
+          expr: |
+            absent(up{job="monitoring-system/vpn-proxy"})
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Prometheus is not scraping the VPN proxy"
+            description: "No HAProxy metrics from the VPN proxy, so FridgeProxyBackendDown cannot fire."
