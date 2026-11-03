@@ -92,12 +92,6 @@ class ContainerRegistry(ComponentResource):
         )
 
         self.harbor_external_url = f"https://{self.harbor_fqdn}"
-        self.harbor_storage_settings = {
-            "storageClass": args.storage_classes.standard_storage_name,
-            "accessMode": "ReadWriteMany"
-            if args.storage_classes.standard_supports_rwm
-            else "ReadWriteOnce",
-        }
 
         self.harbor_certificate = CustomResource(
             "harbor-certificate",
@@ -122,11 +116,10 @@ class ContainerRegistry(ComponentResource):
             ),
         )
 
+        # Harbor runs a single registry and jobservice pod, so ReadWriteOnce volumes
+        # are sufficient. ReadWriteMany would also stop Kubernetes applying the
+        # pods' fsGroup to some volumes (e.g. Cinder), leaving them unwritable.
         match k8s_environment:
-            case K8sEnvironment.K3S:
-                registry_storage_class = (
-                    args.storage_classes.single_replica_storage_name
-                )
             case K8sEnvironment.DAWN | K8sEnvironment.ZENITH:
                 registry_storage_class = args.storage_classes.cinder_storage_class_name
             case _:
@@ -157,17 +150,22 @@ class ContainerRegistry(ComponentResource):
                     "persistence": {
                         "persistentVolumeClaim": {
                             "registry": {
-                                **self.harbor_storage_settings,
-                                # Images can be re-pushed, so don't replicate them
                                 "storageClass": registry_storage_class,
+                                "accessMode": "ReadWriteOnce",
                                 "size": args.config.get("harbor_registry_size")
                                 or "20Gi",
                             },
                             "jobservice": {
-                                "jobLog": self.harbor_storage_settings,
+                                "jobLog": {
+                                    "storageClass": args.storage_classes.standard_storage_name,
+                                    "accessMode": "ReadWriteOnce",
+                                },
                             },
                         },
                     },
+                    # A ReadWriteOnce volume can't be attached to the old and new
+                    # pods at once during a rolling update
+                    "updateStrategy": {"type": "Recreate"},
                 },
             ),
             opts=ResourceOptions.merge(
