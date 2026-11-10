@@ -202,11 +202,14 @@ class S3Client:
             response = self.client.get_object(Bucket=bucket, Key=file_name)
             if not target_file:
                 target_file = file_name
+            # Read in 1MiB chunks: iterating over the body directly gives 1KiB chunks, each
+            # fetched in a separate thread-pool call
             return StreamingResponse(
-                response["Body"],
+                response["Body"].iter_chunks(MiB),
                 media_type=response.get("ContentType", "application/octet-stream"),
                 headers={
-                    "Content-Disposition": f'attachment; filename="{target_file}"'
+                    "Content-Disposition": f'attachment; filename="{target_file}"',
+                    "Content-Length": str(response["ContentLength"]),
                 },
             )
         except ClientError as error:
