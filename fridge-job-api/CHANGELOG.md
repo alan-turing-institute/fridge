@@ -2,12 +2,12 @@
 
 ## [0.9.0]
 
-- `/object/{bucket}/upload` streams the file to S3 as it arrives, instead of saving the whole request to disk before the upload to S3 starts. Files over 16MB are sent to S3 as a multipart upload with several parts in parallel, and smaller files in a single request
-- `/object/{bucket}/upload` requires a `Content-Length` header (curl sends one) and accepts files of up to 1TiB
-- `/object/{bucket}/upload` rejects file names that are absolute or contain `..`. To store a file under another name or a prefix, set the file name in the form, e.g. `-F "file=@data.csv;filename=run1/data.csv"`
-- Each upload holds up to five parts of the file in memory while they are sent to S3 (about 80MiB, or up to about 525MiB for files near 1TiB), and all uploads together are limited to 1GiB. When an upload would go over this, the API refuses it immediately with a `503` and a `Retry-After` header, before reading any of the file, rather than failing it partway through
-- Downloads are sent in 1MiB chunks rather than 1KiB, and have a `Content-Length` header, so clients can show progress and detect a download that was cut off
-- Endpoints that make blocking calls to Argo or S3, and the readiness probe, now run in a thread pool, so they no longer hold up other requests (such as uploads in progress) while they wait
+- Uploads to `/object/{bucket}/upload` are streamed to S3 as they arrive, rather than saved to the API's disk first
+- Uploads can be up to 1TiB and must have a `Content-Length` header, which curl sends. Without one, the API replies `411`
+- Uploads with a file name that is absolute or contains `..` are rejected
+- When the API is busy with other uploads, it refuses a new one immediately with a `503` and a `Retry-After` header, before reading any of it. Uploads together are limited to 1GiB of memory in the API
+- Downloads are faster, and have a `Content-Length` header so that clients can show progress and detect a download that was cut off
+- Endpoints that make blocking calls to Argo or S3, and the readiness probe, run in a thread pool, so they no longer hold up other requests while they wait
 
 ## [0.8.0]
 
