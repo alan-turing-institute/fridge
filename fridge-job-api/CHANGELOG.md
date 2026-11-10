@@ -6,6 +6,7 @@
 - `/object/{bucket}/upload` requires a `Content-Length` header (curl sends one) and accepts files of up to 1TiB
 - `/object/{bucket}/upload` rejects file names that are absolute or contain `..`. To store a file under another name or a prefix, set the file name in the form, e.g. `-F "file=@data.csv;filename=run1/data.csv"`
 - Each upload holds up to five parts of the file in memory while they are sent to S3 (about 80MiB, or up to about 525MiB for files near 1TiB), and all uploads together are limited to 1GiB. When an upload would go over this, the API refuses it immediately with a `503` and a `Retry-After` header, before reading any of the file, rather than failing it partway through
+- Downloads are sent in 1MiB chunks rather than 1KiB, and have a `Content-Length` header, so clients can show progress and detect a download that was cut off
 - Endpoints that make blocking calls to Argo or S3, and the readiness probe, now run in a thread pool, so they no longer hold up other requests (such as uploads in progress) while they wait
 
 ## [0.8.0]

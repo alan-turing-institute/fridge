@@ -114,55 +114,26 @@ This is deliberate: it stops a job from overwriting its own input data, and make
 
 ### 1. Upload data
 
-Upload a file to the `ingress` bucket by sending it as the body of a `PUT` request.
-When the URL ends with `/`, curl adds the file's name to it, so this stores the object as `input.csv`:
+Upload a file to the `ingress` bucket.
+The object is stored under the file's name.
 
 ```console
 curl -k -u "$FRIDGE_AUTH" \
-  -T input.csv \
-  "$FRIDGE_URL/object/ingress/"
+  -F "file=@input.csv" \
+  "$FRIDGE_URL/object/ingress/upload"
 ```
-
-To store it under another name, or under a prefix, put the name at the end of the URL instead, such as `"$FRIDGE_URL/object/ingress/run1/data.csv"`.
-A URL ending with a prefix and `/`, such as `.../object/ingress/run1/`, stores the file under that prefix with its own name.
-
-The file is passed on to object storage as it arrives, so it is never stored on the API's own disk.
-To set the object's content type, add a header such as `-H "Content-Type: text/csv"`.
-Files can be up to 1 TiB.
-The request must have a `Content-Length` header, which `curl -T` sends.
 
 ```json
 {"status": 201, "response": "input.csv"}
 ```
 
+To store it under another name, or under a prefix, give the name in the form, such as `-F "file=@input.csv;filename=run1/data.csv"`.
+
+The file is passed on to object storage as it arrives, so it is never stored on the API's own disk.
+Files can be up to 1 TiB.
+The request must have a `Content-Length` header, which curl sends.
 If the API is already busy with other uploads, it replies `503` with a `Retry-After` header.
 Wait and send the file again.
-
-#### Resumable uploads
-
-A single `PUT` has to start again from the beginning if it is interrupted, which is costly for a large file over an unreliable connection.
-The multipart upload endpoints under `/uploads/{bucket}` avoid this.
-The file is sent in numbered parts, which can be sent several at a time, and an interrupted upload can be resumed by sending only the parts that are missing.
-
-1. Start the upload with `POST /uploads/{bucket}?key=<name>&size=<bytes>`.
-   This returns an `upload_id` and a `part_size`.
-2. Split the file into parts of `part_size` bytes (the last part may be smaller), numbered from 1.
-   Send each part as the raw request body of `PUT /uploads/{bucket}/{upload_id}/{part_number}?key=<name>`.
-   Sending a part again replaces it.
-3. To resume, list the parts already uploaded with `GET /uploads/{bucket}/{upload_id}?key=<name>`, and send the rest.
-4. Finish with `POST /uploads/{bucket}/{upload_id}/complete?key=<name>&part_count=<parts>`.
-   This fails, leaving the upload open, unless exactly parts 1 to `part_count` have been uploaded.
-
-To abandon an upload and discard its parts, use `DELETE /uploads/{bucket}/{upload_id}?key=<name>`.
-Objects can be up to 1 TiB.
-
-`fridge-job-api/examples/upload.py` in the FRIDGE repository is an example client that does all of this, and resumes an interrupted upload when it is run again:
-
-```console
-python upload.py data.tar --bucket ingress
-```
-
-It reads the API address and credentials from `FRIDGE_URL` and `FRIDGE_AUTH`.
 
 List what is in a bucket with:
 
@@ -359,12 +330,7 @@ Data in other buckets can be copied onto the volume with `/object/move`, but res
 | `GET` | `/workflowtemplates/{namespace}` | List workflow templates and their parameters |
 | `GET` | `/workflowtemplates/{namespace}/{template_name}` | Get one workflow template |
 | `POST` | `/workflowevents/from_template/` | Submit a workflow from a template |
-| `PUT` | `/object/{bucket}/{file_name}` | Upload a file, sent as the request body |
-| `POST` | `/uploads/{bucket}` | Start a multipart upload of a large file |
-| `PUT` | `/uploads/{bucket}/{upload_id}/{part_number}` | Upload one part |
-| `GET` | `/uploads/{bucket}/{upload_id}` | List the parts already uploaded |
-| `POST` | `/uploads/{bucket}/{upload_id}/complete` | Finish a multipart upload |
-| `DELETE` | `/uploads/{bucket}/{upload_id}` | Abandon a multipart upload |
+| `POST` | `/object/{bucket}/upload` | Upload a file (multipart form field `file`) |
 | `GET` | `/object/{bucket}/{file_name}` | Download an object |
 | `GET` | `/object/list` | List objects in a bucket |
 | `POST` | `/object/move` | Copy files between a bucket and the shared volume |
@@ -372,8 +338,7 @@ Data in other buckets can be copied onto the volume with `/object/move`, but res
 | `DELETE` | `/object/{bucket}/{file_name}` | Delete an object |
 
 `{file_name}` may contain `/`.
-The `/uploads` endpoints take the object's name in the `key` query parameter.
-All of the `/object` and `/uploads` endpoints accept the optional `X-S3-Access-Key` and `X-S3-Secret-Key` headers described in [S3 credentials](#use-api-s3-credentials).
+All of the `/object` endpoints accept the optional `X-S3-Access-Key` and `X-S3-Secret-Key` headers described in [S3 credentials](#use-api-s3-credentials).
 
 ## Errors
 
@@ -382,11 +347,12 @@ All of the `/object` and `/uploads` endpoints accept the optional `X-S3-Access-K
 | `400` | A malformed upload, for example a request body that ends partway through the file |
 | `401` | Missing or incorrect credentials, or only one of the two S3 credential headers was sent. Also returned by `/object/bucket` when no S3 credentials are sent |
 | `403` | The object storage refused access, for example downloading from `ingress` with the generic identity |
-| `404` | The bucket, object, multipart upload, workflow or workflow template does not exist |
-| `409` | A multipart upload was completed with parts missing |
-| `413` | A multipart upload part, or the file, is too large |
-| `422` | Invalid request, for example an invalid bucket name, an absolute or `..` file path, or an empty file list |
+| `404` | The bucket, object, workflow or workflow template does not exist |
+| `411` | An upload without a `Content-Length` header |
+| `413` | The file is too large |
+| `422` | Invalid request, for example an invalid bucket name, an absolute or `..` file path, a missing `file` field, or an empty file list |
 | `500` | Another error, for example an upload that failed. The `detail` field gives the reason |
+| `503` | The API is busy with other uploads. Try again after the time in the `Retry-After` header |
 
 Errors from Argo Workflows are passed through with their original status code and a `detail` field.
 For example, a namespace that does not exist or that you may not use returns an error like "Namespace not found or not permitted."
