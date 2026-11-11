@@ -293,17 +293,26 @@ class ApiServer(ComponentResource):
                                 ],
                                 image=API_SERVER_IMAGE,
                                 image_pull_policy="Always",
+                                # Listen on localhost only: the API is reached through the HAProxy sidecar,
+                                # which terminates TLS, so plain HTTP is never exposed outside the pod
+                                command=[
+                                    "fastapi",
+                                    "run",
+                                    "--host",
+                                    "127.0.0.1",
+                                    "app/main.py",
+                                ],
                                 # for liveness and readiness probes, use an initial delay to allow the other services to start up
+                                # all probes go through HAProxy on 8443, as the API itself only listens on localhost
                                 # use a higher failure threshold for readiness probe to allow for temporary unavailability of Argo or MinIO
                                 liveness_probe=ProbeArgs(
                                     http_get=HTTPGetActionArgs(
-                                        path="/healthz", port=8000
+                                        path="/healthz", port=8443, scheme="HTTPS"
                                     ),
                                     initial_delay_seconds=5,
                                     period_seconds=20,
                                     failure_threshold=3,
                                 ),
-                                ports=[ContainerPortArgs(container_port=8000)],
                                 readiness_probe=ProbeArgs(
                                     http_get=HTTPGetActionArgs(
                                         path="/readyz", port=8443, scheme="HTTPS"
@@ -327,7 +336,7 @@ class ApiServer(ComponentResource):
                                 ),
                                 startup_probe=ProbeArgs(
                                     http_get=HTTPGetActionArgs(
-                                        path="/healthz", port=8000
+                                        path="/healthz", port=8443, scheme="HTTPS"
                                     ),
                                     initial_delay_seconds=5,
                                     period_seconds=10,

@@ -127,6 +127,14 @@ curl -k -u "$FRIDGE_AUTH" \
 {"status": 201, "response": "input.csv"}
 ```
 
+To store it under another name, or under a prefix, give the name in the form, such as `-F "file=@input.csv;filename=run1/data.csv"`.
+
+The file is passed on to object storage as it arrives, so it is never stored on the API's own disk.
+Files can be up to 1 TiB.
+The request must have a `Content-Length` header, which curl sends.
+If the API is already busy with other uploads, it replies `503` with a `Retry-After` header.
+Wait and send the file again.
+
 List what is in a bucket with:
 
 ```console
@@ -336,11 +344,15 @@ All of the `/object` endpoints accept the optional `X-S3-Access-Key` and `X-S3-S
 
 | Status | Meaning |
 |---|---|
+| `400` | A malformed upload, for example a request body that ends partway through the file |
 | `401` | Missing or incorrect credentials, or only one of the two S3 credential headers was sent. Also returned by `/object/bucket` when no S3 credentials are sent |
 | `403` | The object storage refused access, for example downloading from `ingress` with the generic identity |
 | `404` | The bucket, object, workflow or workflow template does not exist |
-| `422` | Invalid request, for example an invalid bucket name, an absolute or `..` file path, or an empty file list |
+| `411` | An upload without a `Content-Length` header |
+| `413` | The file is too large |
+| `422` | Invalid request, for example an invalid bucket name, an absolute or `..` file path, a missing `file` field, or an empty file list |
 | `500` | Another error, for example an upload that failed. The `detail` field gives the reason |
+| `503` | The API is busy with other uploads. Try again after the time in the `Retry-After` header |
 
 Errors from Argo Workflows are passed through with their original status code and a `detail` field.
 For example, a namespace that does not exist or that you may not use returns an error like "Namespace not found or not permitted."
