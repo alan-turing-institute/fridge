@@ -21,7 +21,7 @@ async def liveness() -> dict:
 
 
 @router.get("/readyz", include_in_schema=False)
-async def readiness() -> dict:
+def readiness() -> dict:
     """
     Readiness probe endpoint.
     Confirms Argo and S3 are reachable and returns a JSON indicating when ready.

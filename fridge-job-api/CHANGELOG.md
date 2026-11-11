@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.9.0]
+
+- Uploads to `/object/{bucket}/upload` are streamed to S3 as they arrive, rather than saved to the API's disk first
+- Uploads can be up to 1TiB and must have a `Content-Length` header, which curl sends. Without one, the API replies `411`
+- Uploads with a file name that is absolute or contains `..` are rejected
+- When the API is busy with other uploads, it refuses a new one immediately with a `503` and a `Retry-After` header, before reading any of it. Uploads together are limited to 1GiB of memory in the API
+- Downloads are faster, and have a `Content-Length` header so that clients can show progress and detect a download that was cut off
+- Endpoints that make blocking calls to Argo or S3, and the readiness probe, run in a thread pool, so they no longer hold up other requests while they wait
+
 ## [0.8.0]
 
 - Object endpoints (`upload`, `get`, `list`, `delete`, `/object/move`) accept the caller's own S3 credentials in the optional `X-S3-Access-Key` and `X-S3-Secret-Key` headers, so S3 enforces what they may do (e.g. that only the owner can use a user-specific bucket). If omitted, the API's generic S3 credentials are used. This is for potential future enablement of user-specific buckets.
