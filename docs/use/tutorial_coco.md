@@ -22,18 +22,22 @@ Along the way the tutorial shows how to deal with the main constraints of a FRID
 It assumes you have read [Using the FRIDGE API](./api.md) and can reach the API.
 The templates request AMD GPUs, as on Zenith; for other clusters, see [Adapting the templates](#use-tutorial-coco-adapting).
 
+(use-tutorial-coco-files)=
 ## Who does what
 
 Workflow templates can only be deployed by a {term}`TRE Administrator`, as described in [Creating Workflow Templates](../deploy/workflow_templates.md).
 Everything else in this tutorial is done by a {term}`Job Submitter` through the API.
 
-All the files used here are in the repository, in `infra/fridge/isolated-cluster/k8s/argo_workflows/examples/coco/`:
+The files used here can be downloaded from this page:
 
-| File | Purpose |
-| --- | --- |
-| `coco_prepare.yaml`, `prepare.py` | Stage 1 template and script |
-| `coco_smoke_test.yaml`, `coco_smoke_test.py` | Stage 2 template and script |
-| `coco_evaluate.yaml`, `coco_evaluate.py` | Stage 3 template and script |
+| Stage | Template | Script |
+| --- | --- | --- |
+| 1 | {download}`coco_prepare.yaml <../../infra/fridge/isolated-cluster/k8s/argo_workflows/examples/coco/coco_prepare.yaml>` | {download}`prepare.py <../../infra/fridge/isolated-cluster/k8s/argo_workflows/examples/coco/prepare.py>` |
+| 2 | {download}`coco_smoke_test.yaml <../../infra/fridge/isolated-cluster/k8s/argo_workflows/examples/coco/coco_smoke_test.yaml>` | {download}`coco_smoke_test.py <../../infra/fridge/isolated-cluster/k8s/argo_workflows/examples/coco/coco_smoke_test.py>` |
+| 3 | {download}`coco_evaluate.yaml <../../infra/fridge/isolated-cluster/k8s/argo_workflows/examples/coco/coco_evaluate.yaml>` | {download}`coco_evaluate.py <../../infra/fridge/isolated-cluster/k8s/argo_workflows/examples/coco/coco_evaluate.py>` |
+
+They are also in the [FRIDGE repository](https://github.com/alan-turing-institute/fridge/tree/main/infra/fridge/isolated-cluster/k8s/argo_workflows/examples/coco).
+Job Submitters only need the three scripts; the templates are for TRE Administrators.
 
 The scripts are uploaded as input data alongside the dataset, rather than baked into the templates.
 This lets you change a script without asking for the template to be redeployed.
@@ -87,6 +91,15 @@ pip download pycocotools==2.0.11 \
 
 The `abi3` in the wheel's name means it works with any Python from 3.12 onwards, including the Python 3.14 in the image.
 It must be the exact file name used in `coco_evaluate.yaml`; if pip fetches a different build, update the template to match.
+
+Finally, download the three scripts, either from the links in [Who does what](#use-tutorial-coco-files) or with:
+
+```console
+base=https://raw.githubusercontent.com/alan-turing-institute/fridge/main/infra/fridge/isolated-cluster/k8s/argo_workflows/examples/coco
+for f in prepare.py coco_smoke_test.py coco_evaluate.py; do
+  curl -LO "$base/$f"
+done
+```
 
 ### Uploading
 
