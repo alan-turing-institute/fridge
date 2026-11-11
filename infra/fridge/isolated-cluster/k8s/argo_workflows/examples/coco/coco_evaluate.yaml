@@ -1,0 +1,135 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: coco-evaluate
+  namespace: argo-workflows
+spec:
+  entrypoint: evaluate
+  serviceAccountName: argo-workflow
+  securityContext:
+    supplementalGroups:
+      - 992
+  arguments:
+    parameters:
+      - name: num-images
+        value: "5000"
+  templates:
+    - name: evaluate
+      inputs:
+        artifacts:
+          - name: pycocotools-wheel
+            path: /work/wheels/pycocotools-2.0.11-cp312-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
+            s3:
+              key: pycocotools-2.0.11-cp312-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
+          - name: script
+            path: /work/coco_evaluate.py
+            s3:
+              key: coco_evaluate.py
+          - name: weights
+            path: /work/model.pth
+            s3:
+              key: maskrcnn_resnet50_fpn_v2_coco-73cbd019.pth
+          - name: images
+            path: /work/val2017.zip
+            s3:
+              key: val2017.zip
+          - name: annotations
+            path: /work/annotations_trainval2017.zip
+            s3:
+              key: annotations_trainval2017.zip
+      outputs:
+        artifacts:
+          - name: summary
+            path: /tmp/coco-summary.json
+            archive:
+              none: {}
+            s3:
+              endpoint: seaweedfs-s3.seaweedfs.svc.cluster.local:8334
+              region: eu-west-2
+              bucket: egress
+              key: experiments/coco/{{workflow.name}}/summary.json
+              accessKeySecret:
+                name: argo-artifacts-s3
+                key: accesskey
+              secretKeySecret:
+                name: argo-artifacts-s3
+                key: secretkey
+              caSecret:
+                name: trusted-certificates
+                key: ca-certificates.crt
+          - name: bbox-predictions
+            path: /tmp/coco-bbox.json
+            archive:
+              none: {}
+            s3:
+              endpoint: seaweedfs-s3.seaweedfs.svc.cluster.local:8334
+              region: eu-west-2
+              bucket: egress
+              key: experiments/coco/{{workflow.name}}/bbox.json
+              accessKeySecret:
+                name: argo-artifacts-s3
+                key: accesskey
+              secretKeySecret:
+                name: argo-artifacts-s3
+                key: secretkey
+              caSecret:
+                name: trusted-certificates
+                key: ca-certificates.crt
+          - name: segm-predictions
+            path: /tmp/coco-segm.json
+            archive:
+              none: {}
+            s3:
+              endpoint: seaweedfs-s3.seaweedfs.svc.cluster.local:8334
+              region: eu-west-2
+              bucket: egress
+              key: experiments/coco/{{workflow.name}}/segm.json
+              accessKeySecret:
+                name: argo-artifacts-s3
+                key: accesskey
+              secretKeySecret:
+                name: argo-artifacts-s3
+                key: secretkey
+              caSecret:
+                name: trusted-certificates
+                key: ca-certificates.crt
+      container:
+        image: rocm/pytorch:rocm10.1.0_ubuntu26.04_py3.14_pytorch_release_2.14.0
+        command: ["bash", "-c"]
+        args:
+          - |
+            set -euo pipefail
+
+            # The pod has no internet access, so install pycocotools from the
+            # wheel that Argo fetched from the ingress bucket.
+            python3 -m pip install \
+              --no-index \
+              --no-deps \
+              --no-cache-dir \
+              --target /tmp/python-deps \
+              /work/wheels/*.whl
+
+            export PYTHONPATH="/tmp/python-deps:${PYTHONPATH:-}"
+
+            python3 -c "from pycocotools.cocoeval import COCOeval; print('COCO evaluator ready')"
+
+            exec python3 /work/coco_evaluate.py
+        env:
+          - name: COCO_WORK_DIR
+            value: /tmp/coco2017
+          - name: COCO_NUM_IMAGES
+            value: "{{workflow.parameters.num-images}}"
+          - name: MODEL_WEIGHTS
+            value: /work/model.pth
+          - name: PYTHONUNBUFFERED
+            value: "1"
+        resources:
+          requests:
+            cpu: "4"
+            memory: 16Gi
+            ephemeral-storage: 6Gi
+          limits:
+            cpu: "8"
+            memory: 16Gi
+            ephemeral-storage: 12Gi
+            amd.com/gpu: 1
