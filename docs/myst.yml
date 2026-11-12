@@ -34,6 +34,7 @@ project:
     - title: Use
       children:
         - file: use/api.md
+        - file: use/tutorial_coco.md
 site:
   template: https://github.com/jupyter-book/myst-theme/releases/download/myst-to-react%401.4.1/book-theme.zip
   options:
