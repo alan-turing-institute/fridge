@@ -1,3 +1,25 @@
+---
+downloads:
+  - url: ../../infra/fridge/isolated-cluster/k8s/argo_workflows/examples/coco/prepare.py
+    title: prepare.py
+    filename: prepare.py
+  - url: ../../infra/fridge/isolated-cluster/k8s/argo_workflows/examples/coco/coco_smoke_test.py
+    title: coco_smoke_test.py
+    filename: coco_smoke_test.py
+  - url: ../../infra/fridge/isolated-cluster/k8s/argo_workflows/examples/coco/coco_evaluate.py
+    title: coco_evaluate.py
+    filename: coco_evaluate.py
+  - url: ../../infra/fridge/isolated-cluster/k8s/argo_workflows/examples/coco/coco_prepare.yaml
+    title: coco_prepare.yaml
+    filename: coco_prepare.yaml
+  - url: ../../infra/fridge/isolated-cluster/k8s/argo_workflows/examples/coco/coco_smoke_test.yaml
+    title: coco_smoke_test.yaml
+    filename: coco_smoke_test.yaml
+  - url: ../../infra/fridge/isolated-cluster/k8s/argo_workflows/examples/coco/coco_evaluate.yaml
+    title: coco_evaluate.yaml
+    filename: coco_evaluate.yaml
+---
+
 (use-tutorial-coco)=
 # Tutorial: Evaluating an Object Detection Model on COCO
 
@@ -28,13 +50,13 @@ The templates request AMD GPUs, as on Zenith; for other clusters, see [Adapting 
 Workflow templates can only be deployed by a {term}`TRE Administrator`, as described in [Creating Workflow Templates](../deploy/workflow_templates.md).
 Everything else in this tutorial is done by a {term}`Job Submitter` through the API.
 
-The files used here can be downloaded from this page:
+The files used here can be downloaded from the **Download** menu at the top of this page:
 
 | Stage | Template | Script |
 | --- | --- | --- |
-| 1 | {download}`coco_prepare.yaml <../../infra/fridge/isolated-cluster/k8s/argo_workflows/examples/coco/coco_prepare.yaml>` | {download}`prepare.py <../../infra/fridge/isolated-cluster/k8s/argo_workflows/examples/coco/prepare.py>` |
-| 2 | {download}`coco_smoke_test.yaml <../../infra/fridge/isolated-cluster/k8s/argo_workflows/examples/coco/coco_smoke_test.yaml>` | {download}`coco_smoke_test.py <../../infra/fridge/isolated-cluster/k8s/argo_workflows/examples/coco/coco_smoke_test.py>` |
-| 3 | {download}`coco_evaluate.yaml <../../infra/fridge/isolated-cluster/k8s/argo_workflows/examples/coco/coco_evaluate.yaml>` | {download}`coco_evaluate.py <../../infra/fridge/isolated-cluster/k8s/argo_workflows/examples/coco/coco_evaluate.py>` |
+| 1 | `coco_prepare.yaml` | `prepare.py` |
+| 2 | `coco_smoke_test.yaml` | `coco_smoke_test.py` |
+| 3 | `coco_evaluate.yaml` | `coco_evaluate.py` |
 
 They are also in the [FRIDGE repository](https://github.com/alan-turing-institute/fridge/tree/main/infra/fridge/isolated-cluster/k8s/argo_workflows/examples/coco).
 Job Submitters only need the three scripts; the templates are for TRE Administrators.
@@ -92,7 +114,7 @@ pip download pycocotools==2.0.11 \
 The `abi3` in the wheel's name means it works with any Python from 3.12 onwards, including the Python 3.14 in the image.
 It must be the exact file name used in `coco_evaluate.yaml`; if pip fetches a different build, update the template to match.
 
-Finally, download the three scripts, either from the links in [Who does what](#use-tutorial-coco-files) or with:
+Finally, download the three scripts, either from the Download menu at the top of this page or with:
 
 ```console
 base=https://raw.githubusercontent.com/alan-turing-institute/fridge/main/infra/fridge/isolated-cluster/k8s/argo_workflows/examples/coco
@@ -113,6 +135,9 @@ for f in val2017.zip annotations_trainval2017.zip \
   curl -k -u "$FRIDGE_AUTH" -F "file=@$f" "$FRIDGE_URL/object/ingress/upload"
 done
 ```
+
+The templates look for each object by its exact name.
+If a file was saved under a different name, rename it first, or give the name in the upload, for example `-F "file=@prepare-1a2b3c.py;filename=prepare.py"`.
 
 Then check that all seven objects are there:
 
