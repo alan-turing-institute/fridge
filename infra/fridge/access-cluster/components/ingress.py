@@ -43,6 +43,9 @@ class Ingress(ComponentResource):
                         create_namespace=False,
                         values={
                             "controller": {
+                                # Expose request and certificate metrics on port
+                                # 10254 for Prometheus
+                                "metrics": {"enabled": True},
                                 "nodeSelector": {"kubernetes.io/os": "linux"},
                                 "service": {
                                     "externalTrafficPolicy": "Local",

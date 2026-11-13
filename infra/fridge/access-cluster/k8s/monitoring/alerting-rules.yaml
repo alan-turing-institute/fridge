@@ -1,0 +1,149 @@
+# FRIDGE-specific alerts, on top of the default rules shipped with
+# kube-prometheus-stack (crash looping pods, nodes not ready, PVCs and node
+# disks almost full, etc.)
+# The `release` label is needed for Prometheus to pick up these rules
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: fridge-access-cluster
+  namespace: monitoring-system
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: fridge.components
+      rules:
+        - alert: FridgeDeploymentUnavailable
+          expr: |
+            kube_deployment_status_replicas_available{namespace=~"cert-manager|harbor|ingress-nginx|vpn-server"} == 0
+            and
+            kube_deployment_spec_replicas{namespace=~"cert-manager|harbor|ingress-nginx|vpn-server"} > 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "{{ $labels.namespace }}/{{ $labels.deployment }} has no available replicas"
+            description: "A FRIDGE access cluster component has had no available replicas for 5 minutes."
+        - alert: FridgeStatefulSetUnavailable
+          expr: |
+            kube_statefulset_status_replicas_ready{namespace=~"harbor|vpn-server"} == 0
+            and
+            kube_statefulset_replicas{namespace=~"harbor|vpn-server"} > 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "{{ $labels.namespace }}/{{ $labels.statefulset }} has no ready replicas"
+            description: "A FRIDGE access cluster component has had no ready replicas for 5 minutes."
+    - name: fridge.vpn-proxy
+      rules:
+        # HAProxy health checks each backend every 10s. If a backend has no healthy
+        # servers, TRE users on the VPN can't reach FRIDGE through the proxy
+        - alert: FridgeProxyBackendDown
+          expr: |
+            haproxy_backend_active_servers{namespace="vpn-server", proxy=~"out_fridge_api|out_k8s_api"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "The VPN proxy can't reach its {{ $labels.proxy }} backend"
+            description: "HAProxy's health checks have failed for 2 minutes. out_fridge_api is the FRIDGE API and out_k8s_api is the isolated cluster's API server. Check that the isolated cluster is up and that the access cluster can reach it."
+    - name: fridge.storage
+      rules:
+        # The default rules only fire when a volume is nearly full (97%) or predicted to
+        # fill within hours. Warn earlier, as running out of space has blocked deployments before
+        - alert: FridgeVolumeFillingUp
+          expr: |
+            kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes > 0.8
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} is {{ $value | humanizePercentage }} full"
+            description: "A persistent volume in the access cluster is more than 80% full."
+        - alert: FridgeNodeDiskFillingUp
+          expr: |
+            (
+              1 - node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs", mountpoint!~"/run.*|/boot.*"}
+                / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs", mountpoint!~"/run.*|/boot.*"}
+            ) > 0.8
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.instance }}:{{ $labels.mountpoint }} is {{ $value | humanizePercentage }} full"
+            description: "A node filesystem in the access cluster is more than 80% full. On Dawn and Zenith this includes the disks used by Longhorn."
+        # Only Dawn and Zenith use Longhorn, so these never fire on AKS
+        - alert: FridgeLonghornVolumeDegraded
+          expr: |
+            longhorn_volume_robustness == 2
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Longhorn volume {{ $labels.volume }} is degraded"
+            description: "A Longhorn volume has fewer healthy replicas than it should. It still works, but another failure could lose data."
+        - alert: FridgeLonghornVolumeFaulted
+          expr: |
+            longhorn_volume_robustness == 3
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Longhorn volume {{ $labels.volume }} is faulted"
+            description: "A Longhorn volume has no healthy replicas and is unusable."
+    - name: fridge.certificates
+      rules:
+        # cert-manager renews Let's Encrypt certificates 30 days before they expire,
+        # so less than 14 days left means renewal has been failing for over two weeks
+        - alert: FridgeCertificateExpiringSoon
+          expr: |
+            certmanager_certificate_expiration_timestamp_seconds - time() < 14 * 24 * 3600
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: "Certificate {{ $labels.namespace }}/{{ $labels.name }} expires in {{ $value | humanizeDuration }}"
+            description: "cert-manager has not renewed a TLS certificate. Check the Certificate and CertificateRequest resources and the cert-manager logs."
+        - alert: FridgeCertificateNotReady
+          expr: |
+            certmanager_certificate_ready_status{condition="False"} == 1
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Certificate {{ $labels.namespace }}/{{ $labels.name }} is not ready"
+            description: "cert-manager has failed to issue or renew a TLS certificate for 30 minutes."
+    - name: fridge.monitoring
+      rules:
+        # The default TargetDown alert only covers targets that Prometheus has found.
+        # If the metrics port isn't declared (e.g. ingress-nginx metrics are turned off
+        # on a platform-managed cluster) there is no target, and these alerts are the
+        # only sign that the certificate and ingress metrics are missing
+        - alert: FridgeMetricsMissing
+          expr: |
+            absent(up{job="monitoring-system/cert-manager"})
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Prometheus is not scraping cert-manager"
+            description: "No cert-manager metrics, so certificate expiry alerts cannot fire."
+        - alert: FridgeMetricsMissing
+          expr: |
+            absent(up{job="monitoring-system/ingress-nginx"})
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Prometheus is not scraping ingress-nginx"
+            description: "No ingress-nginx metrics. Check that controller metrics are enabled in the ingress-nginx chart."
+        - alert: FridgeMetricsMissing
+          expr: |
+            absent(up{job="monitoring-system/vpn-proxy"})
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Prometheus is not scraping the VPN proxy"
+            description: "No HAProxy metrics from the VPN proxy, so FridgeProxyBackendDown cannot fire."

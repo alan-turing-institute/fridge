@@ -158,3 +158,42 @@ spec:
               protocol: TCP
             - port: "5000"
               protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: prometheus-scrape-dawn
+  namespace: monitoring-system
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: prometheus
+  egress:
+    # Node addresses can be classed as `world` on Dawn (see the note at the top),
+    # so allow the kubelet and node-exporter ports to world as well
+    - toEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "10250"
+              protocol: TCP
+            - port: "9100"
+              protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: webhook-prometheus-operator
+  namespace: monitoring-system
+  # Webhook calls from the API server arrive from the remote-node entity on Dawn
+spec:
+  endpointSelector:
+    matchLabels:
+      app: kube-prometheus-stack-operator
+  ingress:
+    - fromEntities:
+        - remote-node
+      toPorts:
+        - ports:
+            - port: "10250"
+              protocol: TCP
