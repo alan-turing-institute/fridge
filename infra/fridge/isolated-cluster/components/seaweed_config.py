@@ -222,3 +222,5 @@ class SeaweedConfigJob(ComponentResource):
                 ResourceOptions(depends_on=[args.seaweedfs]),
             ),
         )
+
+        self.register_outputs({})
