@@ -98,10 +98,11 @@ harbor = components.ContainerRegistry(
 # Monitoring
 # On Dawn and Zenith, keep the monitoring volumes on Cinder rather than Longhorn,
 # which replicates them onto the nodes' local disks
+monitoring_config = components.MonitoringConfig(config)
 monitoring = components.Monitoring(
     "monitoring",
     components.MonitoringArgs(
-        config=config,
+        settings=monitoring_config,
         k8s_environment=k8s_environment,
         storage_class_name=(
             storage_classes.cinder_storage_class_name
@@ -139,6 +140,7 @@ network_policies = components.NetworkPolicies(
         config=config,
         k8s_environment=k8s_environment,
         harbor_fqdn=harbor.harbor_fqdn,
+        alertmanager_webhook_url=monitoring_config.teams_webhook_url,
     ),
     opts=ResourceOptions(
         depends_on=resources,
