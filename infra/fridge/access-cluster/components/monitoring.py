@@ -66,8 +66,6 @@ def teams_alertmanager_config() -> dict:
                 "name": "teams",
                 "msteamsv2_configs": [
                     {
-                        # alertmanagerSpec.secrets mounts each Secret here, which
-                        # keeps the URL out of the Alertmanager config
                         "webhook_url_file": f"/etc/alertmanager/secrets/{TEAMS_WEBHOOK_SECRET_NAME}/url",
                         "send_resolved": True,
                     }
