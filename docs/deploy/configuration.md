@@ -51,6 +51,7 @@ Deploys ingress, cert-manager, Harbor, the NetBird/HAProxy VPN server and the Pr
 | `k8s_env` | Yes | | Cluster environment: `AKS`, `Dawn` or `Zenith` |
 | `base_fqdn` | Yes | | Base domain for the deployment. Harbor is served at `<harbor_fqdn_prefix>.<base_fqdn>` |
 | `grafana_admin_password` | Yes | Yes | Password for the `admin` user of Grafana in the monitoring stack |
+| `alertmanager_teams_webhook_url` | No | Yes | URL of a Microsoft Teams Workflows webhook ("Send webhook alerts to a channel") to post alerts to. If unset, alerts are only visible in Alertmanager and Grafana. Set it with `pulumi config set --secret` |
 | `harbor_fqdn_prefix` | Yes | | Host name prefix for Harbor |
 | `harbor_admin_password` | Yes | Yes | Harbor admin password |
 | `harbor_registry_size` | No | | Size of Harbor's registry storage, for example `50Gi`. Defaults to `20Gi`. Large images, such as GPU builds of PyTorch, may need more |
