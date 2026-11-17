@@ -143,6 +143,53 @@ class NetworkPolicies(ComponentResource):
             opts=child_opts,
         )
 
+        # Allow Alertmanager to send alerts to the Microsoft Teams Workflows webhook,
+        # if one is configured (see Monitoring)
+        teams_webhook_url = args.config.get_secret("alertmanager_teams_webhook_url")
+        if teams_webhook_url:
+            teams_webhook_host = teams_webhook_url.apply(
+                lambda url: urlparse(url).hostname
+            )
+            self.alertmanager_teams_cnp = CustomResource(
+                "network_policy_alertmanager_teams",
+                api_version="cilium.io/v2",
+                kind="CiliumNetworkPolicy",
+                metadata=ObjectMetaArgs(
+                    name="alertmanager-teams", namespace="monitoring-system"
+                ),
+                spec={
+                    "endpointSelector": {
+                        "matchLabels": {"app.kubernetes.io/name": "alertmanager"}
+                    },
+                    "egress": [
+                        # toFQDNs only works if Cilium sees the DNS lookups
+                        {
+                            "toEndpoints": [
+                                {
+                                    "matchLabels": {
+                                        "k8s:io.kubernetes.pod.namespace": "kube-system",
+                                        "k8s-app": "kube-dns",
+                                    }
+                                }
+                            ],
+                            "toPorts": [
+                                {
+                                    "ports": [{"port": "53", "protocol": "ANY"}],
+                                    "rules": {"dns": [{"matchPattern": "*"}]},
+                                }
+                            ],
+                        },
+                        {
+                            "toFQDNs": [{"matchName": teams_webhook_host}],
+                            "toPorts": [
+                                {"ports": [{"port": "443", "protocol": "TCP"}]}
+                            ],
+                        },
+                    ],
+                },
+                opts=child_opts,
+            )
+
         # Configure NetBird network policies
         netbird_config = args.config.require_object("netbird")
         management_url = urlparse(netbird_config.get("management_url")).hostname
