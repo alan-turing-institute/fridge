@@ -1,7 +1,7 @@
 from urllib.parse import urlparse
 
 import pulumi
-from pulumi import ComponentResource, ResourceOptions
+from pulumi import ComponentResource, Output, ResourceOptions
 from pulumi_kubernetes.apiextensions import CustomResource
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
@@ -15,10 +15,12 @@ class NetworkPoliciesArgs:
         config: pulumi.config.Config,
         harbor_fqdn: str,
         k8s_environment: K8sEnvironment,
+        alertmanager_webhook_url: Output[str] | None = None,
     ):
         self.config = config
         self.k8s_environment = k8s_environment
         self.harbor_fqdn = harbor_fqdn
+        self.alertmanager_webhook_url = alertmanager_webhook_url
 
 
 class NetworkPolicies(ComponentResource):
@@ -145,9 +147,8 @@ class NetworkPolicies(ComponentResource):
 
         # Allow Alertmanager to send alerts to the Microsoft Teams Workflows webhook,
         # if one is configured (see Monitoring)
-        teams_webhook_url = args.config.get_secret("alertmanager_teams_webhook_url")
-        if teams_webhook_url:
-            teams_webhook_host = teams_webhook_url.apply(
+        if args.alertmanager_webhook_url is not None:
+            teams_webhook_host = args.alertmanager_webhook_url.apply(
                 lambda url: urlparse(url).hostname
             )
             self.alertmanager_teams_cnp = CustomResource(
