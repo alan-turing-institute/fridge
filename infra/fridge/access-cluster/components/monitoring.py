@@ -1,6 +1,6 @@
 import pulumi
 from pulumi import ComponentResource, Input, ResourceOptions
-from pulumi_kubernetes.core.v1 import Namespace
+from pulumi_kubernetes.core.v1 import Namespace, Secret
 from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
@@ -37,6 +37,44 @@ KUBE_STATE_METRICS_COLLECTORS = [
     "validatingwebhookconfigurations",
     "volumeattachments",
 ]
+
+TEAMS_WEBHOOK_SECRET_NAME = "alertmanager-teams-webhook"
+
+
+def teams_alertmanager_config() -> dict:
+    """Alertmanager routing that sends alerts to a Microsoft Teams Workflows webhook.
+
+    Helm merges this into the chart's default config, so the default inhibit rules
+    and templates are kept, while the route's `routes` and `receivers` are replaced.
+    """
+    return {
+        "route": {
+            "receiver": "teams",
+            "routes": [
+                # Watchdog always fires, to show the alerting pipeline is working. It
+                # isn't worth a message, but could feed an external heartbeat check
+                {"receiver": "null", "matchers": ['alertname = "Watchdog"']},
+                # InfoInhibitor only exists to suppress info alerts
+                {"receiver": "null", "matchers": ['alertname = "InfoInhibitor"']},
+                # Info alerts are still visible in Alertmanager and Grafana
+                {"receiver": "null", "matchers": ['severity = "info"']},
+            ],
+        },
+        "receivers": [
+            {"name": "null"},
+            {
+                "name": "teams",
+                "msteamsv2_configs": [
+                    {
+                        # alertmanagerSpec.secrets mounts each Secret here, which
+                        # keeps the URL out of the Alertmanager config
+                        "webhook_url_file": f"/etc/alertmanager/secrets/{TEAMS_WEBHOOK_SECRET_NAME}/url",
+                        "send_resolved": True,
+                    }
+                ],
+            },
+        ],
+    }
 
 
 class MonitoringArgs:
@@ -80,6 +118,33 @@ class Monitoring(ComponentResource):
                 }
             }
 
+        alertmanager_values: dict = {
+            "alertmanagerSpec": {
+                "retention": "168h",  # 7 days
+                "storage": volume_claim("1Gi"),
+            }
+        }
+        release_depends_on = []
+
+        # Send alerts to a Microsoft Teams channel if a Workflows webhook is configured.
+        # Otherwise keep the chart's default, which sends them nowhere
+        teams_webhook_url = args.config.get_secret("alertmanager_teams_webhook_url")
+        if teams_webhook_url:
+            self.teams_webhook_secret = Secret(
+                "alertmanager-teams-webhook",
+                metadata=ObjectMetaArgs(
+                    name=TEAMS_WEBHOOK_SECRET_NAME,
+                    namespace=self.monitoring_ns.metadata.name,
+                ),
+                string_data={"url": teams_webhook_url},
+                opts=child_opts,
+            )
+            release_depends_on.append(self.teams_webhook_secret)
+            alertmanager_values["alertmanagerSpec"]["secrets"] = [
+                TEAMS_WEBHOOK_SECRET_NAME
+            ]
+            alertmanager_values["config"] = teams_alertmanager_config()
+
         self.kube_prometheus_stack = Release(
             "kube-prometheus-stack",
             ReleaseArgs(
@@ -92,12 +157,7 @@ class Monitoring(ComponentResource):
                 namespace=self.monitoring_ns.metadata.name,
                 create_namespace=False,
                 values={
-                    "alertmanager": {
-                        "alertmanagerSpec": {
-                            "retention": "168h",  # 7 days
-                            "storage": volume_claim("1Gi"),
-                        }
-                    },
+                    "alertmanager": alertmanager_values,
                     "grafana": {
                         "adminPassword": args.config.require_secret(
                             "grafana_admin_password"
@@ -138,6 +198,9 @@ class Monitoring(ComponentResource):
                             "retention": "15d",
                             "retentionSize": "8GiB",
                             "storageSpec": volume_claim("10Gi"),
+                            # Added to every alert, so notifications say which
+                            # deployment they came from
+                            "externalLabels": {"cluster": pulumi.get_stack()},
                         }
                     },
                     # Control plane components are either managed by the provider (AKS)
@@ -149,7 +212,9 @@ class Monitoring(ComponentResource):
                     "kubeScheduler": {"enabled": False},
                 },
             ),
-            opts=child_opts,
+            opts=ResourceOptions.merge(
+                child_opts, ResourceOptions(depends_on=release_depends_on)
+            ),
         )
 
         # These need the CRDs installed by the chart
