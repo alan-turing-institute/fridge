@@ -50,8 +50,6 @@ Deploys ingress, cert-manager, Harbor, the NetBird/HAProxy VPN server and the Pr
 |---|---|---|---|
 | `k8s_env` | Yes | | Cluster environment: `AKS`, `Dawn` or `Zenith` |
 | `base_fqdn` | Yes | | Base domain for the deployment. Harbor is served at `<harbor_fqdn_prefix>.<base_fqdn>` |
-| `grafana_admin_password` | Yes | Yes | Password for the `admin` user of Grafana in the monitoring stack |
-| `alertmanager_teams_webhook_url` | No | Yes | URL of a Microsoft Teams Workflows webhook ("Send webhook alerts to a channel") to post alerts to. If unset, alerts are only visible in Alertmanager and Grafana. Set it with `pulumi config set --secret` |
 | `harbor_fqdn_prefix` | Yes | | Host name prefix for Harbor |
 | `harbor_admin_password` | Yes | Yes | Harbor admin password |
 | `harbor_registry_size` | No | | Size of Harbor's registry storage, for example `50Gi`. Defaults to `20Gi`. Large images, such as GPU builds of PyTorch, may need more |
@@ -66,6 +64,7 @@ Deploys ingress, cert-manager, Harbor, the NetBird/HAProxy VPN server and the Pr
 | `dawn_load_balancer_ip` | Dawn and Zenith only | | Load balancer IP of the access cluster, used as the Harbor IP. Despite the name, it is also read on Zenith. Use a dummy value on AKS |
 | `kubernetes:context` | Yes | | kubectl context of the access cluster |
 | `netbird.*` | Yes | | NetBird settings, described below |
+| `monitoring.*` | Yes | | Monitoring settings, described below |
 
 ### NetBird
 
@@ -84,6 +83,20 @@ See [Configuring NetBird](./netbird.md) for how to obtain a setup key and config
 
 The overrides are only needed when running a self-hosted NetBird whose servers are on different hosts from the management server.
 The network policies allow egress to the management host and, if set, the override hosts.
+
+### Monitoring
+
+These are set as fields of the `monitoring` object, using `--path`:
+
+```console
+pulumi config set --secret --path monitoring.grafana_admin_password <value>
+pulumi config set --secret --path monitoring.teams_webhook_url '<url>'
+```
+
+| Key | Required | Secret | Description |
+|---|---|---|---|
+| `monitoring.grafana_admin_password` | Yes | Yes | Password for the `admin` user of Grafana |
+| `monitoring.teams_webhook_url` | No | Yes | URL of a Microsoft Teams Workflows webhook ("Send webhook alerts to a channel") to post alerts to. If unset, alerts are only visible in Alertmanager and Grafana |
 
 ### Outputs
 
