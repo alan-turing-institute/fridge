@@ -1,7 +1,7 @@
 from urllib.parse import urlparse
 
 import pulumi
-from pulumi import ComponentResource, ResourceOptions
+from pulumi import ComponentResource, Output, ResourceOptions
 from pulumi_kubernetes.apiextensions import CustomResource
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
@@ -15,10 +15,12 @@ class NetworkPoliciesArgs:
         config: pulumi.config.Config,
         harbor_fqdn: str,
         k8s_environment: K8sEnvironment,
+        alertmanager_webhook_url: Output[str] | None = None,
     ):
         self.config = config
         self.k8s_environment = k8s_environment
         self.harbor_fqdn = harbor_fqdn
+        self.alertmanager_webhook_url = alertmanager_webhook_url
 
 
 class NetworkPolicies(ComponentResource):
@@ -136,9 +138,58 @@ class NetworkPolicies(ComponentResource):
                 "./k8s/cilium/kube-node-lease.yaml",
                 "./k8s/cilium/kube-public.yaml",
                 "./k8s/cilium/kube-system.yaml",
+                "./k8s/cilium/monitoring.yaml",
+                "./k8s/cilium/prometheus.yaml",
+                "./k8s/cilium/vpn-server.yaml",
             ],
             opts=child_opts,
         )
+
+        # Allow Alertmanager to send alerts to the Microsoft Teams Workflows webhook,
+        # if one is configured (see Monitoring)
+        if args.alertmanager_webhook_url is not None:
+            teams_webhook_host = args.alertmanager_webhook_url.apply(
+                lambda url: urlparse(url).hostname
+            )
+            self.alertmanager_teams_cnp = CustomResource(
+                "network_policy_alertmanager_teams",
+                api_version="cilium.io/v2",
+                kind="CiliumNetworkPolicy",
+                metadata=ObjectMetaArgs(
+                    name="alertmanager-teams", namespace="monitoring-system"
+                ),
+                spec={
+                    "endpointSelector": {
+                        "matchLabels": {"app.kubernetes.io/name": "alertmanager"}
+                    },
+                    "egress": [
+                        # toFQDNs only works if Cilium sees the DNS lookups
+                        {
+                            "toEndpoints": [
+                                {
+                                    "matchLabels": {
+                                        "k8s:io.kubernetes.pod.namespace": "kube-system",
+                                        "k8s-app": "kube-dns",
+                                    }
+                                }
+                            ],
+                            "toPorts": [
+                                {
+                                    "ports": [{"port": "53", "protocol": "ANY"}],
+                                    "rules": {"dns": [{"matchPattern": "*"}]},
+                                }
+                            ],
+                        },
+                        {
+                            "toFQDNs": [{"matchName": teams_webhook_host}],
+                            "toPorts": [
+                                {"ports": [{"port": "443", "protocol": "TCP"}]}
+                            ],
+                        },
+                    ],
+                },
+                opts=child_opts,
+            )
 
         # Configure NetBird network policies
         netbird_config = args.config.require_object("netbird")

@@ -190,6 +190,28 @@ spec:
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
 metadata:
+  name: konnectivity-prometheus-operator
+  namespace: monitoring-system
+  # Allow access to the Prometheus operator from the Konnectivity Agent,
+  # which mediates traffic from the Kubernetes API server resulting from
+  # webhooks
+spec:
+  endpointSelector:
+    matchLabels:
+      app: kube-prometheus-stack-operator
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app: konnectivity-agent
+            k8s:io.kubernetes.pod.namespace: kube-system
+      toPorts:
+        - ports:
+            - port: "10250"
+              protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
   name: remote-node-ingress-nginx
   namespace: ingress-nginx
 spec:

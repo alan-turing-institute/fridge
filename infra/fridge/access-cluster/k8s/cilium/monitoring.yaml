@@ -1,0 +1,125 @@
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: monitoring-system
+spec:
+  endpointSelector: {}
+  ingress:
+    - {}
+  egress:
+    - {}
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: monitoring-internal
+  namespace: monitoring-system
+spec:
+  # Apply to all pods in this namespace
+  endpointSelector: {}
+  # Allow the monitoring components to talk to each other
+  # (Prometheus scraping kube-state-metrics and the operator, Grafana querying Prometheus, etc.)
+  ingress:
+    - fromEndpoints:
+        - {}
+  egress:
+    - toEndpoints:
+        - {}
+    # Outbound to k8s DNS to look up IPs
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+    # The operator, kube-state-metrics and Grafana's sidecars watch the Kubernetes API,
+    # and Prometheus uses it for service discovery and scrapes the API server
+    - toEntities:
+        - kube-apiserver
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: prometheus-scrape
+  namespace: monitoring-system
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: prometheus
+  egress:
+    # Kubelet (10250) and node-exporter (9100), which runs on the host network
+    - toEntities:
+        - host
+        - remote-node
+      toPorts:
+        - ports:
+            - port: "10250"
+              protocol: TCP
+            - port: "9100"
+              protocol: TCP
+    # CoreDNS metrics, allowed on the receiving side in prometheus.yaml
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "9153"
+              protocol: ANY
+    # cert-manager and ingress-nginx metrics, allowed on the receiving side in prometheus.yaml
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: cert-manager
+            app.kubernetes.io/name: cert-manager
+            app.kubernetes.io/component: controller
+      toPorts:
+        - ports:
+            - port: "9402"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: ingress-nginx
+            app.kubernetes.io/name: ingress-nginx
+            app.kubernetes.io/component: controller
+      toPorts:
+        - ports:
+            - port: "10254"
+              protocol: TCP
+    # HAProxy metrics in the VPN proxy pod, allowed on the receiving side in vpn-server.yaml
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: vpn-server
+            app: netbird-proxy
+      toPorts:
+        - ports:
+            - port: "8404"
+              protocol: TCP
+    # Longhorn manager metrics (Dawn and Zenith only), allowed on the receiving side in longhorn.yaml
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: longhorn-system
+            app: longhorn-manager
+      toPorts:
+        - ports:
+            - port: "9500"
+              protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: prometheus-operator-webhook
+  namespace: monitoring-system
+spec:
+  endpointSelector:
+    matchLabels:
+      app: kube-prometheus-stack-operator
+  ingress:
+    - fromEntities:
+        - kube-apiserver
+      toPorts:
+        - ports:
+            - port: "10250"
+              protocol: TCP

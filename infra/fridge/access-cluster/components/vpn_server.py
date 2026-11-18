@@ -16,6 +16,7 @@ from pulumi_kubernetes.core.v1 import (
     EnvVarArgs,
     EnvVarSourceArgs,
     Namespace,
+    ObjectFieldSelectorArgs,
     PersistentVolumeClaim,
     PersistentVolumeClaimSpecArgs,
     PersistentVolumeClaimVolumeSourceArgs,
@@ -177,12 +178,28 @@ class VpnServer(ComponentResource):
                             ContainerArgs(
                                 name="haproxy",
                                 image=f"haproxy:{SoftwareVersion.HAPROXY.value}",
+                                # The metrics frontend binds to this address
+                                env=[
+                                    EnvVarArgs(
+                                        name="POD_IP",
+                                        value_from=EnvVarSourceArgs(
+                                            field_ref=ObjectFieldSelectorArgs(
+                                                field_path="status.podIP"
+                                            )
+                                        ),
+                                    ),
+                                ],
                                 ports=[
                                     ContainerPortArgs(
                                         container_port=8000, protocol="TCP"
                                     ),
                                     ContainerPortArgs(
                                         container_port=6443, protocol="TCP"
+                                    ),
+                                    ContainerPortArgs(
+                                        name="metrics",
+                                        container_port=8404,
+                                        protocol="TCP",
                                     ),
                                 ],
                                 volume_mounts=[
