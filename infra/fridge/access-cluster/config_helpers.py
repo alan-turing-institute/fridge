@@ -8,7 +8,8 @@ documentation only. Pulumi does not check them, and any `default:` there is not
 applied, so required fields are checked and defaults applied in code.
 """
 
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 import pulumi
 
