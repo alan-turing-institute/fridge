@@ -10,17 +10,16 @@
         {
             "customType": "regex",
             "managerFilePatterns": [
-                "infra/fridge/access-cluster/enums/init\\.py$",
-                "infra/fridge/isolated-cluster/enums/init\\.py$"
+                "/^infra/fridge/(access|isolated)-cluster/enums/__init__\\.py$/"
             ],
             "matchStrings": [
-                "# renovate: datasource=(?<datasource>[a-z-A-Z0-9_-]+) depName=(?<depName>[^\\s]+)(?:\\s+registryUrl=(?<registryUrl>[^\\s]+))?\\s+(?<currentValueOld>[A-Z0-9_]+)\\s*=\\s*[\"'](?<currentValue>[^\"']+)[\"']"
+                "# renovate: datasource=(?<datasource>[a-zA-Z0-9_-]+) depName=(?<depName>[^\\s]+)(?:\\s+registryUrl=(?<registryUrl>[^\\s]+))?\\s+[A-Z0-9_]+\\s*=\\s*[\"'](?<currentValue>[^\"']+)[\"']"
             ]
         }
     ],
     "packageRules": [
         {
-            "matchPaths": [
+            "matchFileNames": [
                 "fridge-job-api/**"
             ],
             "matchManagers": [
