@@ -1,6 +1,9 @@
 name: Renovate
 on:
   workflow_dispatch:
+  # FORK TEST ONLY - remove before opening upstream PR
+  push:
+    branches: [renovate-support]
   # Runs once a month (At 06:00 on day 1 of the month)
   schedule:
     - cron: '0 6 1 * *'
@@ -21,3 +24,10 @@ jobs:
         env:
           RENOVATE_REPOSITORIES: ${{ github.repository }}
           RENOVATE_DRY_RUN: lookup
+          # FORK TEST ONLY - remove before opening upstream PR.
+          # Scan the branch that triggered the run instead of the default
+          # branch, and don't wait for an onboarding PR (main has no config yet).
+          RENOVATE_BASE_BRANCH_PATTERNS: '["${{ github.ref_name }}"]'
+          RENOVATE_REQUIRE_CONFIG: optional
+          RENOVATE_ONBOARDING: "false"
+          LOG_LEVEL: debug
