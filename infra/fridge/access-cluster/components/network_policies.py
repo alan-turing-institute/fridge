@@ -1,11 +1,12 @@
 from urllib.parse import urlparse
 
 import pulumi
-from pulumi import ComponentResource, ResourceOptions
+from pulumi import ComponentResource, Output, ResourceOptions
 from pulumi_kubernetes.apiextensions import CustomResource
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
 
+from config_helpers import NETBIRD_CLOUD_MANAGEMENT_URL
 from enums import K8sEnvironment
 
 
@@ -15,10 +16,12 @@ class NetworkPoliciesArgs:
         config: pulumi.config.Config,
         harbor_fqdn: str,
         k8s_environment: K8sEnvironment,
+        alertmanager_webhook_url: Output[str] | None = None,
     ):
         self.config = config
         self.k8s_environment = k8s_environment
         self.harbor_fqdn = harbor_fqdn
+        self.alertmanager_webhook_url = alertmanager_webhook_url
 
 
 class NetworkPolicies(ComponentResource):
@@ -54,18 +57,11 @@ class NetworkPolicies(ComponentResource):
                     "toCIDR": [args.config.require("fridge_api_ip_address")],
                     "toPorts": [{"ports": [{"port": "443", "protocol": "TCP"}]}],
                 }
-            case K8sEnvironment.DAWN:
+            case K8sEnvironment.DAWN | K8sEnvironment.ZENITH:
                 # Dawn uses a different external DNS server to AKS, and also runs regular jobs that do not run on AKS
-                ConfigFile(
+                self.dawn_cnp = ConfigFile(
                     "network_policy_dawn",
                     file="./k8s/cilium/dawn.yaml",
-                    opts=child_opts,
-                )
-                # Add network policy to allow Prometheus monitoring for resources already deployed on Dawn
-                # On Dawn, Prometheus is also already deployed
-                ConfigFile(
-                    "network_policy_prometheus",
-                    file="./k8s/cilium/prometheus.yaml",
                     opts=child_opts,
                 )
                 # Longhorn is used on Dawn for RWX volume provision
@@ -143,12 +139,64 @@ class NetworkPolicies(ComponentResource):
                 "./k8s/cilium/kube-node-lease.yaml",
                 "./k8s/cilium/kube-public.yaml",
                 "./k8s/cilium/kube-system.yaml",
+                "./k8s/cilium/monitoring.yaml",
+                "./k8s/cilium/prometheus.yaml",
+                "./k8s/cilium/vpn-server.yaml",
             ],
+            opts=child_opts,
         )
+
+        # Allow Alertmanager to send alerts to the Microsoft Teams Workflows webhook,
+        # if one is configured (see Monitoring)
+        if args.alertmanager_webhook_url is not None:
+            teams_webhook_host = args.alertmanager_webhook_url.apply(
+                lambda url: urlparse(url).hostname
+            )
+            self.alertmanager_teams_cnp = CustomResource(
+                "network_policy_alertmanager_teams",
+                api_version="cilium.io/v2",
+                kind="CiliumNetworkPolicy",
+                metadata=ObjectMetaArgs(
+                    name="alertmanager-teams", namespace="monitoring-system"
+                ),
+                spec={
+                    "endpointSelector": {
+                        "matchLabels": {"app.kubernetes.io/name": "alertmanager"}
+                    },
+                    "egress": [
+                        # toFQDNs only works if Cilium sees the DNS lookups
+                        {
+                            "toEndpoints": [
+                                {
+                                    "matchLabels": {
+                                        "k8s:io.kubernetes.pod.namespace": "kube-system",
+                                        "k8s-app": "kube-dns",
+                                    }
+                                }
+                            ],
+                            "toPorts": [
+                                {
+                                    "ports": [{"port": "53", "protocol": "ANY"}],
+                                    "rules": {"dns": [{"matchPattern": "*"}]},
+                                }
+                            ],
+                        },
+                        {
+                            "toFQDNs": [{"matchName": teams_webhook_host}],
+                            "toPorts": [
+                                {"ports": [{"port": "443", "protocol": "TCP"}]}
+                            ],
+                        },
+                    ],
+                },
+                opts=child_opts,
+            )
 
         # Configure NetBird network policies
         netbird_config = args.config.require_object("netbird")
-        management_url = urlparse(netbird_config.get("management_url")).hostname
+        management_url = urlparse(
+            netbird_config.get("management_url") or NETBIRD_CLOUD_MANAGEMENT_URL
+        ).hostname
         if not management_url:
             raise ValueError(
                 "Invalid management_url in Netbird configuration: must be a valid URL"

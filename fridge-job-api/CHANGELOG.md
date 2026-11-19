@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.9.0]
+
+- Uploads to `/object/{bucket}/upload` are streamed to S3 as they arrive, rather than saved to the API's disk first
+- Uploads can be up to 1TiB and must have a `Content-Length` header, which curl sends. Without one, the API replies `411`
+- Uploads with a file name that is absolute or contains `..` are rejected
+- When the API is busy with other uploads, it refuses a new one immediately with a `503` and a `Retry-After` header, before reading any of it. Uploads together are limited to 1GiB of memory in the API
+- Downloads are faster, and have a `Content-Length` header so that clients can show progress and detect a download that was cut off
+- Endpoints that make blocking calls to Argo or S3, and the readiness probe, run in a thread pool, so they no longer hold up other requests while they wait
+
+## [0.8.0]
+
+- Object endpoints (`upload`, `get`, `list`, `delete`, `/object/move`) accept the caller's own S3 credentials in the optional `X-S3-Access-Key` and `X-S3-Secret-Key` headers, so S3 enforces what they may do (e.g. that only the owner can use a user-specific bucket). If omitted, the API's generic S3 credentials are used. This is for potential future enablement of user-specific buckets.
+- The API's generic S3 identity can only upload to, list and delete from `ingress`, and read and list `egress`. It has no admin rights
+- `/object/bucket` (bucket creation) takes the admin's S3 credentials in the same headers, so the API itself no longer holds S3 admin rights. These are the `fridge-admin` S3 identity, set by the new `s3_admin_access_key` and `s3_admin_secret_key` stack config values on the isolated cluster, which the bucket setup job also uses
+- `/object/move` accepts a `bucket` for ingress copies, checks the files exist, and rejects empty names, absolute paths and `..`
+- Object keys containing `/` can now be downloaded and deleted
+- Removed unused object versioning support: the `versioning` parameter on `/object/bucket`, the `version` parameter on object get, delete and move, and the `version` field in upload responses
+- The `data-copy` workflow passes its parameters through environment variables and authenticates to S3 with the `fridge-argo` identity (the anonymous S3 identity is removed)
+
 ## [0.7.0]
 
 - Removed MinIO code paths and replaced with generic S3 codepaths

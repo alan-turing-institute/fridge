@@ -30,3 +30,5 @@ spec:
     - name: block-storage
       persistentVolumeClaim:
         claimName: block-storage-pvc
+  ttlStrategy:
+    secondsAfterCompletion: 3600 # 1 hour

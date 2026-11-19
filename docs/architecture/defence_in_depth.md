@@ -16,7 +16,7 @@ This ensures that only essential and intended traffic is permitted.
 The default policy is to block all traffic, unless explicitly allowed.
 
 The [networks](#arch-arch-tenancy-network) which host the cluster nodes must also strongly limit traffic.
-In particular, traffic between the {term}`Access Network` and {term}`Isolated Network` is stricly limited to what is neccesary,
+In particular, traffic between the {term}`Access Network` and {term}`Isolated Network` is strictly limited to what is necessary,
 and the {term}`Isolated Network` can make no outbound connections except for pulling container images from the [](#arch-arch-internal-harbor).
 
 The enforcing of network rules by two independent systems adds robustness.

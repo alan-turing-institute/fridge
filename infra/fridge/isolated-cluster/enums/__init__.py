@@ -6,6 +6,7 @@ class K8sEnvironment(Enum):
     AKS = "AKS"
     DAWN = "Dawn"
     K3S = "K3s"
+    ZENITH = "Zenith"
 
 
 @unique
@@ -29,17 +30,19 @@ tls_issuer_names = {
 
 
 class SoftwareVersion(Enum):
+
+    AMD_GPU_OPERATOR = "1.5.1"
     # renovate: datasource=helm depName=argo-workflows registryUrl=https://argoproj.github.io/argo-helm
     ARGO_WORKFLOWS = "2.0.6"  # Corresponds to Argo Workflows v4.1.3
 
     # renovate: datasource=helm depName=cert-manager/cert-manager registryUrl=https://charts.jetstack.io
-    CERT_MANAGER = "1.17.1"
+    CERT_MANAGER = "1.21.2"
 
     # renovate: datasource=docker depName=curl/curl
     CURL = "8.22.0"
 
     # renovate: datasource=docker depName=ghcr.io/alan-turing-institute/fridge
-    FRIDGE_API = "0.7.0"
+    FRIDGE_API = "0.9.0"
 
     # renovate: datasource=docker depName=haproxy
     HAPROXY = "3.4.6"
@@ -54,7 +57,7 @@ class SoftwareVersion(Enum):
     NODE_FEATURE_DISCOVERY = "0.18.3"
 
     # renovate: datasource=helm depName=seaweedfs/seaweedfs registryUrl=https://seaweedfs.github.io/seaweedfs/helm
-    SEAWEEDFS = "4.47.0"
+    SEAWEEDFS = "4.51.0"
 
     # renovate: datasource=helm depName=cert-manager/trust-manager registryUrl=https://charts.jetstack.io
-    TRUST_MANAGER = "0.21.1"
+    TRUST_MANAGER = "0.25.1"

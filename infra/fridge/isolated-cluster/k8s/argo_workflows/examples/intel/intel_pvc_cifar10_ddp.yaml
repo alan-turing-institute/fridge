@@ -134,3 +134,5 @@ spec:
       persistentVolumeClaim:
         claimName: block-storage-pvc
   serviceAccountName: argo-workflow
+  ttlStrategy:
+    secondsAfterCompletion: 3600 # 1 hour

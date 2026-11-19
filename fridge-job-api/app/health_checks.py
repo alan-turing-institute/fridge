@@ -21,7 +21,7 @@ async def liveness() -> dict:
 
 
 @router.get("/readyz", include_in_schema=False)
-async def readiness() -> dict:
+def readiness() -> dict:
     """
     Readiness probe endpoint.
     Confirms Argo and S3 are reachable and returns a JSON indicating when ready.
@@ -63,7 +63,8 @@ def _check_s3() -> dict:
     Returns a JSON indicating the status of the S3 service.
     """
     try:
-        s3_client.client.list_buckets()
+        # egress, as the API's generic identity can read it but not ingress
+        s3_client.client.head_bucket(Bucket="egress")
         return {"status": "ok"}
     except (ClientError, HTTPError, OSError) as e:
         return {"status": "unreachable", "error": str(e)}

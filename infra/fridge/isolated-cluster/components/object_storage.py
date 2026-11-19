@@ -1,3 +1,4 @@
+import hashlib
 import re
 import pulumi
 from pulumi import ComponentResource, Output, ResourceOptions
@@ -100,17 +101,38 @@ class ObjectStorage(ComponentResource):
                                 ),
                             }
                         ],
-                        "actions": ["Admin", "Read", "Write"],
+                        # Generic identity for the API: data only flows in through ingress and out through egress,
+                        # so it can write (upload and delete) but not read ingress, and read but not write egress. No Admin.
+                        # User-specific buckets and admin operations use credentials supplied by the caller.
+                        "actions": [
+                            "Write:ingress",
+                            "List:ingress",
+                            "Read:egress",
+                            "List:egress",
+                        ],
                     },
                     {
-                        "name": "anonymous",
-                        "credentials": [],
-                        "actions": ["Read:ingress", "Write:egress"],
-                    },
-                    {
+                        # Used by the data-copy workflow. Read is unscoped so that it can copy
+                        # from any (including per-user) ingress bucket; write is limited to egress.
                         "name": "fridge-argo",
                         "credentials": [self.argo_s3_credentials],
-                        "actions": ["Read:ingress", "Write:egress"],
+                        "actions": ["Read", "List", "Write:egress"],
+                    },
+                    {
+                        # Admin identity for bucket creation and other admin operations. Not given to the API:
+                        # admins supply these credentials to it per request in the X-S3-* headers.
+                        "name": "fridge-admin",
+                        "credentials": [
+                            {
+                                "accessKey": args.config.require_secret(
+                                    "s3_admin_access_key"
+                                ),
+                                "secretKey": args.config.require_secret(
+                                    "s3_admin_secret_key"
+                                ),
+                            }
+                        ],
+                        "actions": ["Admin", "Read", "List", "Write"],
                     },
                 ]
             },
@@ -184,8 +206,8 @@ class ObjectStorage(ComponentResource):
             values={
                 "admin": {
                     "enabled": True,
-                    "port": 23646,
-                    "grpcPort": 33646,
+                    "port": 12535,  # default port, shown here for transparency
+                    "grpcPort": 22535,  # default port, shown here for transparency
                     "secret": {
                         "existingSecret": seaweedfs_admin_secret.metadata.name,
                         "userKey": "adminUser",
@@ -244,7 +266,7 @@ class ObjectStorage(ComponentResource):
                         {
                             "name": "data",
                             "type": "persistentVolumeClaim",
-                            "storageClass": args.storage_classes.encrypted_storage_class.metadata.name,
+                            "storageClass": args.storage_classes.object_data_storage_name,
                             "size": seaweedfs_pool_size,
                             "maxVolumes": 0,
                         }
@@ -270,6 +292,8 @@ class ObjectStorage(ComponentResource):
                 },
                 "filer": {
                     "replicas": 1,
+                    # Encrypt each chunk on the volume servers with its own key, kept in the filer metadata
+                    "encryptVolumeData": True,
                     "logs": {
                         "type": "emptyDir",
                     },
@@ -303,12 +327,16 @@ class ObjectStorage(ComponentResource):
                     "httpsPort": 8334,
                     "enableAuth": True,
                     "existingConfigSecret": seaweedfs_s3_secret.metadata.name,
+                    # The S3 gateway uploads chunks straight to the volume servers, so it needs its own
+                    # encryption flag; filer.encryptVolumeData only covers writes that go through the filer
+                    "extraArgs": ["-encryptVolumeData"],
+                    # The S3 gateway only reads its identities at startup, so roll the pod whenever they change
+                    "podAnnotations": {
+                        "checksum/s3-config": seaweedfs_s3_config.apply(
+                            lambda config: hashlib.sha256(config.encode()).hexdigest()
+                        ),
+                    },
                     "tlsSecret": "seaweedfs-tls",
-                    # createBuckets is disabled due to https://github.com/seaweedfs/seaweedfs/issues/10502; renable it once fixed upstream
-                    # "createBuckets": [
-                    #     {"name": "ingress", "anonymousRead": False},
-                    #     {"name": "egress", "anonymousRead": True},
-                    # ],
                     "podSecurityContext": {
                         "enabled": True,
                         "fsGroup": 1000,

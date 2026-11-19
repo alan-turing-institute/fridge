@@ -16,6 +16,7 @@ from pulumi_kubernetes.core.v1 import (
     EnvVarArgs,
     EnvVarSourceArgs,
     Namespace,
+    ObjectFieldSelectorArgs,
     PersistentVolumeClaim,
     PersistentVolumeClaimSpecArgs,
     PersistentVolumeClaimVolumeSourceArgs,
@@ -30,6 +31,7 @@ from pulumi_kubernetes.core.v1 import (
 )
 from pulumi_kubernetes.meta.v1 import LabelSelectorArgs, ObjectMetaArgs
 
+from config_helpers import NETBIRD_CLOUD_MANAGEMENT_URL, require_fields
 from enums import K8sEnvironment, PodSecurityStandard, SoftwareVersion
 
 
@@ -58,19 +60,20 @@ class VpnServer(ComponentResource):
 
         fridge_api_ip_raw = args.config.require("fridge_api_ip_address").strip()
         fridge_api_ip = fridge_api_ip_raw.split("/", 1)[0]
-        if k8s_environment == K8sEnvironment.AKS:
-            fridge_api_endpoint = f"{fridge_api_ip}:443"
-            isolated_k8s_api_endpoint = (
-                f"{args.config.require('isolated_cluster_api_endpoint')}:443"
-            )
-        elif k8s_environment == K8sEnvironment.DAWN:
-            fridge_api_endpoint = f"{fridge_api_ip}:30180"
-            isolated_k8s_api_endpoint_raw = args.config.require(
-                "isolated_cluster_api_endpoint"
-            ).strip()
-            isolated_k8s_api_endpoint = (
-                f"{isolated_k8s_api_endpoint_raw.split('/', 1)[0]}:6443"
-            )
+        match k8s_environment:
+            case K8sEnvironment.AKS:
+                fridge_api_endpoint = f"{fridge_api_ip}:443"
+                isolated_k8s_api_endpoint = (
+                    f"{args.config.require('isolated_cluster_api_endpoint')}:443"
+                )
+            case K8sEnvironment.DAWN | K8sEnvironment.ZENITH:
+                fridge_api_endpoint = f"{fridge_api_ip}:30180"
+                isolated_k8s_api_endpoint_raw = args.config.require(
+                    "isolated_cluster_api_endpoint"
+                ).strip()
+                isolated_k8s_api_endpoint = (
+                    f"{isolated_k8s_api_endpoint_raw.split('/', 1)[0]}:6443"
+                )
 
         with open("./k8s/haproxy/haproxy.cfg", "r") as f:
             haproxy_cfg_file = Template(f.read()).substitute(
@@ -88,6 +91,12 @@ class VpnServer(ComponentResource):
             opts=child_opts,
         )
 
+        require_fields(
+            args.config,
+            "netbird",
+            ["hostname", "setup_key"],
+            secret_fields=["setup_key"],
+        )
         netbird_config = args.config.require_secret_object("netbird")
 
         setup_key_secret = Secret(
@@ -147,7 +156,8 @@ class VpnServer(ComponentResource):
                                     EnvVarArgs(
                                         name="NB_MANAGEMENT_URL",
                                         value=netbird_config.apply(
-                                            lambda config: config["management_url"]
+                                            lambda config: config.get("management_url")
+                                            or NETBIRD_CLOUD_MANAGEMENT_URL
                                         ),
                                     ),
                                     EnvVarArgs(
@@ -176,12 +186,28 @@ class VpnServer(ComponentResource):
                             ContainerArgs(
                                 name="haproxy",
                                 image=f"haproxy:{SoftwareVersion.HAPROXY.value}",
+                                # The metrics frontend binds to this address
+                                env=[
+                                    EnvVarArgs(
+                                        name="POD_IP",
+                                        value_from=EnvVarSourceArgs(
+                                            field_ref=ObjectFieldSelectorArgs(
+                                                field_path="status.podIP"
+                                            )
+                                        ),
+                                    ),
+                                ],
                                 ports=[
                                     ContainerPortArgs(
                                         container_port=8000, protocol="TCP"
                                     ),
                                     ContainerPortArgs(
                                         container_port=6443, protocol="TCP"
+                                    ),
+                                    ContainerPortArgs(
+                                        name="metrics",
+                                        container_port=8404,
+                                        protocol="TCP",
                                     ),
                                 ],
                                 volume_mounts=[

@@ -1,0 +1,18 @@
+# Longhorn is only installed on Dawn and Zenith
+# See https://longhorn.io/docs/1.9.0/monitoring/
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: longhorn
+  namespace: monitoring-system
+  labels:
+    release: kube-prometheus-stack
+spec:
+  namespaceSelector:
+    matchNames:
+      - longhorn-system
+  selector:
+    matchLabels:
+      app: longhorn-manager
+  podMetricsEndpoints:
+    - port: manager

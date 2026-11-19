@@ -51,8 +51,7 @@ class StorageClasses(ComponentResource):
                 )
 
                 standard_storage_name = "azurefile"
-                standard_supports_rwm = True
-            case K8sEnvironment.DAWN:
+            case K8sEnvironment.DAWN | K8sEnvironment.ZENITH:
                 longhorn_ns = Namespace(
                     "longhorn-system",
                     metadata=ObjectMetaArgs(
@@ -72,18 +71,6 @@ class StorageClasses(ComponentResource):
                     ),
                     # Add a toleration for the GPU node, to allow Longhorn to schedule pods/create volumes there
                     values={
-                        "global": {
-                            "tolerations": [
-                                {
-                                    "key": "gpu.intel.com/i915",
-                                    "operator": "Exists",
-                                    "effect": "NoSchedule",
-                                }
-                            ]
-                        },
-                        "defaultSettings": {
-                            "taintToleration": "gpu.intel.com/i915:NoSchedule"
-                        },
                         "persistence": {"defaultClassReplicaCount": 2},
                     },
                     opts=ResourceOptions.merge(
@@ -111,13 +98,26 @@ class StorageClasses(ComponentResource):
                     ),
                 )
 
+                cinder_storage_class = StorageClass(
+                    "fridge_cinder_storage_class",
+                    allow_volume_expansion=True,
+                    metadata=ObjectMetaArgs(
+                        name=f"{STORAGE_CLASS_NAME}-cinder",
+                    ),
+                    provisioner="cinder.csi.openstack.org",
+                    reclaim_policy="Delete",
+                    volume_binding_mode="WaitForFirstConsumer",
+                    opts=ResourceOptions.merge(
+                        child_opts,
+                        ResourceOptions(depends_on=[longhorn]),
+                    ),
+                )
+
                 standard_storage_name = storage_class.metadata.name
-                standard_supports_rwm = True
+                self.cinder_storage_class_name = cinder_storage_class.metadata.name
             case K8sEnvironment.K3S:
                 storage_class = StorageClass.get("fridge-storage-class", "local-path")
                 standard_storage_name = storage_class.metadata.name
-                standard_supports_rwm = False
 
         self.encrypted_storage_class = storage_class
         self.standard_storage_name = standard_storage_name
-        self.standard_supports_rwm = standard_supports_rwm

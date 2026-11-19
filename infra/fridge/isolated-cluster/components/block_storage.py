@@ -52,6 +52,7 @@ class BlockStorage(ComponentResource):
                     },
                 ),
             ),
+            opts=child_opts,
         )
 
         self.block_storage_pvc = block_storage_pvc.metadata.name

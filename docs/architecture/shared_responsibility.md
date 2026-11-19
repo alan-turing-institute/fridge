@@ -4,7 +4,7 @@ short_title: Shared Responsibility Model
 (arch-shared-responsibility)=
 # Shared Responsibility Model
 
-Security, governance and compliance in FRIDGE is a shared responsibility between the {term}`TRE Operator Organisation` and the{term}`FRIDGE Hosting Organisation`.
+Security, governance and compliance in FRIDGE is a shared responsibility between the {term}`TRE Operator Organisation` and the {term}`FRIDGE Hosting Organisation`.
 The {term}`Resource Allocator` also plays a more minor role in judging the suitability of a project.
 A summary of the distribution of responsibilities, and their relation to the [5 Safes](https://ukdataservice.ac.uk/help/secure-lab/what-is-the-five-safes-framework/) is shown in [](#fig-shared-responsibility)
 

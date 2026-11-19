@@ -1,0 +1,38 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: coco-prepare
+  namespace: argo-workflows
+spec:
+  entrypoint: prepare
+  serviceAccountName: argo-workflow
+  templates:
+    - name: prepare
+      inputs:
+        artifacts:
+          - name: script
+            path: /work/prepare.py
+            s3:
+              key: prepare.py
+          - name: images
+            path: /work/val2017.zip
+            s3:
+              key: val2017.zip
+          - name: annotations
+            path: /work/annotations_trainval2017.zip
+            s3:
+              key: annotations_trainval2017.zip
+      container:
+        image: python:3.12-slim
+        command: ["python3", "/work/prepare.py"]
+        env:
+          - name: PYTHONUNBUFFERED
+            value: "1"
+        resources:
+          requests:
+            cpu: "2"
+            memory: 4Gi
+            ephemeral-storage: 4Gi
+          limits:
+            memory: 4Gi
+            ephemeral-storage: 8Gi

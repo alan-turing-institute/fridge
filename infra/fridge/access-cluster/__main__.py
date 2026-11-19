@@ -88,9 +88,29 @@ harbor = components.ContainerRegistry(
         config=config,
         tls_environment=tls_environment,
         storage_classes=storage_classes,
+        dev_ca_cert=cert_manager.dev_ca_cert,
     ),
     opts=ResourceOptions(
         depends_on=[ingress_nginx, cert_manager, storage_classes],
+    ),
+)
+
+# Monitoring
+# On Dawn and Zenith, keep the monitoring volumes on Cinder rather than Longhorn,
+# which replicates them onto the nodes' local disks
+monitoring = components.Monitoring(
+    "monitoring",
+    components.MonitoringArgs(
+        config=config,
+        k8s_environment=k8s_environment,
+        storage_class_name=(
+            storage_classes.cinder_storage_class_name
+            if k8s_environment in (K8sEnvironment.DAWN, K8sEnvironment.ZENITH)
+            else storage_classes.standard_storage_name
+        ),
+    ),
+    opts=ResourceOptions(
+        depends_on=[storage_classes],
     ),
 )
 
@@ -108,6 +128,7 @@ resources = [
     harbor.configure_containerd_daemonset,
     harbor,
     ingress_nginx,
+    monitoring,
     storage_classes,
     vpn_server,
 ]
@@ -118,6 +139,7 @@ network_policies = components.NetworkPolicies(
         config=config,
         k8s_environment=k8s_environment,
         harbor_fqdn=harbor.harbor_fqdn,
+        alertmanager_webhook_url=monitoring.teams_webhook_url,
     ),
     opts=ResourceOptions(
         depends_on=resources,
@@ -131,6 +153,5 @@ if k8s_environment == K8sEnvironment.AKS:
     pulumi.export("harbor_ip_address", harbor.harbor_ip)
     pulumi.export("ingress_ip", ingress_nginx.ingress_ip)
     pulumi.export("ingress_ports", ingress_nginx.ingress_ports)
-if tls_environment != TlsEnvironment.PRODUCTION:
-    pulumi.export("harbor_ca_cert", harbor.harbor_ca_cert)
-pulumi.export("harbor_uses_custom_ca", harbor.harbor_uses_custom_ca)
+if harbor.harbor_ca_bundle is not None:
+    pulumi.export("harbor_ca_bundle", harbor.harbor_ca_bundle)

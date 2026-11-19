@@ -1,5 +1,5 @@
 from pulumi import ComponentResource, ResourceOptions
-from pulumi_kubernetes.yaml import ConfigFile
+from pulumi_kubernetes.yaml.v2 import ConfigGroup
 
 from enums import K8sEnvironment
 
@@ -21,63 +21,47 @@ class TestWorkflows(ComponentResource):
         super().__init__("fridge:k8s:TestWorkflows", name, None, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
 
-        if args.run_tests and args.k8s_environment == K8sEnvironment.DAWN:
-            intel_pvc_attention = ConfigFile(
-                "intel-pvc-attention",
-                file="./k8s/argo_workflows/examples/intel_pvc_attention.yaml",
-                opts=child_opts,
-            )
+        if args.run_tests:
+            match args.k8s_environment:
+                case K8sEnvironment.DAWN:
+                    intel_examples = ConfigGroup(
+                        "intel-examples",
+                        files=[
+                            "./k8s/argo_workflows/examples/intel/intel_pvc_attention.yaml",
+                            "./k8s/argo_workflows/examples/intel/intel_pvc_batched_matmul.yaml",
+                            "./k8s/argo_workflows/examples/intel/intel_pvc_cifar10.yaml",
+                            "./k8s/argo_workflows/examples/intel/intel_pvc_cifar10_ddp.yaml",
+                            "./k8s/argo_workflows/examples/intel/intel_pvc_check.yaml",
+                            "./k8s/argo_workflows/examples/intel/intel_pvc_conv1d.yaml",
+                            "./k8s/argo_workflows/examples/intel/intel_pvc_simulate.yaml",
+                            "./k8s/argo_workflows/examples/intel/intel_pvc_simulate_dual.yaml",
+                            "./k8s/argo_workflows/examples/intel/intel_pvc_resnet50.yaml",
+                            "./k8s/argo_workflows/examples/intel/intel_pvc_resnet50_ddp.yaml",
+                        ],
+                        opts=child_opts,
+                    )
 
-            intel_batched_matmul = ConfigFile(
-                "intel-batched-matmul",
-                file="./k8s/argo_workflows/examples/intel_pvc_batched_matmul.yaml",
-                opts=child_opts,
-            )
-
-            intel_cifar10 = ConfigFile(
-                "intel-cifar10",
-                file="./k8s/argo_workflows/examples/intel_pvc_cifar10.yaml",
-                opts=child_opts,
-            )
-
-            intel_cifar10_ddp = ConfigFile(
-                "intel-cifar10-ddp",
-                file="./k8s/argo_workflows/examples/intel_pvc_cifar10_ddp.yaml",
-                opts=child_opts,
-            )
-
-            intel_conv1d = ConfigFile(
-                "intel-conv1d",
-                file="./k8s/argo_workflows/examples/intel_pvc_conv1d.yaml",
-                opts=child_opts,
-            )
-
-            intel_pvc_check = ConfigFile(
-                "intel-pvc-check",
-                file="./k8s/argo_workflows/examples/intel_pvc_check.yaml",
-                opts=child_opts,
-            )
-
-            intel_small_cnn = ConfigFile(
-                "intel-small-cnn",
-                file="./k8s/argo_workflows/examples/intel_pvc_simulate.yaml",
-                opts=child_opts,
-            )
-
-            intel_simulate_dual = ConfigFile(
-                "intel-simulate-dual",
-                file="./k8s/argo_workflows/examples/intel_pvc_simulate_dual.yaml",
-                opts=child_opts,
-            )
-
-            intel_resnet50 = ConfigFile(
-                "intel-resnet50",
-                file="./k8s/argo_workflows/examples/intel_pvc_resnet50.yaml",
-                opts=child_opts,
-            )
-
-            intel_resnet50_ddp = ConfigFile(
-                "intel-resnet50-ddp",
-                file="./k8s/argo_workflows/examples/intel_pvc_resnet50_ddp.yaml",
-                opts=child_opts,
-            )
+                    self.register_outputs(
+                        {
+                            "intel_examples": intel_examples,
+                        }
+                    )
+                case K8sEnvironment.ZENITH:
+                    amd_examples = ConfigGroup(
+                        "amd-examples",
+                        files=[
+                            "./k8s/argo_workflows/examples/amd/amd_mi355x_attention.yaml",
+                            "./k8s/argo_workflows/examples/amd/amd_mi355x_batched_matmul.yaml",
+                            "./k8s/argo_workflows/examples/amd/amd_mi355x_cifar10.yaml",
+                            "./k8s/argo_workflows/examples/amd/amd_mi355x_check.yaml",
+                            "./k8s/argo_workflows/examples/amd/amd_mi355x_conv1d.yaml",
+                            "./k8s/argo_workflows/examples/amd/amd_mi355x_simulate.yaml",
+                            "./k8s/argo_workflows/examples/amd/amd_mi355x_resnet50.yaml",
+                        ],
+                        opts=child_opts,
+                    )
+                    self.register_outputs(
+                        {
+                            "amd_examples": amd_examples,
+                        }
+                    )

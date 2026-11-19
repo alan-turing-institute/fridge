@@ -1,27 +1,29 @@
 apiVersion: argoproj.io/v1alpha1
 kind: WorkflowTemplate
 metadata:
-  name: intel-gpu-simulate-cnn
+  name: amd-gpu-simulate-cnn
   namespace: argo-workflows
 spec:
-  entrypoint: intel-gpu-cnn
+  entrypoint: amd-gpu-cnn
   securityContext:
     supplementalGroups:
-      - 110
+      - 992
   templates:
-    - name: intel-gpu-cnn
+    - name: amd-gpu-cnn
       container:
         volumeMounts:
           - name: block-storage
             mountPath: /tmp
         resources:
           limits:
-            gpu.intel.com/i915: 1
-        image: intel/intel-extension-for-pytorch:2.8.10-xpu
+            amd.com/gpu: 1
+        image: rocm/pytorch:rocm10.1.0_ubuntu26.04_py3.14_pytorch_release_2.14.0
         command: ["python3"]
-        args: ["/tmp/single_xpu_example.py"]
+        args: ["/tmp/single_gpu_example.py"]
   serviceAccountName: argo-workflow
   volumes:
     - name: block-storage
       persistentVolumeClaim:
         claimName: block-storage-pvc
+  ttlStrategy:
+    secondsAfterCompletion: 3600 # 1 hour

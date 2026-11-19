@@ -15,6 +15,7 @@ spec:
       initContainers:
         - name: configure-hosts
           image: busybox
+          imagePullPolicy: IfNotPresent
           command:
             - /bin/sh
             - -c
@@ -44,6 +45,7 @@ spec:
       containers:
         - name: wait
           image: registry.k8s.io/pause:3.8
+          imagePullPolicy: IfNotPresent
           resources:
             requests:
               cpu: 10m

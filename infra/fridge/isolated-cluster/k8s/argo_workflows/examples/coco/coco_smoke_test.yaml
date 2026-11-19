@@ -1,0 +1,77 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: coco-smoke-test
+  namespace: argo-workflows
+spec:
+  entrypoint: smoke-test
+  serviceAccountName: argo-workflow
+  securityContext:
+    supplementalGroups:
+      - 992
+  arguments:
+    parameters:
+      - name: num-images
+        value: "10"
+  templates:
+    - name: smoke-test
+      inputs:
+        artifacts:
+          - name: script
+            path: /work/coco_smoke_test.py
+            s3:
+              key: coco_smoke_test.py
+          - name: weights
+            path: /work/model.pth
+            s3:
+              key: maskrcnn_resnet50_fpn_v2_coco-73cbd019.pth
+          - name: images
+            path: /work/val2017.zip
+            s3:
+              key: val2017.zip
+          - name: annotations
+            path: /work/annotations_trainval2017.zip
+            s3:
+              key: annotations_trainval2017.zip
+      outputs:
+        artifacts:
+          - name: predictions
+            path: /tmp/coco-predictions.json
+            archive:
+              none: {}
+            s3:
+              endpoint: seaweedfs-s3.seaweedfs.svc.cluster.local:8334
+              region: eu-west-2
+              bucket: egress
+              key: experiments/coco/{{workflow.name}}/predictions.json
+              accessKeySecret:
+                name: argo-artifacts-s3
+                key: accesskey
+              secretKeySecret:
+                name: argo-artifacts-s3
+                key: secretkey
+              caSecret:
+                name: trusted-certificates
+                key: ca-certificates.crt
+      container:
+        image: rocm/pytorch:rocm10.1.0_ubuntu26.04_py3.14_pytorch_release_2.14.0
+        command: ["python3", "/work/coco_smoke_test.py"]
+        env:
+          - name: COCO_WORK_DIR
+            value: /tmp/coco2017
+          - name: COCO_NUM_IMAGES
+            value: "{{workflow.parameters.num-images}}"
+          - name: MODEL_WEIGHTS
+            value: /work/model.pth
+          - name: PYTHONUNBUFFERED
+            value: "1"
+        resources:
+          requests:
+            cpu: "4"
+            memory: 16Gi
+            ephemeral-storage: 6Gi
+          limits:
+            cpu: "8"
+            memory: 16Gi
+            ephemeral-storage: 12Gi
+            amd.com/gpu: 1

@@ -6,6 +6,7 @@ class K8sEnvironment(Enum):
     AKS = "AKS"
     DAWN = "Dawn"
     K3S = "K3s"
+    ZENITH = "Zenith"
 
 
 @unique
@@ -34,16 +35,17 @@ tls_issuer_names = {
 @unique
 class SoftwareVersion(Enum):
     # renovate: datasource=helm depName=cert-manager/cert-manager registryUrl=https://charts.jetstack.io
-    CERT_MANAGER = "1.19.4"
+    CERT_MANAGER = "1.21.2"
     # NOTE: renovate does not track images marked as "latest"
     CURL_JQ = "latest"
     # renovate: datasource=docker depName=haproxy
     HAPROXY = "3.4.6"
     # renovate: datasource=helm depName=harbor registryUrl=https://goharbor.io
-    HARBOR = "1.17.1"
+    HARBOR = "1.19.2"
     # renovate: datasource=helm depName=ingress-nginx registryUrl=https://kubernetes.github.io/ingress-nginx
     INGRESS_NGINX = "4.13.2"
     # renovate: datasource=helm depName=longhorn/longhorn registryUrl=https://charts.longhorn.io
     LONGHORN = "1.9.0"
+    KUBE_PROMETHEUS_STACK = "92.17.0"
     # renovate: datasource=docker depName=netbirdio/netbird
     NETBIRD = "0.80.0"

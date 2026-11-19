@@ -1,9 +1,9 @@
 # Add a New Target
 
-FRIDGE is deployed to a Kubernetes (k8s) cluster that must meet certain requirements
+FRIDGE is deployed to a Kubernetes (k8s) cluster that must meet certain requirements:
 
-- Cilium Container network Interface CNI # for network policy enforcement
-- Bring Your Own Key (BYOK) CSI Container Storage Interface
+- Cilium Container Network Interface (CNI) for network policy enforcement
+- Bring Your Own Key (BYOK) Container Storage Interface (CSI) driver
 
 ## Define a new K8s environment
 
@@ -38,7 +38,7 @@ Each target must define,
 :   String giving the name of a storage class for non-sensitive data.
 
 `standard_supports_rwm`
-:   Boolean indicating whether the storage class named `standard_storage_name` support [`ReadWriteMany`](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes).
+:   Boolean indicating whether the storage class named `standard_storage_name` supports [`ReadWriteMany`](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes).
 
 ```python
 {%

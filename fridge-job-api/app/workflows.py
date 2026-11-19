@@ -19,7 +19,7 @@ router = APIRouter(tags=["Argo Workflows"])
 
 
 @router.get("/workflows/{namespace}", tags=["Argo Workflows"])
-async def get_workflows(
+def get_workflows(
     namespace: Annotated[str, "The namespace to list workflows from"],
     verbose: Annotated[
         bool, "Return verbose output - full details of all workflows"
@@ -43,7 +43,7 @@ async def get_workflows(
 
 
 @router.get("/workflows/{namespace}/{workflow_name}/log", tags=["Argo Workflows"])
-async def get_workflow_log(
+def get_workflow_log(
     namespace: str,
     workflow_name: str,
     pod_name: str | None = None,
@@ -79,7 +79,7 @@ async def get_workflow_log(
 
 
 @router.get("/workflows/{namespace}/{workflow_name}", tags=["Argo Workflows"])
-async def get_single_workflow(
+def get_single_workflow(
     namespace: Annotated[str, "The namespace to list workflows from"],
     workflow_name: Annotated[str, "The name of the workflow to retrieve"],
     verbose: Annotated[
@@ -104,7 +104,7 @@ async def get_single_workflow(
 
 
 @router.get("/workflowtemplates/{namespace}", tags=["Argo Workflows"])
-async def list_workflow_templates(
+def list_workflow_templates(
     namespace: str,
     verbose: Annotated[
         bool, "Return verbose output - full details of the templates"
@@ -130,7 +130,7 @@ async def list_workflow_templates(
 
 
 @router.get("/workflowtemplates/{namespace}/{template_name}", tags=["Argo Workflows"])
-async def get_workflow_template(
+def get_workflow_template(
     namespace: str,
     template_name: str,
     verbose: Annotated[
@@ -161,7 +161,7 @@ async def get_workflow_template(
 
 
 @router.post("/workflowevents/from_template/", tags=["Argo Workflows"])
-async def submit_workflow_from_template(
+def submit_workflow_from_template(
     workflow_template: WorkflowTemplate,
     verbose: Annotated[
         bool, "Return verbose output - full details of the workflow"

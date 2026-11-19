@@ -1,23 +1,23 @@
 apiVersion: argoproj.io/v1alpha1
 kind: WorkflowTemplate
 metadata:
-  name: intel-cifar10
+  name: amd-cifar10
   namespace: argo-workflows
 spec:
-  entrypoint: intel-cifar10
+  entrypoint: amd-cifar10
   securityContext:
     supplementalGroups:
-      - 110
+      - 992
   templates:
-    - name: intel-cifar10
+    - name: amd-cifar10
       container:
         volumeMounts:
         - name: block-storage
           mountPath: /mnt/block-storage/
         resources:
           limits:
-            gpu.intel.com/i915: 1
-        image: intel/intel-extension-for-pytorch:2.8.10-xpu
+            amd.com/gpu: 1
+        image: rocm/pytorch:rocm10.1.0_ubuntu26.04_py3.14_pytorch_release_2.14.0
         command: ["bash", "-c"]
         args:
           - |
@@ -33,10 +33,10 @@ spec:
             import torch.optim as optim
             import torchvision
             import torchvision.transforms as transforms
-            print('XPU available:', torch.xpu.is_available())
-            print('XPU count:', torch.xpu.device_count())
+            print('GPU available:', torch.cuda.is_available())
+            print('GPU count:', torch.cuda.device_count())
 
-            device = torch.device('xpu')
+            device = torch.device('cuda')
             # CIFAR-10 transforms
             transform = transforms.Compose([
                 transforms.ToTensor(),
@@ -73,7 +73,7 @@ spec:
             criterion = nn.CrossEntropyLoss()
             optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-            print('Warming up JIT...')
+            print('Warming up...')
             warmup_inputs, warmup_labels = next(iter(trainloader))
             warmup_inputs, warmup_labels = warmup_inputs.to(device), warmup_labels.to(device)
             for _ in range(3):
@@ -82,7 +82,7 @@ spec:
                 loss = criterion(outputs, warmup_labels)
                 loss.backward()
                 optimizer.step()
-            torch.xpu.synchronize()
+            torch.cuda.synchronize()
 
             print('Beginning benchmark training epoch...')
             start = time.time()
@@ -101,7 +101,7 @@ spec:
                     acc = predicted.eq(labels).sum().item() / labels.size(0)
                     print(f'Batch {i}, Loss {loss.item():.4f}, Batch Acc {acc:.2%}')
 
-            torch.xpu.synchronize() if device.type == 'xpu' else None
+            torch.cuda.synchronize()
             end = time.time()
 
             print('Training epoch time:', end - start, 'seconds')
@@ -112,3 +112,5 @@ spec:
       persistentVolumeClaim:
         claimName: block-storage-pvc
   serviceAccountName: argo-workflow
+  ttlStrategy:
+    secondsAfterCompletion: 3600 # 1 hour

@@ -32,7 +32,7 @@ spec:
         - world
   ingress:
     - fromEntities:
-        - world
+        - cluster
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
@@ -47,7 +47,7 @@ spec:
       k8s:app.kubernetes.io/component: controller
   ingress:
     - fromEntities:
-        - world
+        - remote-node
       toPorts:
         - ports:
             - port: "10254"
@@ -69,15 +69,15 @@ spec:
   # https://kubernetes-sigs.github.io/metrics-server/
   ingress:
     - fromEntities:
-        - world
+        - remote-node
       toPorts:
         - ports:
             - port: "10250"
               protocol: TCP
   egress:
     - toEntities:
-        - host
         - remote-node
+        - host
       toPorts:
         - ports:
             - port: "6443"
@@ -96,168 +96,13 @@ spec:
       app: webhook
   ingress:
     - fromEntities:
-        - world
+        - remote-node
       toPorts:
         - ports:
             - port: "6080"
               protocol: TCP
             - port: "10250"
               protocol: TCP
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
-  name: hubble-ui-dawn
-  namespace: kube-system
-spec:
-  endpointSelector:
-    matchLabels:
-      k8s-app: hubble-ui
-  ingress:
-    - fromEntities:
-        - world
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
-  name: hubble-relay-dawn
-  namespace: kube-system
-spec:
-  endpointSelector:
-    matchLabels:
-      k8s-app: hubble-relay
-  ingress:
-    - fromEntities:
-        - world
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
-  name: longhorn-allow-manager-kubelets
-  namespace: longhorn-system
-spec:
-  endpointSelector:
-    matchLabels:
-      app: longhorn-manager
-  ingress:
-    - fromEntities:
-        - world
-      toPorts:
-        - ports:
-            - port: "9501"
-              protocol: TCP
-            - port: "9502"
-              protocol: TCP
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
-  name: longhorn-allow-managed-by
-  namespace: longhorn-system
-spec:
-  endpointSelector:
-    matchLabels:
-      longhorn.io/managed-by: longhorn-manager
-  ingress:
-    - fromEntities:
-        - world
-      toPorts:
-        - ports:
-            - port: "3260"
-              protocol: TCP
-            - port: "2049"
-              protocol: TCP
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
-  name: longhorn-allow-csiplugin
-  namespace: longhorn-system
-spec:
-  endpointSelector:
-    matchLabels:
-      app: longhorn-csi-plugin
-  ingress:
-    - fromEntities:
-        - world
-      toPorts:
-        - ports:
-            - port: "9808"
-              protocol: TCP
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
-  name: cert-manager-controller
-  namespace: cert-manager
-spec:
-  endpointSelector:
-    matchLabels:
-      app: cert-manager
-  ingress:
-    - fromEntities:
-        - world
-      toPorts:
-        - ports:
-            - port: "9403"
-              protocol: TCP
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
-  name: harbor-dawn
-  namespace: harbor
-spec:
-  endpointSelector:
-    matchLabels:
-      app: harbor
-  ingress:
-    - fromEntities:
-        - world
-      toPorts:
-        - ports:
-            - port: "8080"
-              protocol: TCP
-            - port: "5000"
-              protocol: TCP
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
-  name: harbor-dawn-redis
-  namespace: harbor
-spec:
-  endpointSelector:
-    matchLabels:
-      app: harbor
-      component: redis
-  ingress:
-    - fromEntities:
-        - world
-      toPorts:
-        - ports:
-            - port: "6379"
-              protocol: TCP
----
-apiVersion: "cilium.io/v2"
-kind: CiliumNetworkPolicy
-metadata:
-  name: harbor-dawn-coredns
-  namespace: harbor
-spec:
-  endpointSelector:
-    matchLabels:
-      app: harbor
-      component: core
-  ingress:
-    - fromEndpoints:
-        - matchLabels:
-            k8s-app: kube-dns
-            k8s:io.kubernetes.pod.namespace: kube-system
-      toPorts:
-        - ports:
-            - port: "53"
-              protocol: ANY
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
@@ -274,4 +119,81 @@ spec:
       toPorts:
         - ports:
             - port: "6443"
+              protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: cinder-csi-cambs
+  namespace: kube-system
+spec:
+  endpointSelector:
+    matchLabels:
+      app: csi-cinder-controllerplugin
+  egress:
+    - toEntities:
+        - kube-apiserver
+      toPorts:
+        - ports:
+          - port: "6443"
+            protocol: ANY
+    - toEndpoints:
+        - matchLabels:
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+    - toCIDR:
+        # Hardcoded Cinder IP address
+        - 128.232.222.1/32
+      toPorts:
+        - ports:
+            # Cinder API endpoints
+            # 8774 allows pods to mount volumes from Cinder
+            - port: "8774"
+              protocol: TCP
+            # 8776 and 5000 allow pods to create volumes in Cinder
+            - port: "8776"
+              protocol: TCP
+            - port: "5000"
+              protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: prometheus-scrape-dawn
+  namespace: monitoring-system
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: prometheus
+  egress:
+    # Node addresses can be classed as `world` on Dawn (see the note at the top),
+    # so allow the kubelet and node-exporter ports to world as well
+    - toEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "10250"
+              protocol: TCP
+            - port: "9100"
+              protocol: TCP
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: webhook-prometheus-operator
+  namespace: monitoring-system
+  # Webhook calls from the API server arrive from the remote-node entity on Dawn
+spec:
+  endpointSelector:
+    matchLabels:
+      app: kube-prometheus-stack-operator
+  ingress:
+    - fromEntities:
+        - remote-node
+      toPorts:
+        - ports:
+            - port: "10250"
               protocol: TCP

@@ -43,6 +43,9 @@ class Ingress(ComponentResource):
                         create_namespace=False,
                         values={
                             "controller": {
+                                # Expose request and certificate metrics on port
+                                # 10254 for Prometheus
+                                "metrics": {"enabled": True},
                                 "nodeSelector": {"kubernetes.io/os": "linux"},
                                 "service": {
                                     "externalTrafficPolicy": "Local",
@@ -71,7 +74,7 @@ class Ingress(ComponentResource):
                     lambda ports: [item.port for item in ports]
                 )
 
-            case K8sEnvironment.DAWN:
+            case K8sEnvironment.DAWN | K8sEnvironment.ZENITH:
                 # Dawn specific configuration
                 ingress_nginx_ns = Namespace.get("ingress-nginx-ns", "ingress-nginx")
                 ingress_nginx = Service.get(

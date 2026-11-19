@@ -54,15 +54,17 @@ class ApiServerArgs:
         cluster_issuer: CustomResource,
         config: pulumi.Config,
         fridge_api_ip: Output[str],
+        k8s_environment: K8sEnvironment,
         s3_url: Output[str],
         verify_tls: bool = True,
     ) -> None:
         self.argo_server_ns = argo_server_ns
         self.argo_workflows_ns = argo_workflows_ns
+        self.cluster_issuer = cluster_issuer
         self.config = config
         self.fridge_api_ip = fridge_api_ip
+        self.k8s_environment = k8s_environment
         self.s3_url = s3_url
-        self.cluster_issuer = cluster_issuer
         self.verify_tls = verify_tls
 
 
@@ -291,17 +293,26 @@ class ApiServer(ComponentResource):
                                 ],
                                 image=API_SERVER_IMAGE,
                                 image_pull_policy="Always",
+                                # Listen on localhost only: the API is reached through the HAProxy sidecar,
+                                # which terminates TLS, so plain HTTP is never exposed outside the pod
+                                command=[
+                                    "fastapi",
+                                    "run",
+                                    "--host",
+                                    "127.0.0.1",
+                                    "app/main.py",
+                                ],
                                 # for liveness and readiness probes, use an initial delay to allow the other services to start up
+                                # all probes go through HAProxy on 8443, as the API itself only listens on localhost
                                 # use a higher failure threshold for readiness probe to allow for temporary unavailability of Argo or MinIO
                                 liveness_probe=ProbeArgs(
                                     http_get=HTTPGetActionArgs(
-                                        path="/healthz", port=8000
+                                        path="/healthz", port=8443, scheme="HTTPS"
                                     ),
                                     initial_delay_seconds=5,
                                     period_seconds=20,
                                     failure_threshold=3,
                                 ),
-                                ports=[ContainerPortArgs(container_port=8000)],
                                 readiness_probe=ProbeArgs(
                                     http_get=HTTPGetActionArgs(
                                         path="/readyz", port=8443, scheme="HTTPS"
@@ -325,7 +336,7 @@ class ApiServer(ComponentResource):
                                 ),
                                 startup_probe=ProbeArgs(
                                     http_get=HTTPGetActionArgs(
-                                        path="/healthz", port=8000
+                                        path="/healthz", port=8443, scheme="HTTPS"
                                     ),
                                     initial_delay_seconds=5,
                                     period_seconds=10,
@@ -430,35 +441,36 @@ class ApiServer(ComponentResource):
                     "fridge_api_ip"
                 ),
             }
-            if K8sEnvironment(args.config.get("k8s_env")) == K8sEnvironment.AKS
+            if args.k8s_environment == K8sEnvironment.AKS
             else {}
         )
 
-        if K8sEnvironment(args.config.get("k8s_env")) == K8sEnvironment.AKS:
-            api_svc_specs = ServiceSpecArgs(
-                type="LoadBalancer",
-                selector=fridge_api_server.spec.template.metadata.labels,
-                ports=[
-                    ServicePortArgs(
-                        protocol="TCP",
-                        port=443,
-                        target_port=8443,
-                    )
-                ],
-            )
-        elif K8sEnvironment(args.config.get("k8s_env")) == K8sEnvironment.DAWN:
-            api_svc_specs = ServiceSpecArgs(
-                type="NodePort",
-                selector=fridge_api_server.spec.template.metadata.labels,
-                ports=[
-                    ServicePortArgs(
-                        protocol="TCP",
-                        node_port=30180,
-                        port=80,
-                        target_port=8443,
-                    )
-                ],
-            )
+        match args.k8s_environment:
+            case K8sEnvironment.AKS:
+                api_svc_specs = ServiceSpecArgs(
+                    type="LoadBalancer",
+                    selector=fridge_api_server.spec.template.metadata.labels,
+                    ports=[
+                        ServicePortArgs(
+                            protocol="TCP",
+                            port=443,
+                            target_port=8443,
+                        )
+                    ],
+                )
+            case K8sEnvironment.DAWN | K8sEnvironment.ZENITH:
+                api_svc_specs = ServiceSpecArgs(
+                    type="NodePort",
+                    selector=fridge_api_server.spec.template.metadata.labels,
+                    ports=[
+                        ServicePortArgs(
+                            protocol="TCP",
+                            node_port=30180,
+                            port=80,
+                            target_port=8443,
+                        )
+                    ],
+                )
 
         self.api_service = Service(
             "fridge-api-service",
