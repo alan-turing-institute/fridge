@@ -31,6 +31,7 @@ from pulumi_kubernetes.core.v1 import (
 )
 from pulumi_kubernetes.meta.v1 import LabelSelectorArgs, ObjectMetaArgs
 
+from config_helpers import netbird_config
 from enums import K8sEnvironment, PodSecurityStandard, SoftwareVersion
 
 
@@ -90,7 +91,8 @@ class VpnServer(ComponentResource):
             opts=child_opts,
         )
 
-        netbird_config = args.config.require_secret_object("netbird")
+        netbird = netbird_config(args.config)
+        netbird.require("hostname", "setup_key")
 
         setup_key_secret = Secret(
             "netbird-setup-key",
@@ -98,8 +100,8 @@ class VpnServer(ComponentResource):
                 namespace=self.vpn_ns.metadata.name,
                 name="netbird-setup-key",
             ),
-            string_data=netbird_config.apply(
-                lambda config: {"setup_key": config["setup_key"]}
+            string_data=netbird.secret("setup_key").apply(
+                lambda setup_key: {"setup_key": setup_key}
             ),
             opts=child_opts,
         )
@@ -148,15 +150,11 @@ class VpnServer(ComponentResource):
                                     ),
                                     EnvVarArgs(
                                         name="NB_MANAGEMENT_URL",
-                                        value=netbird_config.apply(
-                                            lambda config: config["management_url"]
-                                        ),
+                                        value=netbird.secret("management_url"),
                                     ),
                                     EnvVarArgs(
                                         name="NB_HOSTNAME",
-                                        value=netbird_config.apply(
-                                            lambda config: config["hostname"]
-                                        ),
+                                        value=netbird.secret("hostname"),
                                     ),
                                 ],
                                 volume_mounts=[

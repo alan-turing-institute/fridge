@@ -6,6 +6,7 @@ from pulumi_kubernetes.apiextensions import CustomResource
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
 
+from config_helpers import NETBIRD_ENDPOINT_KEYS, netbird_config
 from enums import K8sEnvironment
 
 
@@ -192,8 +193,8 @@ class NetworkPolicies(ComponentResource):
             )
 
         # Configure NetBird network policies
-        netbird_config = args.config.require_object("netbird")
-        management_url = urlparse(netbird_config.get("management_url")).hostname
+        netbird = netbird_config(args.config)
+        management_url = urlparse(netbird.get("management_url")).hostname
         if not management_url:
             raise ValueError(
                 "Invalid management_url in Netbird configuration: must be a valid URL"
@@ -217,7 +218,7 @@ class NetworkPolicies(ComponentResource):
             }
         )
 
-        overrides = netbird_config.get("endpoint_overrides", {})
+        overrides = netbird.get_object("endpoint_overrides", NETBIRD_ENDPOINT_KEYS)
         netbird_hosts = (
             default_hosts | overrides
         )  # Merge default hosts with any overrides provided in the config

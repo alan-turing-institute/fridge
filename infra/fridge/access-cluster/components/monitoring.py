@@ -5,6 +5,7 @@ from pulumi_kubernetes.helm.v3 import Release, ReleaseArgs
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
 
+from config_helpers import ConfigObject
 from enums import K8sEnvironment, PodSecurityStandard, SoftwareVersion
 
 # The kube-state-metrics chart's default collectors, without secrets
@@ -83,31 +84,21 @@ class MonitoringConfig:
     """
 
     def __init__(self, config: pulumi.config.Config):
-        # The plain values are only used to check which keys are set, so that missing
-        # keys give a clear error and optional ones can switch features on and off.
-        # The values themselves are read from the secret copy.
-        # Unset fields can appear as the field descriptions from Pulumi.yaml (the
-        # object's default), so only count strings as set
-        settings = config.get_object("monitoring") or {}
+        # Presence is checked on the plain copy, so the optional webhook can switch
+        # features on and off; values are read from the secret copy
+        settings = ConfigObject(
+            config,
+            "monitoring",
+            secret_fields={"grafana_admin_password", "teams_webhook_url"},
+        )
+        settings.require("grafana_admin_password")
 
-        def is_set(key: str) -> bool:
-            value = settings.get(key)
-            return isinstance(value, str) and value != ""
-
-        if not is_set("grafana_admin_password"):
-            raise ValueError(
-                "Missing required configuration value monitoring.grafana_admin_password. "
-                "Set it with: pulumi config set --secret --path "
-                "monitoring.grafana_admin_password <value>"
-            )
-        secret_settings = config.require_secret_object("monitoring")
-
-        self.grafana_admin_password: Output[str] = secret_settings.apply(
-            lambda s: s["grafana_admin_password"]
+        self.grafana_admin_password: Output[str] = settings.secret(
+            "grafana_admin_password"
         )
         self.teams_webhook_url: Output[str] | None = (
-            secret_settings.apply(lambda s: s["teams_webhook_url"])
-            if is_set("teams_webhook_url")
+            settings.secret("teams_webhook_url")
+            if settings.is_set("teams_webhook_url")
             else None
         )
 
