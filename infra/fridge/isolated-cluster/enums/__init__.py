@@ -60,4 +60,4 @@ class SoftwareVersion(Enum):
     SEAWEEDFS = "4.51.0"
 
     # renovate: datasource=helm depName=cert-manager/trust-manager registryUrl=https://charts.jetstack.io
-    TRUST_MANAGER = "0.25.1"
+    TRUST_MANAGER = "0.25.0"
