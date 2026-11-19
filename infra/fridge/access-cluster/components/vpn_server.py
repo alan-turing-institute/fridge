@@ -31,7 +31,7 @@ from pulumi_kubernetes.core.v1 import (
 )
 from pulumi_kubernetes.meta.v1 import LabelSelectorArgs, ObjectMetaArgs
 
-from config_helpers import netbird_config
+from config_helpers import NETBIRD_CLOUD_MANAGEMENT_URL, require_fields
 from enums import K8sEnvironment, PodSecurityStandard, SoftwareVersion
 
 
@@ -91,8 +91,13 @@ class VpnServer(ComponentResource):
             opts=child_opts,
         )
 
-        netbird = netbird_config(args.config)
-        netbird.require("hostname", "setup_key")
+        require_fields(
+            args.config,
+            "netbird",
+            ["hostname", "setup_key"],
+            secret_fields=["setup_key"],
+        )
+        netbird_config = args.config.require_secret_object("netbird")
 
         setup_key_secret = Secret(
             "netbird-setup-key",
@@ -100,8 +105,8 @@ class VpnServer(ComponentResource):
                 namespace=self.vpn_ns.metadata.name,
                 name="netbird-setup-key",
             ),
-            string_data=netbird.secret("setup_key").apply(
-                lambda setup_key: {"setup_key": setup_key}
+            string_data=netbird_config.apply(
+                lambda config: {"setup_key": config["setup_key"]}
             ),
             opts=child_opts,
         )
@@ -150,11 +155,16 @@ class VpnServer(ComponentResource):
                                     ),
                                     EnvVarArgs(
                                         name="NB_MANAGEMENT_URL",
-                                        value=netbird.secret("management_url"),
+                                        value=netbird_config.apply(
+                                            lambda config: config.get("management_url")
+                                            or NETBIRD_CLOUD_MANAGEMENT_URL
+                                        ),
                                     ),
                                     EnvVarArgs(
                                         name="NB_HOSTNAME",
-                                        value=netbird.secret("hostname"),
+                                        value=netbird_config.apply(
+                                            lambda config: config["hostname"]
+                                        ),
                                     ),
                                 ],
                                 volume_mounts=[
