@@ -31,6 +31,7 @@ from pulumi_kubernetes.core.v1 import (
 )
 from pulumi_kubernetes.meta.v1 import LabelSelectorArgs, ObjectMetaArgs
 
+from config_helpers import NETBIRD_CLOUD_MANAGEMENT_URL, require_fields
 from enums import K8sEnvironment, PodSecurityStandard, SoftwareVersion
 
 
@@ -90,6 +91,12 @@ class VpnServer(ComponentResource):
             opts=child_opts,
         )
 
+        require_fields(
+            args.config,
+            "netbird",
+            ["hostname", "setup_key"],
+            secret_fields=["setup_key"],
+        )
         netbird_config = args.config.require_secret_object("netbird")
 
         setup_key_secret = Secret(
@@ -149,7 +156,8 @@ class VpnServer(ComponentResource):
                                     EnvVarArgs(
                                         name="NB_MANAGEMENT_URL",
                                         value=netbird_config.apply(
-                                            lambda config: config["management_url"]
+                                            lambda config: config.get("management_url")
+                                            or NETBIRD_CLOUD_MANAGEMENT_URL
                                         ),
                                     ),
                                     EnvVarArgs(

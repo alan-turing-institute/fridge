@@ -6,6 +6,7 @@ from pulumi_kubernetes.apiextensions import CustomResource
 from pulumi_kubernetes.meta.v1 import ObjectMetaArgs
 from pulumi_kubernetes.yaml import ConfigFile, ConfigGroup
 
+from config_helpers import NETBIRD_CLOUD_MANAGEMENT_URL
 from enums import K8sEnvironment
 
 
@@ -193,7 +194,9 @@ class NetworkPolicies(ComponentResource):
 
         # Configure NetBird network policies
         netbird_config = args.config.require_object("netbird")
-        management_url = urlparse(netbird_config.get("management_url")).hostname
+        management_url = urlparse(
+            netbird_config.get("management_url") or NETBIRD_CLOUD_MANAGEMENT_URL
+        ).hostname
         if not management_url:
             raise ValueError(
                 "Invalid management_url in Netbird configuration: must be a valid URL"
