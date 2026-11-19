@@ -76,45 +76,14 @@ def teams_alertmanager_config() -> dict:
     }
 
 
-class MonitoringConfig:
-    """The stack's `monitoring` configuration object.
-
-    Network policies also need the Teams webhook URL, so this is read once in
-    __main__ and passed to both components.
-    """
-
-    def __init__(self, config: pulumi.config.Config):
-        # The plain values are only used to check which keys are set, so that missing
-        # keys give a clear error and optional ones can switch features on and off.
-        # The values themselves are read from the secret copy.
-        # Unset fields can appear as the field descriptions from Pulumi.yaml (the
-        # object's default), so only count strings as set
-        settings = require_fields(
-            config,
-            "monitoring",
-            ["grafana_admin_password"],
-            secret_fields=["grafana_admin_password"],
-        )
-        secret_settings = config.require_secret_object("monitoring")
-
-        self.grafana_admin_password: Output[str] = secret_settings.apply(
-            lambda s: s["grafana_admin_password"]
-        )
-        self.teams_webhook_url: Output[str] | None = (
-            secret_settings.apply(lambda s: s["teams_webhook_url"])
-            if is_set(settings.get("teams_webhook_url"))
-            else None
-        )
-
-
 class MonitoringArgs:
     def __init__(
         self,
-        settings: MonitoringConfig,
+        config: pulumi.config.Config,
         k8s_environment: K8sEnvironment,
         storage_class_name: Input[str],
     ):
-        self.settings = settings
+        self.config = config
         self.k8s_environment = k8s_environment
         self.storage_class_name = storage_class_name
 
@@ -125,6 +94,25 @@ class Monitoring(ComponentResource):
     ) -> None:
         super().__init__("fridge:k8s:Monitoring", name, {}, opts)
         child_opts = ResourceOptions.merge(opts, ResourceOptions(parent=self))
+
+        # The plain copy is only used to check which fields are set; the values
+        # themselves are read from the secret copy
+        settings = require_fields(
+            args.config,
+            "monitoring",
+            ["grafana_admin_password"],
+            secret_fields=["grafana_admin_password"],
+        )
+        secret_settings = args.config.require_secret_object("monitoring")
+        grafana_admin_password: Output[str] = secret_settings.apply(
+            lambda s: s["grafana_admin_password"]
+        )
+        # Also used by the network policies, to allow egress to the webhook's host
+        self.teams_webhook_url: Output[str] | None = (
+            secret_settings.apply(lambda s: s["teams_webhook_url"])
+            if is_set(settings.get("teams_webhook_url"))
+            else None
+        )
 
         # node-exporter needs host networking, host PID and host paths,
         # so the namespace cannot use the restricted standard
@@ -158,7 +146,7 @@ class Monitoring(ComponentResource):
 
         # Send alerts to a Microsoft Teams channel if a Workflows webhook is configured.
         # Otherwise keep the chart's default, which sends them nowhere
-        teams_webhook_url = args.settings.teams_webhook_url
+        teams_webhook_url = self.teams_webhook_url
         if teams_webhook_url is not None:
             self.teams_webhook_secret = Secret(
                 "alertmanager-teams-webhook",
@@ -189,7 +177,7 @@ class Monitoring(ComponentResource):
                 values={
                     "alertmanager": alertmanager_values,
                     "grafana": {
-                        "adminPassword": args.settings.grafana_admin_password,
+                        "adminPassword": grafana_admin_password,
                         "testFramework": {"enabled": False},
                         # By default the dashboard and datasource sidecars can read
                         # Secrets and ConfigMaps in every namespace. Limit them to this
