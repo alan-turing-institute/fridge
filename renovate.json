@@ -29,11 +29,83 @@
             "groupSlug": "fridge-job-api-python"
         },
         {
+            "description": "K8s stack default: wait for releases to settle, and require approval on the Dependency Dashboard before a PR is opened. Anything not explicitly marked low-risk below falls into this.",
             "matchManagers": [
                 "custom.regex"
             ],
-            "groupName": "FRIDGE K8s Stack",
-            "groupSlug": "fridge-k8s-stack"
+            "minimumReleaseAge": "14 days",
+            "dependencyDashboardApproval": true,
+            "addLabels": [
+                "k8s-stack"
+            ]
+        },
+        {
+            "description": "Low-risk K8s stack images (stateless, no CRDs): group minor/patch bumps into one PR without approval.",
+            "matchManagers": [
+                "custom.regex"
+            ],
+            "matchDepNames": [
+                "haproxy",
+                "curlimages/curl",
+                "netbirdio/netbird",
+                "ghcr.io/alan-turing-institute/fridge"
+            ],
+            "matchUpdateTypes": [
+                "minor",
+                "patch"
+            ],
+            "dependencyDashboardApproval": false,
+            "groupName": "FRIDGE K8s low-risk",
+            "groupSlug": "fridge-k8s-low-risk"
+        },
+        {
+            "description": "ingress-nginx patch releases are low-risk; minors/majors need approval and testing.",
+            "matchManagers": [
+                "custom.regex"
+            ],
+            "matchDepNames": [
+                "ingress-nginx"
+            ],
+            "matchUpdateTypes": [
+                "patch"
+            ],
+            "dependencyDashboardApproval": false,
+            "groupName": "FRIDGE K8s low-risk",
+            "groupSlug": "fridge-k8s-low-risk"
+        },
+        {
+            "description": "Stateful or CRD-carrying charts: one PR per component, must be upgrade-tested on a test cluster before merging.",
+            "matchManagers": [
+                "custom.regex"
+            ],
+            "matchDepNames": [
+                "longhorn",
+                "seaweedfs",
+                "cert-manager",
+                "trust-manager",
+                "harbor",
+                "argo-workflows",
+                "kube-prometheus-stack",
+                "gpu-operator-charts",
+                "intel-device-plugins-operator",
+                "node-feature-discovery"
+            ],
+            "addLabels": [
+                "needs-upgrade-test"
+            ],
+            "prBodyNotes": [
+                "### Upgrade test checklist\n\n- [ ] Deploy `main` to a test stack with real state (Longhorn PVC data, SeaweedFS objects, an Argo workflow run, a Harbor image)\n- [ ] `pulumi up` from this branch on the test stack (in-place upgrade, not a fresh install)\n- [ ] Apply updated CRDs if the chart ships any (Helm/Pulumi do not upgrade CRDs)\n- [ ] Check pods healthy, PVC data intact, workflows run end to end, certificates issue\n- [ ] Record any manual steps here for the production runbook"
+            ]
+        },
+        {
+            "description": "Longhorn cannot skip minor versions: raise a separate PR per minor stream and upgrade one minor at a time.",
+            "matchManagers": [
+                "custom.regex"
+            ],
+            "matchDepNames": [
+                "longhorn"
+            ],
+            "separateMultipleMinor": true
         }
     ]
 }
