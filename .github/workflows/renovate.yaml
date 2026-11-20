@@ -1,0 +1,32 @@
+name: Renovate
+on:
+  workflow_dispatch:
+  # FORK TEST ONLY - remove before opening upstream PR
+  push:
+    branches: [renovate-support]
+  # Runs once a month (At 06:00 on day 1 of the month)
+  schedule:
+    - cron: '0 6 1 * *'
+
+jobs:
+  renovate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Self-hosted Renovate
+        uses: renovatebot/github-action@v46.3.1
+        with:
+          configurationFile: renovate.json
+          renovate-version: full
+          token: ${{ secrets.RENOVATE_TOKEN }}
+        env:
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          # FORK TEST ONLY - remove before opening upstream PR.
+          # Scan the branch that triggered the run instead of the default
+          # branch, and don't wait for an onboarding PR (main has no config yet).
+          RENOVATE_BASE_BRANCH_PATTERNS: '["${{ github.ref_name }}"]'
+          RENOVATE_REQUIRE_CONFIG: optional
+          RENOVATE_ONBOARDING: "false"
+          LOG_LEVEL: debug
