@@ -34,6 +34,7 @@
                 "custom.regex"
             ],
             "minimumReleaseAge": "14 days",
+            "minimumReleaseAgeBehaviour": "timestamp-optional",
             "dependencyDashboardApproval": true,
             "addLabels": [
                 "k8s-stack"
