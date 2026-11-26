@@ -61,3 +61,7 @@ jobs:
           RENOVATE_REQUIRE_CONFIG: optional
           RENOVATE_ONBOARDING: "false"
           LOG_LEVEL: debug
+          # UPSTREAM TEST ONLY - remove before opening upstream PR.
+          # Log what Renovate would do without creating branches, PRs,
+          # statuses or the Dependency Dashboard.
+          RENOVATE_DRY_RUN: full
