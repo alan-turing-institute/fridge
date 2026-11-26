@@ -9,9 +9,6 @@ on:
   # Note: issue-triggered workflows always run from the default branch.
   issues:
     types: [edited]
-  # FORK TEST ONLY - remove before opening upstream PR
-  push:
-    branches: [renovate-support]
 
 # Never run two Renovate jobs against the repo at once; queue instead.
 concurrency:
@@ -54,14 +51,3 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
         env:
           RENOVATE_REPOSITORIES: ${{ github.repository }}
-          # FORK TEST ONLY - remove before opening upstream PR.
-          # Scan the branch that triggered the run instead of the default
-          # branch, and don't wait for an onboarding PR (main has no config yet).
-          RENOVATE_BASE_BRANCH_PATTERNS: '["${{ github.ref_name }}"]'
-          RENOVATE_REQUIRE_CONFIG: optional
-          RENOVATE_ONBOARDING: "false"
-          LOG_LEVEL: debug
-          # UPSTREAM TEST ONLY - remove before opening upstream PR.
-          # Log what Renovate would do without creating branches, PRs,
-          # statuses or the Dependency Dashboard.
-          RENOVATE_DRY_RUN: full
