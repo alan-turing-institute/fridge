@@ -40,13 +40,13 @@ class SoftwareVersion(Enum):
     CERT_MANAGER = "1.21.2"
 
     # renovate: datasource=docker depName=curlimages/curl
-    CURL = "8.22.0"
+    CURL = "8.23.0"
 
     # renovate: datasource=docker depName=ghcr.io/alan-turing-institute/fridge
     FRIDGE_API = "0.9.0"
 
     # renovate: datasource=docker depName=haproxy
-    HAPROXY = "3.4.6"
+    HAPROXY = "3.4.8"
 
     # renovate: datasource=helm depName=intel-device-plugins-operator registryUrl=https://intel.github.io/helm-charts
     INTEL_GPU_OPERATOR = "0.35.0"

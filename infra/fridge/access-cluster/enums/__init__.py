@@ -39,7 +39,7 @@ class SoftwareVersion(Enum):
     # NOTE: renovate does not track images marked as "latest"
     CURL_JQ = "latest"
     # renovate: datasource=docker depName=haproxy
-    HAPROXY = "3.4.6"
+    HAPROXY = "3.4.8"
     # renovate: datasource=helm depName=harbor registryUrl=https://helm.goharbor.io
     HARBOR = "1.19.2"
     # renovate: datasource=helm depName=ingress-nginx registryUrl=https://kubernetes.github.io/ingress-nginx
@@ -49,4 +49,4 @@ class SoftwareVersion(Enum):
     # renovate: datasource=helm depName=longhorn registryUrl=https://charts.longhorn.io
     LONGHORN = "1.9.0"
     # renovate: datasource=docker depName=netbirdio/netbird
-    NETBIRD = "0.80.0"
+    NETBIRD = "0.83.2"
