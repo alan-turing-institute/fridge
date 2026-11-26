@@ -43,7 +43,7 @@ class SoftwareVersion(Enum):
     # renovate: datasource=helm depName=harbor registryUrl=https://helm.goharbor.io
     HARBOR = "1.19.2"
     # renovate: datasource=helm depName=ingress-nginx registryUrl=https://kubernetes.github.io/ingress-nginx
-    INGRESS_NGINX = "4.13.2"
+    INGRESS_NGINX = "4.15.1"
     # renovate: datasource=helm depName=kube-prometheus-stack registryUrl=https://prometheus-community.github.io/helm-charts
     KUBE_PROMETHEUS_STACK = "92.17.0"
     # renovate: datasource=helm depName=longhorn registryUrl=https://charts.longhorn.io
